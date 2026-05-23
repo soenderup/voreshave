@@ -6,81 +6,92 @@
 ## Hvad er lavet
 
 ### App og design
-- Appen hedder **Vores Have** og er live på `https://voreshave.netlify.app` (og snart `voreshave.soenderup.dk`)
-- Design: naturlig og varm (jordfarver, terrakotta, hvide kort) — valgt ud fra 3 forslag
+- Appen hedder **Vores Have** og er live på `https://voreshave.netlify.app`
+- Design: naturlig og varm (jordfarver, terrakotta, hvide kort)
 - Mobilvenlig, PWA — installeret på iPhone via Safari → "Føj til hjemmeskærm"
 
 ### Struktur
-- **Haven → Zoner → Emner** (to niveauer)
+- **Haven → Zoner → Elementer** (to niveauer — "emne" er omdøbt til "element")
 - Zoner grupperet i **Forhave / Baghave / Terrasse / Indgange** — accordion, kun ét område åbent ad gangen
-- Alle Steens rigtige zoner er oprettet (27 stk): flis-bed, sten-bed, højbede 1-3, dråbebed, flødebolle, sommerfuglebed, altankasser 1-6, krukker, træer, hækker osv.
+- Alle Steens rigtige zoner er oprettet (27 stk)
 
 ### Funktioner
-- **Opret / rediger / slet** zoner og emner (✏️ i header)
-- **Emnefelter:** navn, latinsk navn, type (Træ/Busk/Stauder osv.), plantet dato, note, info-link
-- **Foto-upload** per zone og per emne — vælg kamera eller fotoalbum — komprimeres automatisk, vises som thumbnail-strip med lightbox
+- **Opret / rediger / slet** zoner og elementer (✏️ i header)
+- **Elementfelter:** navn, latinsk navn, type (Træ/Busk/Stauder osv.), plantet dato, note, info-link
+- **Foto per zone** — ét coverfoto vist stort i det grønne hero-område øverst. Tryk for at tilføje/skifte, × for at slette
+- **Foto per element** — ét thumbnail vist i zonens elementliste. Kamerasymbol hvis intet foto. Tryk thumbnail → lightbox. Tilføj/slet fra elementets detaljeside
 - **Påmindelser** — engangs eller tilbagevendende (månedlig/årlig) — med "Ansvarlig: Alle / Steen / Linda"
-- **Historik** — log per zone og emne — fuldførte påmindelser flyttes automatisk hertil
-- **Kalender** — månedsoversigt med farvede prikker, klik på dag for at filtrere, blade mellem måneder
+- **Historik** — log per zone og element — fuldførte påmindelser flyttes automatisk hertil
+- **Kalender** — månedsoversigt med farvede prikker, klik på dag for at filtrere
 - **Snart / Nu** — urgent strip øverst på forsiden
-- **Brugerstyring** — Steen og Linda, PIN-lås (4 cifre), bruger huskes per enhed, historik og påmindelser tagges med navn
+- **Brugerstyring** — Steen, Linda og Gæst med individuelle 6-cifrede PIN-koder
+
+### PIN-system (redesignet)
+- Steen, Linda og Gæst har **hver sin 6-cifrede PIN**
+- PIN bestemmer hvem man er — ingen separat navnevælger
+- PINs gemmes i **Firestore** (`voreshave/pins`) og caches i localStorage
+- Virker på alle enheder inkl. fremmede
+- **Gæst-PIN** giver read-only adgang (ingen tilføj/rediger/slet)
+- Sæt/skift PINs via S-knappen i headeren → brugermenuen
+- Første gang: "Hvem er du?" → vælg navn → indtast PIN to gange
+
+### Firebase-integration
+- **Firestore** (`voreshave/data`) — al havedata synkroniseres i realtid mellem Steen og Lindas telefoner
+- **Firebase Storage** — fotos uploades til skyen, gemmes som URL (ikke base64)
+- Fotos vises øjeblikkeligt som preview (base64), uploades til Storage i baggrunden
+- **localStorage** bruges som offline-cache for både data og PINs
+- Firebase projekt: `minhave-e9ab6` (Blaze-plan — betaling påkrævet for Storage)
 
 ### Teknisk
 - Rent HTML/CSS/JS — ingen frameworks, ingen build-trin
-- Data gemmes i **localStorage** (midlertidigt — erstattes af Firebase)
-- Fotos gemmes som base64 i localStorage (~100KB per billede komprimeret)
-- **PWA:** manifest.json + service worker (cache-first), grønt ikon, standalone-mode
+- Firebase SDK 10.12.0 via CDN (compat-version)
+- **localStorage-nøgle:** `minhave-v3` (data-cache), `minhave-pins` (PIN-cache)
 - GitHub: `github.com/soenderup/voreshave` → auto-deploy til Netlify ved push til `main`
-- PIN gemmes i plain text i localStorage (acceptabelt for et have-overblik)
+- PWA: manifest.json + service worker
 
 ---
 
 ## Hvad mangler — i prioriteret rækkefølge
 
-### 1. Firebase (kritisk inden seriøs brug)
-Firebase er nødvendigt for to afgørende ting:
-- **Firestore** — databasesynkronisering mellem Steens og Lindas telefoner. Lige nu ser de ikke hinandens ændringer.
-- **Firebase Storage** — fotos gemmes i skyen i stedet for i browseren. localStorage har ~5MB grænse — med mange fotos vil den gå fuld.
+### 1. Firestore sikkerhedsregler (kritisk inden deling)
+Firestore kører i "test mode" — alle kan læse/skrive i 30 dage fra oprettelse.
+Inden appen deles bredt skal reglerne strammes:
+```
+allow read, write: if request.auth != null;
+```
+Kræver Firebase Authentication (punkt 2).
 
-Hvad der skal gøres:
-- Opret Firebase-projekt på console.firebase.google.com
-- Tilføj Firestore og Storage
-- Opret `.env`-fil med Firebase-config (må IKKE committes til GitHub — tilføj til `.gitignore`)
-- Erstat localStorage-kald med Firestore-læsning/-skrivning
-- Erstat base64-fotos med Firebase Storage upload/URL
-
-### 2. Firebase Authentication (login i stedet for PIN)
+### 2. Firebase Authentication
 - Google Sign-In eller email/password for Steen og Linda
-- Erstatter den nuværende PIN-løsning
-- Sikrer at kun de to kan tilgå appen
+- Erstatter PIN-løsningen helt på sigt
+- Sikrer at kun autoriserede kan tilgå og skrive data
 
 ### 3. Push-notifikationer på iPhone
 - Kræver Firebase Cloud Messaging (FCM) + opdateret service worker
-- Påmindelser med en dato og ansvarlig sender push til den rigtige telefon
-- iOS kræver at appen er installeret som PWA på hjemmeskærmen (allerede gjort)
+- Påmindelser med dato og ansvarlig sender push til den rigtige telefon
+- iOS kræver PWA installeret på hjemmeskærmen (allerede gjort)
 
-### 4. Auto-forslag til info-links
-- Aftalt: appen søger automatisk et link op når man tilføjer et emne
-- Kræver et API-kald (f.eks. søgning på plantebasen.dk eller haveselskabet.dk)
-- Brugeren kan rette/tilføje bagefter
-
-### 5. Rediger og slet påmindelser og historik
+### 4. Rediger og slet påmindelser og historik
 - Man kan i dag kun tilføje — ikke redigere en eksisterende påmindelse
 - Historik-noter kan heller ikke rettes eller slettes
 - Simpel ✏️-knap per post
 
+### 5. Auto-forslag til info-links
+- Appen søger automatisk et link op når man tilføjer et element
+- Kræver et API-kald (f.eks. plantebasen.dk eller haveselskabet.dk)
+
+### 6. Søgefunktion
+- Med 27 zoner kan det blive relevant at søge på tværs
+
 ---
 
-## Ting der ikke er husket / skal tages stilling til
+## Ting der skal huskes
 
-- **PIN-glemsel** — der er ingen måde at nulstille PIN på hvis den glemmes. Løsning nu: slet localStorage i Safari-indstillinger. Afventer Firebase Auth.
-- **Hæk mod nabo** — zonen hedder stadig "Hæk mod nabo" — ret til naborens rigtige navn direkte i appen (✏️-knap)
-- **Altankasse 1** er registreret som tom — er det stadig tilfældet?
-- **Ingen backup** — data ligger kun i browseren (localStorage). Inden Firebase: eksporter ikke muligt. En enkelt browser-nulstilling sletter alt. Brug appen med omtanke.
-- **`scripts/`-mappen** deployes til Netlify men er ufarlig (ingen eksekverbare scripts i browseren)
-- **Ikonerne** er simple geometriske blade — kan laves pænere når resten er på plads
-- **Synkronisering virker ikke endnu** — Steen og Linda ser hver deres version af appen. Det løses med Firebase (punkt 1 ovenfor)
-- **Søgefunktion** — med 27 zoner kan det blive relevant at søge på tværs. Ikke implementeret endnu.
+- **Firestore test mode udløber** ~30 dage efter projektoprettelse — husk at opdatere sikkerhedsreglerne
+- **Firebase Blaze-plan** er aktiveret — Storage koster penge over gratis-kvoten (5GB gratis, urealistisk at overskride til have-brug)
+- **PIN-nulstilling:** Hvis en PIN glemmes, kan den sættes igen fra brugermenuen af den anden bruger (Steen kan sætte Lindas PIN og omvendt)
+- **Offline:** Appen fungerer offline med cached data — ændringer synkroniseres når forbindelsen genoprettes
+- **Hæk mod nabo** — zonen kan omdøbes direkte i appen (✏️-knap)
 
 ---
 
@@ -96,13 +107,21 @@ voreshave/
 │   ├── dev-start.sh    ← starter server + Safari ved sessionstart
 │   ├── dev-stop.sh     ← rydder op ved afslutning
 │   ├── dev-reload.sh   ← auto-reload Safari ved fil-ændring
-│   └── generate-icons.py ← genererer PNG-ikoner
+│   └── generate-icons.py
 ├── CLAUDE.md           ← projektinstruktioner til Claude
 └── handoff.md          ← dette dokument
 ```
 
-**Dev-miljø:** Kør `kode` → vælg `minhave` → server starter automatisk på `http://localhost:8766`, Safari åbner til højre.
+**Firebase-struktur:**
+```
+Firestore:
+  voreshave/data    ← al havedata (zones, plants, reminders, history)
+  voreshave/pins    ← PIN-koder (Steen, Linda, Gæst)
+
+Storage:
+  photos/{uuid}.jpg ← uploadede fotos
+```
+
+**Dev-miljø:** `kode` → vælg `minhave` → server på `http://localhost:8766`, Safari åbner til højre.
 
 **Deploy:** `git push` → GitHub → Netlify auto-deploy. Spørg ALTID Claude inden push.
-
-**localStorage-nøgle:** `minhave-v3` (bump til v4 hvis seed-data skal nulstilles)
