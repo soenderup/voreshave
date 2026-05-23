@@ -492,7 +492,7 @@ firebase.initializeApp({
 });
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
-const VERSION = '2.4';
+const VERSION = '2.5';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
@@ -508,6 +508,62 @@ let pins = {};
 
 // ── DATA ──
 let db = { zones: [], plants: [], reminders: [], history: [] };
+
+// ── PHOTO STORAGE (IndexedDB - mere robust end localStorage på iOS Safari) ──
+const PHOTO_DB_NAME = 'minhave-photos';
+const PHOTO_STORE = 'photos';
+let photoCache = new Map();
+
+function openPhotoDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(PHOTO_DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(PHOTO_STORE);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function loadPhotoCache() {
+    try {
+        const idb = await openPhotoDB();
+        await new Promise((resolve, reject) => {
+            const tx = idb.transaction(PHOTO_STORE, 'readonly');
+            const cursor = tx.objectStore(PHOTO_STORE).openCursor();
+            cursor.onsuccess = e => {
+                const c = e.target.result;
+                if (c) { photoCache.set(c.key, c.value); c.continue(); }
+                else resolve();
+            };
+            cursor.onerror = () => reject(cursor.error);
+        });
+    } catch (e) { console.warn('IndexedDB cache load fejlede:', e); }
+}
+
+async function savePhotoToIDB(key, base64) {
+    photoCache.set(key, base64);
+    try {
+        const idb = await openPhotoDB();
+        await new Promise((resolve, reject) => {
+            const tx = idb.transaction(PHOTO_STORE, 'readwrite');
+            tx.objectStore(PHOTO_STORE).put(base64, key);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    } catch (e) { console.warn('IndexedDB save fejlede:', e); }
+}
+
+async function deletePhotoFromIDB(key) {
+    photoCache.delete(key);
+    try {
+        const idb = await openPhotoDB();
+        await new Promise((resolve, reject) => {
+            const tx = idb.transaction(PHOTO_STORE, 'readwrite');
+            tx.objectStore(PHOTO_STORE).delete(key);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    } catch (e) { console.warn('IndexedDB delete fejlede:', e); }
+}
 
 const ZONE_TYPES = {
     blomsterbed: { label: 'Blomsterbed', icon: '🌸' },
@@ -536,16 +592,10 @@ const REPEAT_LABELS = { none: 'Ingen', yearly: 'Hvert år', monthly: 'Hver måne
 
 function mergeLocalPhotos() {
     (db.zones || []).forEach(z => {
-        if (!z.photo) {
-            const local = localStorage.getItem('minhave-photo-zone-' + z.id);
-            if (local) z.photo = local;
-        }
+        if (!z.photo && photoCache.has('zone-' + z.id)) z.photo = photoCache.get('zone-' + z.id);
     });
     (db.plants || []).forEach(p => {
-        if (!p.photo) {
-            const local = localStorage.getItem('minhave-photo-plant-' + p.id);
-            if (local) p.photo = local;
-        }
+        if (!p.photo && photoCache.has('plant-' + p.id)) p.photo = photoCache.get('plant-' + p.id);
     });
 }
 
@@ -1105,7 +1155,7 @@ async function doPickZonePhoto(zid, source) {
         const base64 = await compressImage(file, 1200, 0.78);
         zone(zid).photo = base64;
         render();
-        try { localStorage.setItem('minhave-photo-zone-' + zid, base64); } catch (err) { console.warn('localStorage foto-gem fejlede:', err); }
+        savePhotoToIDB('zone-' + zid, base64);
         deleteStoragePhoto(oldPhoto);
         try {
             const url = await uploadPhoto(file);
@@ -1123,7 +1173,7 @@ async function deleteZonePhoto(zid, e) {
     if (!confirm('Slet zonefoto?')) return;
     const z = zone(zid);
     await deleteStoragePhoto(z.photo);
-    localStorage.removeItem('minhave-photo-zone-' + zid);
+    deletePhotoFromIDB('zone-' + zid);
     z.photo = null;
     saveDB(); render();
 }
@@ -1144,7 +1194,7 @@ async function doPickElementPhoto(pid, source) {
         const base64 = await compressImage(file, 1200, 0.78);
         plant(pid).photo = base64;
         render();
-        try { localStorage.setItem('minhave-photo-plant-' + pid, base64); } catch (err) { console.warn('localStorage foto-gem fejlede:', err); }
+        savePhotoToIDB('plant-' + pid, base64);
         deleteStoragePhoto(oldPhoto);
         try {
             const url = await uploadPhoto(file);
@@ -1162,7 +1212,7 @@ async function deleteElementPhoto(pid, e) {
     if (!confirm('Slet elementfoto?')) return;
     const p = plant(pid);
     await deleteStoragePhoto(p.photo);
-    localStorage.removeItem('minhave-photo-plant-' + pid);
+    deletePhotoFromIDB('plant-' + pid);
     p.photo = null;
     saveDB(); render();
 }
@@ -1756,7 +1806,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── BOOT ──
-Promise.all([loadDB(), loadPins()]).then(() => { if (checkAccess()) render(); });
+loadPhotoCache().then(() => Promise.all([loadDB(), loadPins()])).then(() => { if (checkAccess()) render(); });
 document.getElementById('nav-version').textContent = `v${VERSION}`;
 </script>
 </body>
