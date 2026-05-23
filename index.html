@@ -250,9 +250,13 @@ let db = { zones: [], plants: [], reminders: [], history: [] };
 
 const ZONE_TYPES = {
     blomsterbed: { label: 'Blomsterbed', icon: '🌸' },
-    terrasse:    { label: 'Terrasse',    icon: '🪴' },
+    stenbed:     { label: 'Sten-bed',    icon: '🪨' },
     højbed:      { label: 'Højbed',      icon: '🥕' },
+    terrassebed: { label: 'Terrasse-bed',icon: '🌿' },
+    kasse:       { label: 'Altankasse',  icon: '📦' },
+    krukke:      { label: 'Krukke/potte',icon: '🪴' },
     træ:         { label: 'Træ',         icon: '🌳' },
+    busk:        { label: 'Busk',        icon: '🌾' },
     hæk:         { label: 'Hæk',        icon: '🌿' },
     græsplæne:   { label: 'Græsplæne',  icon: '🌱' },
     andet:       { label: 'Andet',       icon: '🏡' },
@@ -263,7 +267,7 @@ const PLANT_TYPES = ['Stauder','Løgplante','Grøntsag','Frugt','Træ','Busk','K
 const REPEAT_LABELS = { none: 'Ingen', yearly: 'Hvert år', monthly: 'Hver måned' };
 
 function loadDB() {
-    const raw = localStorage.getItem('minhave-v1');
+    const raw = localStorage.getItem('minhave-v2');
     if (raw) {
         db = JSON.parse(raw);
     } else {
@@ -273,37 +277,103 @@ function loadDB() {
 }
 
 function saveDB() {
-    localStorage.setItem('minhave-v1', JSON.stringify(db));
+    localStorage.setItem('minhave-v2', JSON.stringify(db));
 }
 
 function seedDB() {
-    const z1 = uuid(), z2 = uuid(), z3 = uuid(), z4 = uuid();
-    const p1 = uuid(), p2 = uuid(), p3 = uuid(), p4 = uuid(), p5 = uuid(), p6 = uuid();
+    // Forhave
+    const zFlisF  = uuid(); // Flis-bed forhave
+    const zStenF  = uuid(); // Sten-bed forhave
+    const zHækF   = uuid(); // Hæk forhave
+    const zGræsF  = uuid(); // Græsplæne forhave
+    // Baghave - bede
+    const zStenB  = uuid(); // Sten-bed baghave
+    const zHøj1   = uuid(); // Højbed 1
+    const zHøj2   = uuid(); // Højbed 2
+    const zHøj3   = uuid(); // Højbed 3
+    const zFlisB  = uuid(); // Flis-bed baghave
+    const zDråbe  = uuid(); // Dråbebed
+    const zFløde  = uuid(); // Flødebolle
+    const zSomm   = uuid(); // Sommerfuglebed
+    // Baghave - øvrigt
+    const zÆble   = uuid(); // Æbletræ
+    const zGræsB  = uuid(); // Græsplæne baghave
+    const zHækIb  = uuid(); // Hæk mod Ib
+    const zHækXx  = uuid(); // Hæk mod nabo
+    // Terrasse
+    const zKlem   = uuid(); // Klematis-bed
+    const zBirg   = uuid(); // Birgitte-bed
+    const zK1     = uuid(), zK2 = uuid(), zK3 = uuid();
+    const zK4     = uuid(), zK5 = uuid(), zK6 = uuid();
+    const zKrukT  = uuid(); // Krukker terrasse
+    const zKrukH  = uuid(); // Krukker hoveddør
+    const zKrukBr = uuid(); // Krukker bryggerdør
+
+    // Planter
+    const pKirsebær = uuid();
+    const pFigen    = uuid();
+    const pSyren    = uuid();
+    const pÆble     = uuid();
+    const pJord2    = uuid(), pJord3 = uuid(), pJord4 = uuid(), pJord5 = uuid(), pJord6 = uuid();
+    const pKlem     = uuid();
+    const pBirg     = uuid();
+
     db.zones = [
-        { id: z1, name: 'Blomsterbed syd', type: 'blomsterbed', description: 'Mod terrassen' },
-        { id: z2, name: 'Terrassen', type: 'terrasse', description: 'Krukker og potter' },
-        { id: z3, name: 'Højbed — Køkken', type: 'højbed', description: 'Sydside, varmt og solrigt' },
-        { id: z4, name: 'Æbletræ', type: 'træ', description: "Discovery, plantet 2018" },
+        // Forhave
+        { id: zFlisF,  name: 'Flis-bed i forhave',     type: 'blomsterbed', description: 'Forhave' },
+        { id: zStenF,  name: 'Sten-bed i forhave',      type: 'stenbed',     description: 'Forhave' },
+        { id: zHækF,   name: 'Hæk i forhave',           type: 'hæk',         description: 'Forhave' },
+        { id: zGræsF,  name: 'Græsplæne forhave',       type: 'græsplæne',   description: 'Forhave' },
+        // Baghave - bede
+        { id: zStenB,  name: 'Sten-bed i baghave',      type: 'stenbed',     description: 'Baghave — her står figentræet og højbedene' },
+        { id: zHøj1,   name: 'Højbed 1',                type: 'højbed',      description: 'Baghave, i sten-bed' },
+        { id: zHøj2,   name: 'Højbed 2',                type: 'højbed',      description: 'Baghave, i sten-bed' },
+        { id: zHøj3,   name: 'Højbed 3',                type: 'højbed',      description: 'Baghave, i sten-bed' },
+        { id: zFlisB,  name: 'Flis-bed i baghave',      type: 'blomsterbed', description: 'Baghave — her står syrenerne' },
+        { id: zDråbe,  name: 'Dråbebed',                type: 'blomsterbed', description: 'Baghave' },
+        { id: zFløde,  name: 'Flødebolle',              type: 'blomsterbed', description: 'Baghave' },
+        { id: zSomm,   name: 'Sommerfuglebed',          type: 'blomsterbed', description: 'Baghave' },
+        // Baghave - øvrigt
+        { id: zÆble,   name: 'Æbletræ',                 type: 'træ',         description: 'Baghave, i græsplæne' },
+        { id: zGræsB,  name: 'Græsplæne baghave',       type: 'græsplæne',   description: 'Baghave' },
+        { id: zHækIb,  name: 'Hæk mod Ib',              type: 'hæk',         description: 'Baghave' },
+        { id: zHækXx,  name: 'Hæk mod nabo',            type: 'hæk',         description: 'Baghave — ret navn til naborens navn' },
+        // Terrasse
+        { id: zKlem,   name: 'Klematis-bed',            type: 'terrassebed', description: 'Terrasse, lille bed' },
+        { id: zBirg,   name: 'Birgitte med det sorte øje', type: 'terrassebed', description: 'Terrasse, lille bed' },
+        { id: zK1,     name: 'Altankasse 1',            type: 'kasse',       description: 'Terrasse — tom' },
+        { id: zK2,     name: 'Altankasse 2',            type: 'kasse',       description: 'Terrasse' },
+        { id: zK3,     name: 'Altankasse 3',            type: 'kasse',       description: 'Terrasse' },
+        { id: zK4,     name: 'Altankasse 4',            type: 'kasse',       description: 'Terrasse' },
+        { id: zK5,     name: 'Altankasse 5',            type: 'kasse',       description: 'Terrasse' },
+        { id: zK6,     name: 'Altankasse 6',            type: 'kasse',       description: 'Terrasse' },
+        { id: zKrukT,  name: 'Blomsterkrukker terrasse',type: 'krukke',      description: 'Terrasse' },
+        { id: zKrukH,  name: 'Blomsterkrukker hoveddør',type: 'krukke',      description: 'Ved hoveddøren' },
+        { id: zKrukBr, name: 'Blomsterkrukker bryggerdør', type: 'krukke',   description: 'Ved bryggerdøren' },
     ];
+
     db.plants = [
-        { id: p1, zoneId: z1, name: 'Rose', latinName: "Rosa 'Compassion'", type: 'Klatrer', plantedDate: '2020-04-01', note: 'Klatrerose mod muren. Smuk lyserød.', infoLink: '' },
-        { id: p2, zoneId: z1, name: 'Lavendel', latinName: 'Lavandula angustifolia', type: 'Stauder', plantedDate: '2021-05-10', note: 'Tiltrækker mange bier om sommeren.', infoLink: '' },
-        { id: p3, zoneId: z1, name: 'Rudbeckia', latinName: 'Rudbeckia fulgida', type: 'Stauder', plantedDate: '2022-06-01', note: 'Selvser flittigt.', infoLink: '' },
-        { id: p4, zoneId: z2, name: 'Hortensia', latinName: "Hydrangea 'Endless Summer'", type: 'Busk', plantedDate: '2023-05-20', note: 'Blå potte ved glasdøren. Vand rigeligt.', infoLink: '' },
-        { id: p5, zoneId: z3, name: 'Tomat', latinName: "Solanum lycopersicum 'Tigerella'", type: 'Grøntsag', plantedDate: '2026-05-01', note: 'Sat i maj. Snør op løbende.', infoLink: '' },
-        { id: p6, zoneId: z3, name: 'Rabarber', latinName: 'Rheum rhabarbarum', type: 'Grøntsag', plantedDate: '2019-04-01', note: 'Høst nu til juli. Lad altid 1/3 af bladene stå.', infoLink: '' },
+        { id: pKirsebær, zoneId: zFlisF,  name: 'Kirsebærtræ',  latinName: 'Prunus avium',            type: 'Træ',      plantedDate: '', note: 'Står i flis-bed forhave.', infoLink: '' },
+        { id: pFigen,    zoneId: zStenB,  name: 'Figentræ',      latinName: 'Ficus carica',            type: 'Træ',      plantedDate: '', note: 'Står i sten-bed baghave.', infoLink: '' },
+        { id: pSyren,    zoneId: zFlisB,  name: 'Syrener',       latinName: 'Syringa vulgaris',        type: 'Busk',     plantedDate: '', note: 'Blomstrer maj. Skær visne klaser af efter blomstring.', infoLink: '' },
+        { id: pÆble,     zoneId: zÆble,   name: 'Æbletræ',       latinName: "Malus domestica 'Discovery'", type: 'Træ', plantedDate: '2018-01-01', note: "Rød sort, klar august-september.", infoLink: '' },
+        { id: pJord2,    zoneId: zK2,     name: 'Jordbær',       latinName: 'Fragaria × ananassa',     type: 'Frugt',    plantedDate: '', note: '', infoLink: '' },
+        { id: pJord3,    zoneId: zK3,     name: 'Jordbær',       latinName: 'Fragaria × ananassa',     type: 'Frugt',    plantedDate: '', note: '', infoLink: '' },
+        { id: pJord4,    zoneId: zK4,     name: 'Jordbær',       latinName: 'Fragaria × ananassa',     type: 'Frugt',    plantedDate: '', note: '', infoLink: '' },
+        { id: pJord5,    zoneId: zK5,     name: 'Jordbær',       latinName: 'Fragaria × ananassa',     type: 'Frugt',    plantedDate: '', note: '', infoLink: '' },
+        { id: pJord6,    zoneId: zK6,     name: 'Jordbær',       latinName: 'Fragaria × ananassa',     type: 'Frugt',    plantedDate: '', note: '', infoLink: '' },
+        { id: pKlem,     zoneId: zKlem,   name: 'Klematis',      latinName: 'Clematis',                type: 'Klatrer',  plantedDate: '', note: 'Lille bed på terrassen.', infoLink: '' },
+        { id: pBirg,     zoneId: zBirg,   name: 'Birgitte med det sorte øje', latinName: 'Rudbeckia hirta', type: 'Stauder', plantedDate: '', note: 'Lille bed på terrassen. Blomstrer sensommer.', infoLink: '' },
     ];
-    const r1 = uuid(), r2 = uuid(), r3 = uuid();
+
     db.reminders = [
-        { id: r1, entityType: 'plant', entityId: p1, text: 'Beskær rosen', date: '2027-03-15', repeat: 'yearly', completedDates: ['2026-03-20', '2025-03-18'] },
-        { id: r2, entityType: 'zone', entityId: z4, text: 'Beskriv æbletræet', date: '2026-05-30', repeat: 'yearly', completedDates: [] },
-        { id: r3, entityType: 'plant', entityId: p5, text: 'Vand tomaterne', date: '2026-05-24', repeat: 'none', completedDates: [] },
+        { id: uuid(), entityType: 'zone',  entityId: zÆble,  text: 'Beskær æbletræet',    date: '2027-03-01', repeat: 'yearly', completedDates: [] },
+        { id: uuid(), entityType: 'zone',  entityId: zHækIb, text: 'Klip hæk mod Ib',     date: '2026-08-01', repeat: 'yearly', completedDates: [] },
+        { id: uuid(), entityType: 'zone',  entityId: zHækXx, text: 'Klip hæk mod nabo',   date: '2026-08-01', repeat: 'yearly', completedDates: [] },
+        { id: uuid(), entityType: 'plant', entityId: pSyren, text: 'Klip visne syrenklaser', date: '2026-06-10', repeat: 'yearly', completedDates: [] },
     ];
-    db.history = [
-        { id: uuid(), entityType: 'plant', entityId: p1, date: '2026-03-20', text: 'Beskåret — fjernede 3 tykke grene' },
-        { id: uuid(), entityType: 'zone', entityId: z1, date: '2026-04-12', text: 'Luget hele bedet og løsnet jord' },
-        { id: uuid(), entityType: 'plant', entityId: p6, date: '2026-05-10', text: 'Første høst — 6 stængler' },
-    ];
+
+    db.history = [];
 }
 
 // ── HELPERS ──
