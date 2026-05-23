@@ -492,7 +492,7 @@ firebase.initializeApp({
 });
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
-const VERSION = '1.9';
+const VERSION = '2.0';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
@@ -1086,11 +1086,16 @@ async function doPickZonePhoto(zid, source) {
         const oldPhoto = zone(zid)?.photo;
         const base64 = await compressImage(file, 1200, 0.78);
         zone(zid).photo = base64;
+        saveDB();
         render();
         deleteStoragePhoto(oldPhoto);
-        const url = await uploadPhoto(file);
-        const zFresh = zone(zid);
-        if (zFresh) { zFresh.photo = url; saveDB(); }
+        try {
+            const url = await uploadPhoto(file);
+            const zFresh = zone(zid);
+            if (zFresh) { zFresh.photo = url; saveDB(); }
+        } catch (err) {
+            console.error('Foto-upload til Storage fejlede:', err);
+        }
     };
     input.click();
 }
@@ -1119,11 +1124,16 @@ async function doPickElementPhoto(pid, source) {
         const oldPhoto = plant(pid)?.photo;
         const base64 = await compressImage(file, 1200, 0.78);
         plant(pid).photo = base64;
+        saveDB();
         render();
         deleteStoragePhoto(oldPhoto);
-        const url = await uploadPhoto(file);
-        const pFresh = plant(pid);
-        if (pFresh) { pFresh.photo = url; saveDB(); }
+        try {
+            const url = await uploadPhoto(file);
+            const pFresh = plant(pid);
+            if (pFresh) { pFresh.photo = url; saveDB(); }
+        } catch (err) {
+            console.error('Foto-upload til Storage fejlede:', err);
+        }
     };
     input.click();
 }
