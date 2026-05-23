@@ -1083,15 +1083,14 @@ async function doPickZonePhoto(zid, source) {
     input.onchange = async e => {
         const file = e.target.files[0];
         if (!file) return;
-        const z = zone(zid);
-        const oldPhoto = z.photo;
+        const oldPhoto = zone(zid)?.photo;
         const base64 = await compressImage(file, 1200, 0.78);
-        z.photo = base64;
+        zone(zid).photo = base64;
         render();
         deleteStoragePhoto(oldPhoto);
         const url = await uploadPhoto(file);
-        z.photo = url;
-        saveDB();
+        const zFresh = zone(zid);
+        if (zFresh) { zFresh.photo = url; saveDB(); }
     };
     input.click();
 }
@@ -1117,15 +1116,14 @@ async function doPickElementPhoto(pid, source) {
     input.onchange = async e => {
         const file = e.target.files[0];
         if (!file) return;
-        const p = plant(pid);
-        const oldPhoto = p.photo;
+        const oldPhoto = plant(pid)?.photo;
         const base64 = await compressImage(file, 1200, 0.78);
-        p.photo = base64;
+        plant(pid).photo = base64;
         render();
         deleteStoragePhoto(oldPhoto);
         const url = await uploadPhoto(file);
-        p.photo = url;
-        saveDB();
+        const pFresh = plant(pid);
+        if (pFresh) { pFresh.photo = url; saveDB(); }
     };
     input.click();
 }
