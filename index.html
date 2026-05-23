@@ -139,6 +139,9 @@
         .plant-name-wrap .platinname { font-size: 0.73rem; color: var(--muted); font-style: italic; }
         .plant-name-wrap .ptype { display: inline-block; font-size: 0.63rem; font-weight: 600; background: var(--green-light); color: var(--green-mid); padding: 0.1rem 0.4rem; border-radius: 4px; margin-top: 0.15rem; }
         .plant-link-btn { font-size: 0.72rem; color: var(--green-mid); text-decoration: none; padding: 0.2rem 0.5rem; background: var(--green-light); border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
+        .plant-list-thumb { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; flex-shrink: 0; cursor: pointer; border: 1px solid rgba(0,0,0,0.08); }
+        .plant-photo-btn { width: 52px; height: 52px; border-radius: 8px; background: var(--green-light); border: 1.5px dashed var(--green-mid); color: var(--green-mid); font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .zone-photo-delete { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,0.55); border: none; color: white; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
         /* ── ZONE / PLANT DETAIL ── */
         .detail-hero { background: var(--green-dark); padding: 1rem; }
@@ -736,7 +739,7 @@ function renderHome() {
         const badge = status === 'urgent'
             ? `<span class="zone-badge">Handling krævet</span>`
             : `<span class="zone-badge ok">OK</span>`;
-        const meta = [z.description, `${plants.length} emne${plants.length !== 1 ? 'r' : ''}`].filter(Boolean).join(' · ');
+        const meta = [z.description, `${plants.length} element${plants.length !== 1 ? 'er' : ''}`].filter(Boolean).join(' · ');
         return `<div class="zone-card" data-zone="${z.id}">
             <div class="zone-card-header">
                 <div class="zone-card-left">
@@ -785,7 +788,7 @@ function renderZone(zid) {
     const tab = nav.tab;
 
     const plantsHTML = plants.length === 0
-        ? `<div class="empty-state"><span class="empty-icon">🌱</span>Ingen emner endnu</div>`
+        ? `<div class="empty-state"><span class="empty-icon">🌱</span>Ingen elementer endnu</div>`
         : plants.map(p => `
             <div class="plant-row" data-plant="${p.id}">
                 <div class="plant-name-wrap">
@@ -793,7 +796,13 @@ function renderZone(zid) {
                     ${p.latinName ? `<div class="platinname">${p.latinName}</div>` : ''}
                     ${p.type ? `<div><span class="ptype">${p.type}</span></div>` : ''}
                 </div>
-                ${p.infoLink ? `<a href="${p.infoLink}" target="_blank" class="plant-link-btn" onclick="event.stopPropagation()">Info →</a>` : ''}
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0">
+                    ${p.photo
+                        ? `<img class="plant-list-thumb" src="${p.photo}" onclick="viewPhoto('${p.photo}');event.stopPropagation()">`
+                        : `<button class="plant-photo-btn" onclick="pickElementPhoto('${p.id}');event.stopPropagation()" title="Tilføj foto">📷</button>`
+                    }
+                    ${p.infoLink ? `<a href="${p.infoLink}" target="_blank" class="plant-link-btn" onclick="event.stopPropagation()">Info →</a>` : ''}
+                </div>
             </div>`).join('');
 
     const reminderHTML = reminders.length === 0
@@ -808,17 +817,20 @@ function renderZone(zid) {
         <div class="detail-hero">
             <div style="font-size:1.8rem;margin-bottom:0.4rem">${icon}</div>
             ${z.description ? `<div class="detail-hero-sub">${z.description}</div>` : ''}
+            ${z.photo
+                ? `<div style="position:relative;margin-top:0.7rem"><img class="detail-hero-photo" src="${z.photo}" onclick="viewPhoto('${z.photo}')"><button class="zone-photo-delete" onclick="deleteZonePhoto('${zid}',event)">×</button></div>`
+                : `<div class="detail-hero-photo-placeholder" onclick="pickZonePhoto('${zid}')">📷 Tilføj zonefoto</div>`
+            }
         </div>
-        ${photoStrip('zone', zid, z.photos)}
         <div class="tabs">
-            <button class="tab-btn${tab==='main'?' active':''}" onclick="setTab('main')">Emner (${plants.length})</button>
+            <button class="tab-btn${tab==='main'?' active':''}" onclick="setTab('main')">Elementer (${plants.length})</button>
             <button class="tab-btn${tab==='reminders'?' active':''}" onclick="setTab('reminders')">Påmindelser (${reminders.length})</button>
             <button class="tab-btn${tab==='history'?' active':''}" onclick="setTab('history')">Historik (${history.length})</button>
         </div>
         ${tab === 'main' ? `
             <div class="plant-list">${plantsHTML}</div>
             <div style="padding:0.8rem 1rem 0">
-                <button class="section-add-btn" onclick="openAddPlant('${zid}')">+ Tilføj emne</button>
+                <button class="section-add-btn" onclick="openAddPlant('${zid}')">+ Tilføj element</button>
             </div>` : ''}
         ${tab === 'reminders' ? `
             ${reminderHTML}
@@ -848,10 +860,9 @@ function renderPlant(pid) {
         : history.map(renderHistoryItem).join('');
 
     return `
-        <div class="detail-hero" style="padding-bottom:0">
-            ${p.latinName ? `<div class="detail-hero-sub" style="padding:0.6rem 1rem 0">${p.latinName}</div>` : ''}
+        <div class="detail-hero" style="padding-bottom:0.8rem">
+            ${p.latinName ? `<div class="detail-hero-sub">${p.latinName}</div>` : ''}
         </div>
-        ${photoStrip('plant', pid, p.photos)}
         <div class="tabs">
             <button class="tab-btn${tab==='main'?' active':''}" onclick="setTab('main')">Info</button>
             <button class="tab-btn${tab==='reminders'?' active':''}" onclick="setTab('reminders')">Påmindelser (${reminders.length})</button>
@@ -859,6 +870,10 @@ function renderPlant(pid) {
         </div>
         ${tab === 'main' ? `
             <div class="info-section">
+                ${p.photo
+                    ? `<div class="info-row"><span class="label">Foto</span><span class="val" style="display:flex;align-items:center;gap:0.5rem"><img src="${p.photo}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;cursor:pointer" onclick="viewPhoto('${p.photo}')"><button onclick="deleteElementPhoto('${pid}',event)" style="font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Slet</button></span></div>`
+                    : `<div class="info-row"><span class="label">Foto</span><span class="val"><button class="plant-photo-btn" style="width:60px;height:60px" onclick="pickElementPhoto('${pid}')">📷</button></span></div>`
+                }
                 ${p.latinName ? `<div class="info-row"><span class="label">Latinsk navn</span><span class="val"><em>${p.latinName}</em></span></div>` : ''}
                 ${p.type ? `<div class="info-row"><span class="label">Type</span><span class="val">${p.type}</span></div>` : ''}
                 ${p.plantedDate ? `<div class="info-row"><span class="label">Plantet</span><span class="val">${formatDate(p.plantedDate)}</span></div>` : ''}
@@ -912,47 +927,67 @@ function compressImage(file, maxPx, quality) {
     });
 }
 
-function pickPhoto(entityType, entityId) {
-    openSheet('Tilføj foto', `
+function openPickPhotoSheet(title, onCamera, onLibrary) {
+    openSheet(title, `
         <div style="padding:0.8rem 1.2rem 0; display:flex; flex-direction:column; gap:0.7rem;">
             <button class="btn-primary" style="margin:0;display:flex;align-items:center;justify-content:center;gap:0.6rem;font-size:1rem"
-                onclick="doPickPhoto('${entityType}','${entityId}','camera')">
-                📷 Tag foto nu
-            </button>
+                onclick="${onCamera}">📷 Tag foto nu</button>
             <button class="btn-primary" style="margin:0;background:var(--green-mid);display:flex;align-items:center;justify-content:center;gap:0.6rem;font-size:1rem"
-                onclick="doPickPhoto('${entityType}','${entityId}','library')">
-                🖼 Vælg fra fotoalbum
-            </button>
+                onclick="${onLibrary}">🖼 Vælg fra fotoalbum</button>
         </div>
         <div style="height:1rem"></div>`);
 }
 
-async function doPickPhoto(entityType, entityId, source) {
+function pickZonePhoto(zid) {
+    openPickPhotoSheet('Zonefoto', `doPickZonePhoto('${zid}','camera')`, `doPickZonePhoto('${zid}','library')`);
+}
+
+async function doPickZonePhoto(zid, source) {
     closeSheet();
     const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
+    input.type = 'file'; input.accept = 'image/*';
     if (source === 'camera') input.capture = 'environment';
     input.onchange = async e => {
         const file = e.target.files[0];
         if (!file) return;
-        const base64 = await compressImage(file, 1200, 0.78);
-        const entity = entityType === 'zone' ? zone(entityId) : plant(entityId);
-        if (!entity.photos) entity.photos = [];
-        entity.photos.push(base64);
-        saveDB();
-        render();
+        const z = zone(zid);
+        z.photo = await compressImage(file, 1200, 0.78);
+        saveDB(); render();
     };
     input.click();
 }
 
-function deletePhoto(entityType, entityId, idx, e) {
+function deleteZonePhoto(zid, e) {
     e.stopPropagation();
-    if (!confirm('Slet dette billede?')) return;
-    const entity = entityType === 'zone' ? zone(entityId) : plant(entityId);
-    entity.photos.splice(idx, 1);
-    saveDB();
-    render();
+    if (!confirm('Slet zonefoto?')) return;
+    zone(zid).photo = null;
+    saveDB(); render();
+}
+
+function pickElementPhoto(pid) {
+    openPickPhotoSheet('Elementfoto', `doPickElementPhoto('${pid}','camera')`, `doPickElementPhoto('${pid}','library')`);
+}
+
+async function doPickElementPhoto(pid, source) {
+    closeSheet();
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    if (source === 'camera') input.capture = 'environment';
+    input.onchange = async e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const p = plant(pid);
+        p.photo = await compressImage(file, 1200, 0.78);
+        saveDB(); render();
+    };
+    input.click();
+}
+
+function deleteElementPhoto(pid, e) {
+    e.stopPropagation();
+    if (!confirm('Slet elementfoto?')) return;
+    plant(pid).photo = null;
+    saveDB(); render();
 }
 
 function viewPhoto(src) {
@@ -963,18 +998,6 @@ function viewPhoto(src) {
 function closeLightbox() {
     document.getElementById('lightbox').classList.remove('open');
     document.getElementById('lightbox-img').src = '';
-}
-
-function photoStrip(entityType, entityId, photos) {
-    const thumbs = (photos || []).map((src, i) => `
-        <div class="photo-thumb" onclick="viewPhoto('${src}')">
-            <img src="${src}" alt="Foto ${i+1}">
-            <button class="photo-delete" onclick="deletePhoto('${entityType}','${entityId}',${i},event)">×</button>
-        </div>`).join('');
-    return `<div class="photo-strip">
-        ${thumbs}
-        <button class="photo-add" onclick="pickPhoto('${entityType}','${entityId}')" title="Tilføj foto">+</button>
-    </div>`;
 }
 
 // ── KALENDER ──
@@ -1239,7 +1262,7 @@ function submitEditZone(zid) {
 }
 
 function deleteZone(zid) {
-    if (!confirm('Slet denne zone og alle dens emner?')) return;
+    if (!confirm('Slet denne zone og alle dens elementer?')) return;
     const plantIds = db.plants.filter(p => p.zoneId === zid).map(p => p.id);
     db.plants = db.plants.filter(p => p.zoneId !== zid);
     db.reminders = db.reminders.filter(r => !(r.entityType === 'zone' && r.entityId === zid) && !plantIds.includes(r.entityId));
@@ -1264,7 +1287,7 @@ function plantFormHTML(p = {}) {
 }
 
 function openAddPlant(zid) {
-    openSheet('Nyt emne', plantFormHTML() + `<button class="btn-primary" onclick="submitAddPlant('${zid}')">Tilføj emne</button>`);
+    openSheet('Nyt element', plantFormHTML() + `<button class="btn-primary" onclick="submitAddPlant('${zid}')">Tilføj element</button>`);
 }
 
 function submitAddPlant(zid) {
@@ -1284,9 +1307,9 @@ function submitAddPlant(zid) {
 function openEditPlant(pid) {
     const p = plant(pid);
     if (!p) return;
-    openSheet('Rediger emne', plantFormHTML(p) +
+    openSheet('Rediger element', plantFormHTML(p) +
         `<button class="btn-primary" onclick="submitEditPlant('${pid}')">Gem ændringer</button>
-         <button class="btn-danger" onclick="deletePlant('${pid}')">Slet emne</button>`);
+         <button class="btn-danger" onclick="deletePlant('${pid}')">Slet element</button>`);
 }
 
 function submitEditPlant(pid) {
