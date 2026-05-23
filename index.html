@@ -2,93 +2,721 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Min Have — designforslag</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Min Have</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, sans-serif;
-            background: #f5f2ec;
-            min-height: 100vh;
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        :root {
+            --green-dark: #2d5a27;
+            --green-mid: #4a7c3f;
+            --green-light: #e8f0e5;
+            --terra: #c46b3a;
+            --terra-light: #f5e8df;
+            --cream: #faf7f2;
+            --brown: #6b4e35;
+            --text: #2a2a2a;
+            --muted: #7a7a7a;
+            --border: #ece9e3;
+            --white: #ffffff;
+        }
+
+        html, body { height: 100%; background: var(--cream); color: var(--text); font-family: -apple-system, sans-serif; }
+        body { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; }
+
+        /* ── HEADER ── */
+        #header {
+            background: var(--green-dark);
+            padding: 0.9rem 1rem 0.8rem;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 2rem 1rem;
+            gap: 0.6rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            min-height: 54px;
         }
-        h1 {
-            font-size: 1.1rem;
-            color: #666;
-            font-weight: 400;
-            margin-bottom: 0.4rem;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
+        #back-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.85);
+            font-size: 1rem;
+            padding: 0.2rem 0.4rem 0.2rem 0;
+            cursor: pointer;
+            flex-shrink: 0;
         }
-        h2 {
-            font-size: 2rem;
-            color: #2d5a27;
-            margin-bottom: 2.5rem;
-        }
-        .cards {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            width: 100%;
-            max-width: 420px;
-        }
-        a.card {
-            display: block;
-            text-decoration: none;
-            background: white;
-            border-radius: 16px;
-            padding: 1.4rem 1.6rem;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-            transition: transform 0.15s, box-shadow 0.15s;
-        }
-        a.card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
-        .card-label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 0.3rem;
-        }
-        .card-title {
+        #header-title { flex: 1; color: white; font-size: 1.05rem; font-weight: 600; }
+        #header-sub { color: rgba(255,255,255,0.6); font-size: 0.72rem; margin-top: 0.1rem; }
+        #add-btn {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
             font-size: 1.3rem;
-            font-weight: 700;
-            margin-bottom: 0.3rem;
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
         }
-        .card-desc {
-            font-size: 0.9rem;
-            color: #888;
+        #add-btn:hover { background: rgba(255,255,255,0.25); }
+
+        /* ── MAIN ── */
+        #app { flex: 1; overflow-y: auto; padding-bottom: 2rem; }
+
+        /* ── URGENT STRIP ── */
+        .urgent-strip { background: var(--terra); padding: 0.8rem 1rem; }
+        .urgent-strip h2 { color: rgba(255,255,255,0.75); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+        .urgent-item {
+            display: flex; align-items: flex-start; gap: 0.5rem;
+            color: white; font-size: 0.88rem; padding: 0.3rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            cursor: pointer;
         }
-        .d1 .card-label { color: #8B6F47; }
-        .d1 .card-title { color: #2d5a27; }
-        .d2 .card-label { color: #5b7fa6; }
-        .d2 .card-title { color: #1a3d28; }
-        .d3 .card-label { color: #a0b878; }
-        .d3 .card-title { color: #1a2e1a; }
+        .urgent-item:last-child { border-bottom: none; }
+        .urgent-dot { width: 6px; height: 6px; background: rgba(255,255,255,0.6); border-radius: 50%; flex-shrink: 0; margin-top: 0.4rem; }
+        .urgent-dot.hot { background: #ffe066; }
+        .urgent-meta { font-size: 0.72rem; opacity: 0.7; display: block; margin-top: 0.05rem; }
+
+        /* ── SECTION ── */
+        .section { padding: 1rem 1rem 0; }
+        .section-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.7rem; }
+        .section-icon { font-size: 0.95rem; }
+        .section-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--brown); }
+
+        /* ── ZONE CARD ── */
+        .zone-card {
+            background: var(--white);
+            border-radius: 14px;
+            margin-bottom: 0.7rem;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
+            cursor: pointer;
+        }
+        .zone-card:active { opacity: 0.85; }
+        .zone-card-header { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; }
+        .zone-card-left { display: flex; align-items: center; gap: 0.6rem; }
+        .zone-icon { font-size: 1.1rem; }
+        .zone-name { font-size: 0.98rem; font-weight: 600; color: var(--green-dark); }
+        .zone-meta { font-size: 0.74rem; color: var(--muted); margin-top: 0.05rem; }
+        .zone-badge { font-size: 0.68rem; background: var(--terra-light); color: var(--terra); padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 600; white-space: nowrap; }
+        .zone-badge.ok { background: var(--green-light); color: var(--green-mid); }
+        .zone-arrow { color: var(--muted); font-size: 0.9rem; margin-left: 0.3rem; }
+
+        /* ── PLANT LIST ── */
+        .plant-list { border-top: 1px solid var(--border); }
+        .plant-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+        }
+        .plant-row:last-child { border-bottom: none; }
+        .plant-row:active { background: var(--cream); }
+        .plant-name-wrap .pname { font-size: 0.9rem; font-weight: 500; }
+        .plant-name-wrap .platinname { font-size: 0.73rem; color: var(--muted); font-style: italic; }
+        .plant-name-wrap .phint { font-size: 0.73rem; color: var(--muted); }
+        .plant-link-btn { font-size: 0.72rem; color: var(--green-mid); text-decoration: none; padding: 0.2rem 0.5rem; background: var(--green-light); border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
+
+        /* ── ZONE / PLANT DETAIL ── */
+        .detail-hero { background: var(--green-dark); padding: 1rem; }
+        .detail-hero-name { color: white; font-size: 1.3rem; font-weight: 700; }
+        .detail-hero-sub { color: rgba(255,255,255,0.65); font-size: 0.8rem; margin-top: 0.2rem; }
+        .detail-hero-photo { width: 100%; height: 140px; object-fit: cover; display: block; border-radius: 10px; margin-top: 0.8rem; }
+        .detail-hero-photo-placeholder { width: 100%; height: 90px; background: rgba(255,255,255,0.08); border-radius: 10px; margin-top: 0.8rem; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.3); font-size: 0.78rem; cursor: pointer; border: 1.5px dashed rgba(255,255,255,0.25); }
+
+        /* Tabs */
+        .tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); }
+        .tab-btn { flex: 1; padding: 0.7rem; font-size: 0.82rem; font-weight: 600; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; }
+        .tab-btn.active { color: var(--green-dark); border-bottom-color: var(--green-dark); }
+
+        /* Info rows */
+        .info-section { padding: 0.9rem 1rem 0; }
+        .info-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+        .info-row:last-child { border-bottom: none; }
+        .info-row .label { color: var(--muted); }
+        .info-row .val { font-weight: 500; text-align: right; max-width: 60%; }
+        .info-note { margin: 0.8rem 1rem 0; background: var(--cream); border-radius: 10px; padding: 0.7rem 0.9rem; font-size: 0.85rem; color: var(--text); line-height: 1.5; }
+        .info-note-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--brown); margin-bottom: 0.3rem; }
+
+        /* Reminders */
+        .reminder-item {
+            display: flex; align-items: flex-start; gap: 0.6rem;
+            padding: 0.7rem 1rem; border-bottom: 1px solid var(--border);
+        }
+        .reminder-item:last-child { border-bottom: none; }
+        .reminder-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--terra); flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-top: 0.05rem; }
+        .reminder-check:hover { background: var(--terra-light); }
+        .reminder-text { font-size: 0.88rem; font-weight: 500; }
+        .reminder-date { font-size: 0.73rem; color: var(--muted); margin-top: 0.1rem; }
+        .reminder-repeat { font-size: 0.68rem; color: var(--green-mid); background: var(--green-light); padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: 0.3rem; }
+
+        /* History */
+        .history-item { display: flex; gap: 0.8rem; padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); }
+        .history-item:last-child { border-bottom: none; }
+        .history-date { font-size: 0.72rem; color: var(--muted); white-space: nowrap; padding-top: 0.1rem; min-width: 70px; }
+        .history-text { font-size: 0.88rem; line-height: 1.4; }
+        .history-tag { display: inline-block; font-size: 0.65rem; background: var(--terra-light); color: var(--terra); border-radius: 4px; padding: 0.05rem 0.35rem; margin-left: 0.3rem; }
+
+        .empty-state { text-align: center; padding: 2rem 1rem; color: var(--muted); font-size: 0.88rem; }
+        .empty-icon { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+
+        /* ── BOTTOM SHEET ── */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: none; }
+        .overlay.visible { display: block; }
+        .sheet {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
+            width: 100%; max-width: 480px;
+            background: var(--white); border-radius: 18px 18px 0 0;
+            z-index: 201; padding: 0 0 2rem;
+            transition: transform 0.28s ease;
+            max-height: 90vh; overflow-y: auto;
+        }
+        .sheet.open { transform: translateX(-50%) translateY(0); }
+        .sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0.8rem auto 0.5rem; }
+        .sheet-title { font-size: 1rem; font-weight: 700; padding: 0.5rem 1.2rem 1rem; color: var(--text); border-bottom: 1px solid var(--border); }
+
+        /* Form */
+        .form-body { padding: 1rem 1.2rem 0; }
+        .field { margin-bottom: 1rem; }
+        .field label { display: block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--brown); margin-bottom: 0.35rem; }
+        .field input, .field select, .field textarea {
+            width: 100%; padding: 0.65rem 0.8rem;
+            border: 1.5px solid var(--border); border-radius: 10px;
+            font-size: 0.92rem; font-family: inherit; color: var(--text);
+            background: var(--cream);
+            -webkit-appearance: none;
+        }
+        .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--green-mid); background: white; }
+        .field textarea { min-height: 80px; resize: none; }
+        .field-row { display: flex; gap: 0.7rem; }
+        .field-row .field { flex: 1; }
+
+        .btn-primary {
+            width: calc(100% - 2.4rem); margin: 1rem 1.2rem 0;
+            background: var(--green-dark); color: white;
+            border: none; border-radius: 12px; padding: 0.85rem;
+            font-size: 0.95rem; font-weight: 600; cursor: pointer;
+        }
+        .btn-primary:active { opacity: 0.85; }
+        .btn-danger {
+            width: calc(100% - 2.4rem); margin: 0.5rem 1.2rem 0;
+            background: none; color: #c0392b;
+            border: 1.5px solid #e8b0ac; border-radius: 12px; padding: 0.75rem;
+            font-size: 0.88rem; cursor: pointer;
+        }
+
+        .section-add-btn {
+            display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+            width: 100%; padding: 0.65rem; margin-top: 0.3rem;
+            background: none; border: 1.5px dashed var(--border); border-radius: 12px;
+            color: var(--muted); font-size: 0.85rem; cursor: pointer;
+        }
+        .section-add-btn:hover { border-color: var(--green-mid); color: var(--green-mid); }
     </style>
 </head>
 <body>
-    <h1>Min Have</h1>
-    <h2>Vælg et designforslag</h2>
-    <div class="cards">
-        <a href="design-1.html" class="card d1">
-            <div class="card-label">Forslag 1</div>
-            <div class="card-title">Naturlig & varm</div>
-            <div class="card-desc">Jordfarver, terrakotta, grønt - som haven selv</div>
-        </a>
-        <a href="design-2.html" class="card d2">
-            <div class="card-label">Forslag 2</div>
-            <div class="card-title">Botanisk & clean</div>
-            <div class="card-desc">Hvid, frisk grøn, præcis og overskuelig</div>
-        </a>
-        <a href="design-3.html" class="card d3">
-            <div class="card-label">Forslag 3</div>
-            <div class="card-title">Mørk & stemningsmæssig</div>
-            <div class="card-desc">Dyb grøn, som at gå tur i haven om aftenen</div>
-        </a>
+
+<div id="header">
+    <button id="back-btn" onclick="goBack()">← Tilbage</button>
+    <div style="flex:1">
+        <div id="header-title">Min Have</div>
+        <div id="header-sub"></div>
     </div>
+    <button id="add-btn" onclick="handleAdd()">+</button>
+</div>
+
+<div id="app"></div>
+
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="sheet-title"></div>
+    <div id="sheet-body"></div>
+</div>
+
+<script>
+// ── UUID ──
+const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+// ── STATE ──
+let nav = { view: 'home', zoneId: null, plantId: null, tab: 'main' };
+
+// ── DATA ──
+let db = { zones: [], plants: [], reminders: [], history: [] };
+
+const ZONE_TYPES = {
+    blomsterbed: { label: 'Blomsterbed', icon: '🌸' },
+    terrasse:    { label: 'Terrasse',    icon: '🪴' },
+    højbed:      { label: 'Højbed',      icon: '🥕' },
+    træ:         { label: 'Træ',         icon: '🌳' },
+    hæk:         { label: 'Hæk',        icon: '🌿' },
+    græsplæne:   { label: 'Græsplæne',  icon: '🌱' },
+    andet:       { label: 'Andet',       icon: '🏡' },
+};
+
+const PLANT_TYPES = ['Stauder','Løgplante','Grøntsag','Frugt','Træ','Busk','Klatrer','Etårig','Andet'];
+
+const REPEAT_LABELS = { none: 'Ingen', yearly: 'Hvert år', monthly: 'Hver måned' };
+
+function loadDB() {
+    const raw = localStorage.getItem('minhave-v1');
+    if (raw) {
+        db = JSON.parse(raw);
+    } else {
+        seedDB();
+        saveDB();
+    }
+}
+
+function saveDB() {
+    localStorage.setItem('minhave-v1', JSON.stringify(db));
+}
+
+function seedDB() {
+    const z1 = uuid(), z2 = uuid(), z3 = uuid(), z4 = uuid();
+    const p1 = uuid(), p2 = uuid(), p3 = uuid(), p4 = uuid(), p5 = uuid(), p6 = uuid();
+    db.zones = [
+        { id: z1, name: 'Blomsterbed syd', type: 'blomsterbed', description: 'Mod terrassen' },
+        { id: z2, name: 'Terrassen', type: 'terrasse', description: 'Krukker og potter' },
+        { id: z3, name: 'Højbed — Køkken', type: 'højbed', description: 'Sydside, varmt og solrigt' },
+        { id: z4, name: 'Æbletræ', type: 'træ', description: "Discovery, plantet 2018" },
+    ];
+    db.plants = [
+        { id: p1, zoneId: z1, name: 'Rose', latinName: "Rosa 'Compassion'", type: 'Klatrer', plantedDate: '2020-04-01', note: 'Klatrerose mod muren. Smuk lyserød.', infoLink: '' },
+        { id: p2, zoneId: z1, name: 'Lavendel', latinName: 'Lavandula angustifolia', type: 'Stauder', plantedDate: '2021-05-10', note: 'Tiltrækker mange bier om sommeren.', infoLink: '' },
+        { id: p3, zoneId: z1, name: 'Rudbeckia', latinName: 'Rudbeckia fulgida', type: 'Stauder', plantedDate: '2022-06-01', note: 'Selvser flittigt.', infoLink: '' },
+        { id: p4, zoneId: z2, name: 'Hortensia', latinName: "Hydrangea 'Endless Summer'", type: 'Busk', plantedDate: '2023-05-20', note: 'Blå potte ved glasdøren. Vand rigeligt.', infoLink: '' },
+        { id: p5, zoneId: z3, name: 'Tomat', latinName: "Solanum lycopersicum 'Tigerella'", type: 'Grøntsag', plantedDate: '2026-05-01', note: 'Sat i maj. Snør op løbende.', infoLink: '' },
+        { id: p6, zoneId: z3, name: 'Rabarber', latinName: 'Rheum rhabarbarum', type: 'Grøntsag', plantedDate: '2019-04-01', note: 'Høst nu til juli. Lad altid 1/3 af bladene stå.', infoLink: '' },
+    ];
+    const r1 = uuid(), r2 = uuid(), r3 = uuid();
+    db.reminders = [
+        { id: r1, entityType: 'plant', entityId: p1, text: 'Beskær rosen', date: '2027-03-15', repeat: 'yearly', completedDates: ['2026-03-20', '2025-03-18'] },
+        { id: r2, entityType: 'zone', entityId: z4, text: 'Beskriv æbletræet', date: '2026-05-30', repeat: 'yearly', completedDates: [] },
+        { id: r3, entityType: 'plant', entityId: p5, text: 'Vand tomaterne', date: '2026-05-24', repeat: 'none', completedDates: [] },
+    ];
+    db.history = [
+        { id: uuid(), entityType: 'plant', entityId: p1, date: '2026-03-20', text: 'Beskåret — fjernede 3 tykke grene' },
+        { id: uuid(), entityType: 'zone', entityId: z1, date: '2026-04-12', text: 'Luget hele bedet og løsnet jord' },
+        { id: uuid(), entityType: 'plant', entityId: p6, date: '2026-05-10', text: 'Første høst — 6 stængler' },
+    ];
+}
+
+// ── HELPERS ──
+function zone(id) { return db.zones.find(z => z.id === id); }
+function plant(id) { return db.plants.find(p => p.id === id); }
+function zonePlants(zid) { return db.plants.filter(p => p.zoneId === zid); }
+function entityReminders(type, id) { return db.reminders.filter(r => r.entityType === type && r.entityId === id); }
+function entityHistory(type, id) { return db.history.filter(h => h.entityType === type && h.entityId === id).sort((a,b) => b.date.localeCompare(a.date)); }
+
+function urgentReminders() {
+    const today = new Date();
+    const limit = new Date(); limit.setDate(limit.getDate() + 7);
+    return db.reminders
+        .filter(r => { const d = new Date(r.date); return d <= limit; })
+        .sort((a,b) => a.date.localeCompare(b.date));
+}
+
+function formatDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function daysUntil(iso) {
+    const diff = Math.ceil((new Date(iso) - new Date()) / 86400000);
+    if (diff < 0) return 'Overskredet';
+    if (diff === 0) return 'I dag';
+    if (diff === 1) return 'I morgen';
+    return `Om ${diff} dage`;
+}
+
+function zoneStatus(zid) {
+    const urgent = db.reminders.filter(r => {
+        if (r.entityType === 'zone' && r.entityId === zid) return new Date(r.date) <= new Date();
+        if (r.entityType === 'plant') {
+            const p = plant(r.entityId);
+            return p && p.zoneId === zid && new Date(r.date) <= new Date();
+        }
+        return false;
+    });
+    return urgent.length > 0 ? 'urgent' : 'ok';
+}
+
+// ── NAVIGATION ──
+function goTo(view, zoneId = null, plantId = null, tab = 'main') {
+    nav = { view, zoneId, plantId, tab };
+    render();
+}
+function goBack() {
+    if (nav.view === 'plant') goTo('zone', nav.zoneId);
+    else goTo('home');
+}
+
+// ── RENDER ──
+function render() {
+    const app = document.getElementById('app');
+    const backBtn = document.getElementById('back-btn');
+    const addBtn = document.getElementById('add-btn');
+    const title = document.getElementById('header-title');
+    const sub = document.getElementById('header-sub');
+
+    backBtn.style.display = nav.view === 'home' ? 'none' : 'block';
+
+    if (nav.view === 'home') {
+        title.textContent = 'Min Have';
+        sub.textContent = new Date().toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' });
+        addBtn.style.display = 'flex';
+        app.innerHTML = renderHome();
+    } else if (nav.view === 'zone') {
+        const z = zone(nav.zoneId);
+        title.textContent = z ? z.name : 'Zone';
+        sub.textContent = z ? (ZONE_TYPES[z.type]?.label || z.type) : '';
+        addBtn.style.display = 'flex';
+        app.innerHTML = renderZone(nav.zoneId);
+    } else if (nav.view === 'plant') {
+        const p = plant(nav.plantId);
+        title.textContent = p ? p.name : 'Plante';
+        sub.textContent = p ? (p.latinName || '') : '';
+        addBtn.style.display = 'flex';
+        app.innerHTML = renderPlant(nav.plantId);
+    }
+
+    bindEvents();
+}
+
+function renderHome() {
+    const urgent = urgentReminders();
+    const urgentHTML = urgent.length === 0 ? '' : `
+        <div class="urgent-strip">
+            <h2>Snart / Nu</h2>
+            ${urgent.map(r => {
+                const days = daysUntil(r.date);
+                const hot = new Date(r.date) <= new Date();
+                let who = '';
+                if (r.entityType === 'plant') { const p = plant(r.entityId); who = p ? p.name + ' · ' : ''; }
+                else { const z = zone(r.entityId); who = z ? z.name + ' · ' : ''; }
+                return `<div class="urgent-item" data-reminder="${r.id}">
+                    <div class="urgent-dot${hot ? ' hot' : ''}"></div>
+                    <div>
+                        ${r.text}
+                        <span class="urgent-meta">${who}${days}</span>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+
+    const zonesHTML = db.zones.map(z => {
+        const plants = zonePlants(z.id);
+        const status = zoneStatus(z.id);
+        const icon = ZONE_TYPES[z.type]?.icon || '🏡';
+        const badge = status === 'urgent'
+            ? `<span class="zone-badge">Handling krævet</span>`
+            : `<span class="zone-badge ok">OK</span>`;
+        return `<div class="zone-card" data-zone="${z.id}">
+            <div class="zone-card-header">
+                <div class="zone-card-left">
+                    <span class="zone-icon">${icon}</span>
+                    <div>
+                        <div class="zone-name">${z.name}</div>
+                        <div class="zone-meta">${z.description || ''} · ${plants.length} plante${plants.length !== 1 ? 'r' : ''}</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.4rem">${badge}<span class="zone-arrow">›</span></div>
+            </div>
+        </div>`;
+    }).join('');
+
+    return `
+        ${urgentHTML}
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🌿</span>
+                <span class="section-title">Havens zoner</span>
+            </div>
+            ${zonesHTML}
+            <button class="section-add-btn" onclick="openAddZone()">+ Tilføj ny zone</button>
+        </div>`;
+}
+
+function renderZone(zid) {
+    const z = zone(zid);
+    if (!z) return '<div class="empty-state">Zone ikke fundet</div>';
+    const plants = zonePlants(zid);
+    const reminders = entityReminders('zone', zid);
+    const history = entityHistory('zone', zid);
+    const icon = ZONE_TYPES[z.type]?.icon || '🏡';
+    const tab = nav.tab;
+
+    const plantsHTML = plants.length === 0
+        ? `<div class="empty-state"><span class="empty-icon">🌱</span>Ingen planter endnu</div>`
+        : plants.map(p => `
+            <div class="plant-row" data-plant="${p.id}">
+                <div class="plant-name-wrap">
+                    <div class="pname">${p.name}</div>
+                    ${p.latinName ? `<div class="platinname">${p.latinName}</div>` : ''}
+                    ${p.type ? `<div class="phint">${p.type}</div>` : ''}
+                </div>
+                ${p.infoLink ? `<a href="${p.infoLink}" target="_blank" class="plant-link-btn" onclick="event.stopPropagation()">Info →</a>` : ''}
+            </div>`).join('');
+
+    const reminderHTML = reminders.length === 0
+        ? `<div class="empty-state"><span class="empty-icon">⏰</span>Ingen påmindelser</div>`
+        : reminders.map(r => `
+            <div class="reminder-item">
+                <div class="reminder-check" data-complete="${r.id}" title="Marker som udført">✓</div>
+                <div>
+                    <div class="reminder-text">${r.text}</div>
+                    <div class="reminder-date">${formatDate(r.date)} · ${daysUntil(r.date)}
+                        ${r.repeat !== 'none' ? `<span class="reminder-repeat">${REPEAT_LABELS[r.repeat]}</span>` : ''}
+                    </div>
+                </div>
+            </div>`).join('');
+
+    const historyHTML = history.length === 0
+        ? `<div class="empty-state"><span class="empty-icon">📖</span>Ingen historik endnu</div>`
+        : history.map(h => `
+            <div class="history-item">
+                <div class="history-date">${formatDate(h.date)}</div>
+                <div class="history-text">${h.text}${h.fromReminder ? '<span class="history-tag">påmindelse</span>' : ''}</div>
+            </div>`).join('');
+
+    return `
+        <div class="detail-hero">
+            <div style="font-size:1.8rem;margin-bottom:0.4rem">${icon}</div>
+            ${z.description ? `<div class="detail-hero-sub">${z.description}</div>` : ''}
+            <div class="detail-hero-photo-placeholder">+ Tilføj billede af zonen</div>
+        </div>
+        <div class="tabs">
+            <button class="tab-btn${tab==='main'?' active':''}" onclick="setTab('main')">Planter (${plants.length})</button>
+            <button class="tab-btn${tab==='reminders'?' active':''}" onclick="setTab('reminders')">Påmindelser (${reminders.length})</button>
+            <button class="tab-btn${tab==='history'?' active':''}" onclick="setTab('history')">Historik (${history.length})</button>
+        </div>
+        ${tab === 'main' ? `
+            <div class="plant-list">${plantsHTML}</div>
+            <div style="padding:0.8rem 1rem 0">
+                <button class="section-add-btn" onclick="openAddPlant('${zid}')">+ Tilføj plante</button>
+            </div>` : ''}
+        ${tab === 'reminders' ? `
+            ${reminderHTML}
+            <div style="padding:0.8rem 1rem 0">
+                <button class="section-add-btn" onclick="openAddReminder('zone','${zid}')">+ Tilføj påmindelse</button>
+            </div>` : ''}
+        ${tab === 'history' ? `
+            ${historyHTML}
+            <div style="padding:0.8rem 1rem 0">
+                <button class="section-add-btn" onclick="openAddHistory('zone','${zid}')">+ Tilføj log-note</button>
+            </div>` : ''}`;
+}
+
+function renderPlant(pid) {
+    const p = plant(pid);
+    if (!p) return '<div class="empty-state">Plante ikke fundet</div>';
+    const reminders = entityReminders('plant', pid);
+    const history = entityHistory('plant', pid);
+    const tab = nav.tab;
+
+    const reminderHTML = reminders.length === 0
+        ? `<div class="empty-state"><span class="empty-icon">⏰</span>Ingen påmindelser</div>`
+        : reminders.map(r => `
+            <div class="reminder-item">
+                <div class="reminder-check" data-complete="${r.id}" title="Marker som udført">✓</div>
+                <div>
+                    <div class="reminder-text">${r.text}</div>
+                    <div class="reminder-date">${formatDate(r.date)} · ${daysUntil(r.date)}
+                        ${r.repeat !== 'none' ? `<span class="reminder-repeat">${REPEAT_LABELS[r.repeat]}</span>` : ''}
+                    </div>
+                </div>
+            </div>`).join('');
+
+    const historyHTML = history.length === 0
+        ? `<div class="empty-state"><span class="empty-icon">📖</span>Ingen historik endnu</div>`
+        : history.map(h => `
+            <div class="history-item">
+                <div class="history-date">${formatDate(h.date)}</div>
+                <div class="history-text">${h.text}${h.fromReminder ? '<span class="history-tag">påmindelse</span>' : ''}</div>
+            </div>`).join('');
+
+    return `
+        <div class="detail-hero">
+            <div class="detail-hero-photo-placeholder">+ Tilføj billede af planten</div>
+        </div>
+        <div class="tabs">
+            <button class="tab-btn${tab==='main'?' active':''}" onclick="setTab('main')">Info</button>
+            <button class="tab-btn${tab==='reminders'?' active':''}" onclick="setTab('reminders')">Påmindelser (${reminders.length})</button>
+            <button class="tab-btn${tab==='history'?' active':''}" onclick="setTab('history')">Historik (${history.length})</button>
+        </div>
+        ${tab === 'main' ? `
+            <div class="info-section">
+                ${p.latinName ? `<div class="info-row"><span class="label">Latinsk navn</span><span class="val"><em>${p.latinName}</em></span></div>` : ''}
+                ${p.type ? `<div class="info-row"><span class="label">Type</span><span class="val">${p.type}</span></div>` : ''}
+                ${p.plantedDate ? `<div class="info-row"><span class="label">Plantet</span><span class="val">${formatDate(p.plantedDate)}</span></div>` : ''}
+                ${p.infoLink ? `<div class="info-row"><span class="label">Info-link</span><span class="val"><a href="${p.infoLink}" target="_blank" style="color:var(--green-mid)">Åbn →</a></span></div>` : ''}
+            </div>
+            ${p.note ? `<div class="info-note"><div class="info-note-label">Note</div>${p.note}</div>` : ''}` : ''}
+        ${tab === 'reminders' ? `
+            ${reminderHTML}
+            <div style="padding:0.8rem 1rem 0">
+                <button class="section-add-btn" onclick="openAddReminder('plant','${pid}')">+ Tilføj påmindelse</button>
+            </div>` : ''}
+        ${tab === 'history' ? `
+            ${historyHTML}
+            <div style="padding:0.8rem 1rem 0">
+                <button class="section-add-btn" onclick="openAddHistory('plant','${pid}')">+ Tilføj log-note</button>
+            </div>` : ''}`;
+}
+
+// ── EVENTS ──
+function bindEvents() {
+    document.querySelectorAll('[data-zone]').forEach(el =>
+        el.addEventListener('click', () => goTo('zone', el.dataset.zone)));
+    document.querySelectorAll('[data-plant]').forEach(el =>
+        el.addEventListener('click', () => goTo('plant', nav.zoneId, el.dataset.plant)));
+    document.querySelectorAll('[data-complete]').forEach(el =>
+        el.addEventListener('click', () => completeReminder(el.dataset.complete)));
+}
+
+function setTab(t) {
+    nav.tab = t;
+    render();
+}
+
+function handleAdd() {
+    if (nav.view === 'home') openAddZone();
+    else if (nav.view === 'zone') openAddPlant(nav.zoneId);
+    else if (nav.view === 'plant') openAddReminder('plant', nav.plantId);
+}
+
+// ── COMPLETE REMINDER ──
+function completeReminder(rid) {
+    const r = db.reminders.find(x => x.id === rid);
+    if (!r) return;
+    const today = new Date().toISOString().slice(0,10);
+    r.completedDates.push(today);
+    // Add to history
+    db.history.push({ id: uuid(), entityType: r.entityType, entityId: r.entityId, date: today, text: r.text, fromReminder: true });
+    if (r.repeat === 'none') {
+        db.reminders = db.reminders.filter(x => x.id !== rid);
+    } else if (r.repeat === 'yearly') {
+        const d = new Date(r.date); d.setFullYear(d.getFullYear() + 1);
+        r.date = d.toISOString().slice(0,10);
+    } else if (r.repeat === 'monthly') {
+        const d = new Date(r.date); d.setMonth(d.getMonth() + 1);
+        r.date = d.toISOString().slice(0,10);
+    }
+    saveDB();
+    render();
+}
+
+// ── SHEETS ──
+function openSheet(title, bodyHTML) {
+    document.getElementById('sheet-title').textContent = title;
+    document.getElementById('sheet-body').innerHTML = bodyHTML;
+    document.getElementById('overlay').classList.add('visible');
+    document.getElementById('sheet').classList.add('open');
+}
+
+function closeSheet() {
+    document.getElementById('overlay').classList.remove('visible');
+    document.getElementById('sheet').classList.remove('open');
+}
+
+function openAddZone() {
+    const types = Object.entries(ZONE_TYPES).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
+    openSheet('Ny zone', `
+        <div class="form-body">
+            <div class="field"><label>Navn</label><input id="f-name" placeholder="F.eks. Blomsterbed nord" autofocus></div>
+            <div class="field"><label>Type</label><select id="f-type">${types}</select></div>
+            <div class="field"><label>Beskrivelse</label><input id="f-desc" placeholder="F.eks. Mod hækken"></div>
+        </div>
+        <button class="btn-primary" onclick="submitAddZone()">Opret zone</button>`);
+}
+
+function submitAddZone() {
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) return;
+    db.zones.push({ id: uuid(), name, type: document.getElementById('f-type').value, description: document.getElementById('f-desc').value.trim() });
+    saveDB(); closeSheet(); render();
+}
+
+function openAddPlant(zid) {
+    const types = PLANT_TYPES.map(t => `<option>${t}</option>`).join('');
+    openSheet('Ny plante', `
+        <div class="form-body">
+            <div class="field"><label>Navn</label><input id="f-name" placeholder="F.eks. Lavendel" autofocus></div>
+            <div class="field"><label>Latinsk navn</label><input id="f-latin" placeholder="F.eks. Lavandula angustifolia"></div>
+            <div class="field-row">
+                <div class="field"><label>Type</label><select id="f-type">${types}</select></div>
+                <div class="field"><label>Plantet</label><input id="f-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+            </div>
+            <div class="field"><label>Note</label><textarea id="f-note" placeholder="Observationer, tips..."></textarea></div>
+            <div class="field"><label>Info-link (valgfrit)</label><input id="f-link" placeholder="https://..."></div>
+        </div>
+        <button class="btn-primary" onclick="submitAddPlant('${zid}')">Tilføj plante</button>`);
+}
+
+function submitAddPlant(zid) {
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) return;
+    db.plants.push({
+        id: uuid(), zoneId: zid, name,
+        latinName: document.getElementById('f-latin').value.trim(),
+        type: document.getElementById('f-type').value,
+        plantedDate: document.getElementById('f-date').value,
+        note: document.getElementById('f-note').value.trim(),
+        infoLink: document.getElementById('f-link').value.trim(),
+    });
+    saveDB(); closeSheet(); render();
+}
+
+function openAddReminder(entityType, entityId) {
+    openSheet('Ny påmindelse', `
+        <div class="form-body">
+            <div class="field"><label>Hvad skal gøres?</label><input id="f-text" placeholder="F.eks. Beskær rosen" autofocus></div>
+            <div class="field-row">
+                <div class="field"><label>Dato</label><input id="f-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+                <div class="field"><label>Gentagelse</label>
+                    <select id="f-repeat">
+                        <option value="none">Ingen</option>
+                        <option value="yearly">Hvert år</option>
+                        <option value="monthly">Hver måned</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <button class="btn-primary" onclick="submitAddReminder('${entityType}','${entityId}')">Tilføj påmindelse</button>`);
+}
+
+function submitAddReminder(entityType, entityId) {
+    const text = document.getElementById('f-text').value.trim();
+    if (!text) return;
+    db.reminders.push({ id: uuid(), entityType, entityId, text, date: document.getElementById('f-date').value, repeat: document.getElementById('f-repeat').value, completedDates: [] });
+    saveDB(); closeSheet(); render();
+}
+
+function openAddHistory(entityType, entityId) {
+    openSheet('Tilføj log-note', `
+        <div class="form-body">
+            <div class="field"><label>Dato</label><input id="f-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+            <div class="field"><label>Hvad skete der?</label><textarea id="f-text" placeholder="F.eks. Beskåret — fjernede 3 grene" autofocus></textarea></div>
+        </div>
+        <button class="btn-primary" onclick="submitAddHistory('${entityType}','${entityId}')">Gem note</button>`);
+}
+
+function submitAddHistory(entityType, entityId) {
+    const text = document.getElementById('f-text').value.trim();
+    if (!text) return;
+    db.history.push({ id: uuid(), entityType, entityId, date: document.getElementById('f-date').value, text });
+    saveDB(); closeSheet(); render();
+}
+
+// ── BOOT ──
+loadDB();
+render();
+</script>
 </body>
 </html>
