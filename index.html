@@ -52,7 +52,7 @@
             cursor: pointer;
             flex-shrink: 0;
         }
-        #header-title { flex: 1; color: white; font-size: 1.05rem; font-weight: 600; }
+        #header-title { flex: 1; color: white; font-size: 1.3rem; font-weight: 700; }
         #header-sub { color: rgba(255,255,255,0.6); font-size: 0.72rem; margin-top: 0.1rem; }
         #add-btn, #edit-btn {
             background: rgba(255,255,255,0.15);
@@ -74,9 +74,9 @@
             display: flex; align-items: center; gap: 0.5rem;
             margin-bottom: 0.7rem; cursor: pointer; user-select: none;
         }
-        .area-icon { font-size: 0.95rem; }
-        .area-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--brown); flex: 1; }
-        .area-count { font-size: 0.65rem; color: var(--muted); }
+        .area-icon { font-size: 1.25rem; }
+        .area-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--brown); flex: 1; }
+        .area-count { font-size: 0.8rem; color: var(--muted); }
         .area-chevron { font-size: 0.7rem; color: var(--muted); transition: transform 0.2s; }
         .area-chevron.closed { transform: rotate(-90deg); }
         .area-zones { overflow: hidden; }
@@ -284,8 +284,8 @@
             padding: 2rem 1rem; display: none;
         }
         #lockscreen.visible { display: flex; }
-        .ls-logo { font-size: 2.2rem; margin-bottom: 0.3rem; }
-        .ls-title { color: white; font-size: 1.3rem; font-weight: 700; margin-bottom: 0.2rem; text-align: center; }
+        .ls-logo { font-size: 3.3rem; margin-bottom: 0.3rem; }
+        .ls-title { color: white; font-size: 1.95rem; font-weight: 700; margin-bottom: 0.2rem; text-align: center; }
         .ls-subtitle { color: rgba(255,255,255,0.55); font-size: 0.85rem; margin-bottom: 1.8rem; text-align: center; }
         .ls-dots { display: flex; gap: 1.1rem; margin-bottom: 0.7rem; }
         .ls-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.45); transition: background 0.1s; }
@@ -687,7 +687,7 @@ function render() {
     userBtn.style.background = user === 'Linda' ? 'rgba(123,79,166,0.4)' : 'rgba(255,255,255,0.18)';
 
     if (nav.view === 'home') {
-        title.textContent = 'Vores Have';
+        title.innerHTML = '🌿 Vores Have';
         sub.textContent = new Date().toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' });
         app.innerHTML = renderHome();
     } else if (nav.view === 'calendar') {
