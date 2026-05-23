@@ -491,9 +491,8 @@ firebase.initializeApp({
     appId: "1:628744294639:web:03a714fdcb3170b33e8b1a"
 });
 const fsDB = firebase.firestore();
-fsDB.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 const fsStorage = firebase.storage();
-const VERSION = '1.6';
+const VERSION = '1.7';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
