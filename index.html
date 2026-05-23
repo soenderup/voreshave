@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Min Have</title>
+    <title>Vores Have</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <style>
@@ -272,6 +272,60 @@
             font-size: 1.2rem; width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
         }
 
+        /* ── LOCKSCREEN ── */
+        #lockscreen {
+            position: fixed; inset: 0; z-index: 500;
+            background: var(--green-dark);
+            flex-direction: column; align-items: center; justify-content: center;
+            padding: 2rem 1rem; display: none;
+        }
+        #lockscreen.visible { display: flex; }
+        .ls-logo { font-size: 2.2rem; margin-bottom: 0.3rem; }
+        .ls-title { color: white; font-size: 1.3rem; font-weight: 700; margin-bottom: 0.2rem; text-align: center; }
+        .ls-subtitle { color: rgba(255,255,255,0.55); font-size: 0.85rem; margin-bottom: 1.8rem; text-align: center; }
+        .ls-dots { display: flex; gap: 1.1rem; margin-bottom: 0.7rem; }
+        .ls-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.45); transition: background 0.1s; }
+        .ls-dot.filled { background: white; border-color: white; }
+        .ls-error { color: #ffaaaa; font-size: 0.82rem; min-height: 1.1rem; margin-bottom: 0.8rem; text-align: center; }
+        .ls-pad { display: grid; grid-template-columns: repeat(3, 72px); gap: 0.75rem; }
+        .ls-key {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: rgba(255,255,255,0.13); border: none; color: white;
+            font-size: 1.4rem; font-weight: 400; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .ls-key:active { background: rgba(255,255,255,0.28); }
+        .ls-key.empty { background: none; cursor: default; }
+        .ls-users { display: flex; flex-direction: column; gap: 0.9rem; width: 100%; max-width: 280px; margin-top: 0.5rem; }
+        .ls-user-btn {
+            background: rgba(255,255,255,0.14); border: none; border-radius: 14px;
+            color: white; font-size: 1.05rem; font-weight: 600; padding: 1rem;
+            cursor: pointer; letter-spacing: 0.02em;
+        }
+        .ls-user-btn:active { background: rgba(255,255,255,0.26); }
+
+        /* ── BRUGER ── */
+        #user-btn {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: rgba(255,255,255,0.18); border: none; color: white;
+            font-size: 0.72rem; font-weight: 700; cursor: pointer;
+            display: none; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .user-tag {
+            display: inline-block; font-size: 0.65rem; font-weight: 600;
+            padding: 0.1rem 0.45rem; border-radius: 4px; margin-left: 0.3rem;
+            background: var(--green-light); color: var(--green-mid);
+        }
+        .user-tag.linda { background: #f0e8f8; color: #7b4fa6; }
+        .assignee-chip {
+            display: inline-flex; align-items: center; gap: 0.25rem;
+            font-size: 0.68rem; font-weight: 600; padding: 0.15rem 0.5rem;
+            border-radius: 999px; margin-top: 0.2rem;
+        }
+        .assignee-chip.alle { background: var(--green-light); color: var(--green-mid); }
+        .assignee-chip.steen { background: var(--green-light); color: var(--green-mid); }
+        .assignee-chip.linda { background: #f0e8f8; color: #7b4fa6; }
+
         /* ── BOTTOM NAV ── */
         #bottom-nav {
             position: sticky; bottom: 0;
@@ -365,8 +419,21 @@
         <div id="header-title">Min Have</div>
         <div id="header-sub"></div>
     </div>
+    <button id="user-btn" onclick="openUserMenu()"></button>
     <button id="edit-btn" onclick="handleEdit()" style="display:none">✏️</button>
     <button id="add-btn" onclick="handleAdd()">+</button>
+</div>
+
+<div id="lockscreen">
+    <div class="ls-logo">🌿</div>
+    <div class="ls-title">Vores Have</div>
+    <div class="ls-subtitle" id="ls-subtitle"></div>
+    <div class="ls-dots">
+        <div class="ls-dot" id="d0"></div><div class="ls-dot" id="d1"></div>
+        <div class="ls-dot" id="d2"></div><div class="ls-dot" id="d3"></div>
+    </div>
+    <div class="ls-error" id="ls-error"></div>
+    <div id="ls-content"></div>
 </div>
 
 <div id="app"></div>
@@ -608,8 +675,15 @@ function render() {
     document.getElementById('nav-home').classList.toggle('active', nav.view !== 'calendar');
     document.getElementById('nav-calendar').classList.toggle('active', nav.view === 'calendar');
 
+    // Bruger-knap
+    const userBtn = document.getElementById('user-btn');
+    const user = currentUser();
+    userBtn.textContent = user ? user[0].toUpperCase() : '?';
+    userBtn.style.display = 'flex';
+    userBtn.style.background = user === 'Linda' ? 'rgba(123,79,166,0.4)' : 'rgba(255,255,255,0.18)';
+
     if (nav.view === 'home') {
-        title.textContent = 'Min Have';
+        title.textContent = 'Vores Have';
         sub.textContent = new Date().toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' });
         app.innerHTML = renderHome();
     } else if (nav.view === 'calendar') {
@@ -720,24 +794,11 @@ function renderZone(zid) {
 
     const reminderHTML = reminders.length === 0
         ? `<div class="empty-state"><span class="empty-icon">⏰</span>Ingen påmindelser</div>`
-        : reminders.map(r => `
-            <div class="reminder-item">
-                <div class="reminder-check" data-complete="${r.id}" title="Marker som udført">✓</div>
-                <div>
-                    <div class="reminder-text">${r.text}</div>
-                    <div class="reminder-date">${formatDate(r.date)} · ${daysUntil(r.date)}
-                        ${r.repeat !== 'none' ? `<span class="reminder-repeat">${REPEAT_LABELS[r.repeat]}</span>` : ''}
-                    </div>
-                </div>
-            </div>`).join('');
+        : reminders.map(renderReminderItem).join('');
 
     const historyHTML = history.length === 0
         ? `<div class="empty-state"><span class="empty-icon">📖</span>Ingen historik endnu</div>`
-        : history.map(h => `
-            <div class="history-item">
-                <div class="history-date">${formatDate(h.date)}</div>
-                <div class="history-text">${h.text}${h.fromReminder ? '<span class="history-tag">påmindelse</span>' : ''}</div>
-            </div>`).join('');
+        : history.map(renderHistoryItem).join('');
 
     return `
         <div class="detail-hero">
@@ -776,24 +837,11 @@ function renderPlant(pid) {
 
     const reminderHTML = reminders.length === 0
         ? `<div class="empty-state"><span class="empty-icon">⏰</span>Ingen påmindelser</div>`
-        : reminders.map(r => `
-            <div class="reminder-item">
-                <div class="reminder-check" data-complete="${r.id}" title="Marker som udført">✓</div>
-                <div>
-                    <div class="reminder-text">${r.text}</div>
-                    <div class="reminder-date">${formatDate(r.date)} · ${daysUntil(r.date)}
-                        ${r.repeat !== 'none' ? `<span class="reminder-repeat">${REPEAT_LABELS[r.repeat]}</span>` : ''}
-                    </div>
-                </div>
-            </div>`).join('');
+        : reminders.map(renderReminderItem).join('');
 
     const historyHTML = history.length === 0
         ? `<div class="empty-state"><span class="empty-icon">📖</span>Ingen historik endnu</div>`
-        : history.map(h => `
-            <div class="history-item">
-                <div class="history-date">${formatDate(h.date)}</div>
-                <div class="history-text">${h.text}${h.fromReminder ? '<span class="history-tag">påmindelse</span>' : ''}</div>
-            </div>`).join('');
+        : history.map(renderHistoryItem).join('');
 
     return `
         <div class="detail-hero" style="padding-bottom:0">
@@ -1109,7 +1157,7 @@ function completeReminder(rid) {
     const today = new Date().toISOString().slice(0,10);
     r.completedDates.push(today);
     // Add to history
-    db.history.push({ id: uuid(), entityType: r.entityType, entityId: r.entityId, date: today, text: r.text, fromReminder: true });
+    db.history.push({ id: uuid(), entityType: r.entityType, entityId: r.entityId, date: today, text: r.text, fromReminder: true, createdBy: currentUser() });
     if (r.repeat === 'none') {
         db.reminders = db.reminders.filter(x => x.id !== rid);
     } else if (r.repeat === 'yearly') {
@@ -1271,6 +1319,13 @@ function openAddReminder(entityType, entityId) {
                     </select>
                 </div>
             </div>
+            <div class="field"><label>Ansvarlig</label>
+                <select id="f-assign">
+                    <option value="alle">👥 Alle</option>
+                    <option value="Steen">Steen</option>
+                    <option value="Linda">Linda</option>
+                </select>
+            </div>
         </div>
         <button class="btn-primary" onclick="submitAddReminder('${entityType}','${entityId}')">Tilføj påmindelse</button>`);
 }
@@ -1278,7 +1333,7 @@ function openAddReminder(entityType, entityId) {
 function submitAddReminder(entityType, entityId) {
     const text = document.getElementById('f-text').value.trim();
     if (!text) return;
-    db.reminders.push({ id: uuid(), entityType, entityId, text, date: document.getElementById('f-date').value, repeat: document.getElementById('f-repeat').value, completedDates: [] });
+    db.reminders.push({ id: uuid(), entityType, entityId, text, date: document.getElementById('f-date').value, repeat: document.getElementById('f-repeat').value, assignedTo: document.getElementById('f-assign').value, createdBy: currentUser(), completedDates: [] });
     saveDB(); closeSheet(); render();
 }
 
@@ -1294,13 +1349,161 @@ function openAddHistory(entityType, entityId) {
 function submitAddHistory(entityType, entityId) {
     const text = document.getElementById('f-text').value.trim();
     if (!text) return;
-    db.history.push({ id: uuid(), entityType, entityId, date: document.getElementById('f-date').value, text });
+    db.history.push({ id: uuid(), entityType, entityId, date: document.getElementById('f-date').value, text, createdBy: currentUser() });
     saveDB(); closeSheet(); render();
+}
+
+// ── RENDER HELPERS ──
+function renderReminderItem(r) {
+    const assign = r.assignedTo && r.assignedTo !== 'alle'
+        ? `<span class="assignee-chip ${r.assignedTo.toLowerCase()}">${r.assignedTo}</span>`
+        : r.assignedTo === 'alle' ? `<span class="assignee-chip alle">👥 Alle</span>` : '';
+    const by = r.createdBy ? `<span class="user-tag${r.createdBy==='Linda'?' linda':''}">oprettet af ${r.createdBy}</span>` : '';
+    return `<div class="reminder-item">
+        <div class="reminder-check" data-complete="${r.id}" title="Marker som udført">✓</div>
+        <div>
+            <div class="reminder-text">${r.text}</div>
+            <div class="reminder-date">${formatDate(r.date)} · ${daysUntil(r.date)}
+                ${r.repeat !== 'none' ? `<span class="reminder-repeat">${REPEAT_LABELS[r.repeat]}</span>` : ''}
+                ${assign}
+            </div>
+            ${by}
+        </div>
+    </div>`;
+}
+
+function renderHistoryItem(h) {
+    const uTag = h.createdBy ? `<span class="user-tag${h.createdBy==='Linda'?' linda':''}">${h.createdBy}</span>` : '';
+    return `<div class="history-item">
+        <div class="history-date">${formatDate(h.date)}</div>
+        <div class="history-text">${h.text}${uTag}${h.fromReminder ? '<span class="history-tag">påmindelse</span>' : ''}</div>
+    </div>`;
+}
+
+// ── PIN & BRUGER ──
+let pinBuffer = '';
+let pinTemp = '';
+let pinMode = '';
+
+function currentUser() { return localStorage.getItem('minhave-user') || ''; }
+
+function checkAccess() {
+    if (sessionStorage.getItem('minhave-unlocked') === '1') return true;
+    const pin = localStorage.getItem('minhave-pin');
+    showLockscreen(pin ? 'enter' : 'setup');
+    return false;
+}
+
+function showLockscreen(mode) {
+    pinMode = mode;
+    pinBuffer = '';
+    document.getElementById('lockscreen').classList.add('visible');
+    updateDots();
+    document.getElementById('ls-error').textContent = '';
+
+    const subtitles = {
+        setup:      'Vælg en 4-cifret PIN-kode',
+        setup2:     'Gentag koden for at bekræfte',
+        enter:      currentUser() ? `Hej ${currentUser()} 👋` : 'Indtast PIN',
+        userselect: 'Hvem bruger denne enhed?',
+    };
+    document.getElementById('ls-subtitle').textContent = subtitles[mode] || '';
+
+    const showDots = mode !== 'userselect';
+    document.querySelector('.ls-dots').style.display = showDots ? 'flex' : 'none';
+    document.querySelector('.ls-error').style.display = showDots ? 'block' : 'none';
+
+    const content = document.getElementById('ls-content');
+    if (mode === 'userselect') {
+        content.innerHTML = `<div class="ls-users">
+            <button class="ls-user-btn" onclick="selectUser('Steen')">Steen</button>
+            <button class="ls-user-btn" onclick="selectUser('Linda')">Linda</button>
+        </div>`;
+    } else {
+        content.innerHTML = `<div class="ls-pad">
+            ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k =>
+                k === '' ? '<div class="ls-key empty"></div>'
+                         : `<button class="ls-key" onclick="pinKey('${k}')">${k}</button>`
+            ).join('')}
+        </div>`;
+    }
+}
+
+function updateDots() {
+    for (let i = 0; i < 4; i++) {
+        document.getElementById('d' + i)?.classList.toggle('filled', i < pinBuffer.length);
+    }
+}
+
+function pinKey(k) {
+    if (k === '⌫') { pinBuffer = pinBuffer.slice(0, -1); updateDots(); return; }
+    if (pinBuffer.length >= 4) return;
+    pinBuffer += k;
+    updateDots();
+    if (pinBuffer.length === 4) setTimeout(() => submitPin(), 180);
+}
+
+function submitPin() {
+    if (pinMode === 'setup') {
+        pinTemp = pinBuffer; pinBuffer = ''; showLockscreen('setup2');
+    } else if (pinMode === 'setup2') {
+        if (pinBuffer === pinTemp) {
+            localStorage.setItem('minhave-pin', pinBuffer);
+            pinTemp = '';
+            showLockscreen(currentUser() ? 'enter' : 'userselect');
+        } else {
+            document.getElementById('ls-error').textContent = 'Koderne matcher ikke';
+            pinBuffer = ''; pinTemp = ''; updateDots();
+            setTimeout(() => showLockscreen('setup'), 1200);
+        }
+    } else if (pinMode === 'enter') {
+        if (pinBuffer === localStorage.getItem('minhave-pin')) {
+            if (!currentUser()) { showLockscreen('userselect'); return; }
+            unlockApp();
+        } else {
+            document.getElementById('ls-error').textContent = 'Forkert kode — prøv igen';
+            pinBuffer = ''; updateDots();
+        }
+    }
+}
+
+function selectUser(name) {
+    localStorage.setItem('minhave-user', name);
+    unlockApp();
+}
+
+function unlockApp() {
+    sessionStorage.setItem('minhave-unlocked', '1');
+    document.getElementById('lockscreen').classList.remove('visible');
+    render();
+}
+
+function openUserMenu() {
+    const user = currentUser();
+    openSheet(user, `
+        <div style="padding:0.8rem 1.2rem 0;display:flex;flex-direction:column;gap:0.7rem">
+            <button class="btn-primary" style="margin:0" onclick="switchUser()">Skift bruger</button>
+            <button class="btn-primary" style="margin:0;background:var(--terra)" onclick="lockApp()">Lås appen</button>
+        </div>
+        <div style="height:1rem"></div>`);
+}
+
+function switchUser() {
+    localStorage.removeItem('minhave-user');
+    sessionStorage.removeItem('minhave-unlocked');
+    closeSheet();
+    showLockscreen('enter');
+}
+
+function lockApp() {
+    sessionStorage.removeItem('minhave-unlocked');
+    closeSheet();
+    showLockscreen('enter');
 }
 
 // ── BOOT ──
 loadDB();
-render();
+if (checkAccess()) render();
 </script>
 </body>
 </html>
