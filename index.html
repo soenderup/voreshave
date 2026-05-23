@@ -399,6 +399,7 @@ const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2)
 // ── STATE ──
 const today = new Date();
 let nav = { view: 'home', zoneId: null, plantId: null, tab: 'main', calYear: today.getFullYear(), calMonth: today.getMonth(), calSelected: null };
+let collapsedAreas = new Set(Object.keys({ forhave:1, baghave:1, terrasse:1, indgang:1 }));
 
 // ── DATA ──
 let db = { zones: [], plants: [], reminders: [], history: [] };
@@ -675,16 +676,16 @@ function renderHome() {
     const areasHTML = Object.entries(AREAS).map(([areaKey, area]) => {
         const zones = db.zones.filter(z => (z.area || 'baghave') === areaKey);
         if (zones.length === 0) return '';
+        const collapsed = collapsedAreas.has(areaKey);
+        const urgentInArea = zones.some(z => zoneStatus(z.id) === 'urgent');
         return `<div class="area-group">
             <div class="area-header" onclick="toggleArea('${areaKey}')">
                 <span class="area-icon">${area.icon}</span>
                 <span class="area-title">${area.label}</span>
-                <span class="area-count">${zones.length} zoner</span>
-                <span class="area-chevron" id="chev-${areaKey}">▾</span>
+                <span class="area-count">${zones.length} zoner${urgentInArea ? ' · ⚠️' : ''}</span>
+                <span class="area-chevron${collapsed ? ' closed' : ''}">▾</span>
             </div>
-            <div class="area-zones" id="area-${areaKey}">
-                ${zones.map(zoneCard).join('')}
-            </div>
+            ${collapsed ? '' : `<div class="area-zones">${zones.map(zoneCard).join('')}</div>`}
         </div>`;
     }).join('');
 
@@ -860,9 +861,26 @@ function compressImage(file, maxPx, quality) {
 }
 
 function pickPhoto(entityType, entityId) {
+    openSheet('Tilføj foto', `
+        <div style="padding:0.8rem 1.2rem 0; display:flex; flex-direction:column; gap:0.7rem;">
+            <button class="btn-primary" style="margin:0;display:flex;align-items:center;justify-content:center;gap:0.6rem;font-size:1rem"
+                onclick="doPickPhoto('${entityType}','${entityId}','camera')">
+                📷 Tag foto nu
+            </button>
+            <button class="btn-primary" style="margin:0;background:var(--green-mid);display:flex;align-items:center;justify-content:center;gap:0.6rem;font-size:1rem"
+                onclick="doPickPhoto('${entityType}','${entityId}','library')">
+                🖼 Vælg fra fotoalbum
+            </button>
+        </div>
+        <div style="height:1rem"></div>`);
+}
+
+async function doPickPhoto(entityType, entityId, source) {
+    closeSheet();
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
+    if (source === 'camera') input.capture = 'environment';
     input.onchange = async e => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1062,11 +1080,9 @@ function calNext() {
 }
 
 function toggleArea(areaKey) {
-    const el = document.getElementById('area-' + areaKey);
-    const chev = document.getElementById('chev-' + areaKey);
-    if (!el) return;
-    el.classList.toggle('collapsed');
-    chev.classList.toggle('closed');
+    if (collapsedAreas.has(areaKey)) collapsedAreas.delete(areaKey);
+    else collapsedAreas.add(areaKey);
+    render();
 }
 
 function handleAdd() {
