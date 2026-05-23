@@ -760,7 +760,7 @@ function renderHome() {
             <div class="area-header" onclick="toggleArea('${areaKey}')">
                 <span class="area-icon">${area.icon}</span>
                 <span class="area-title">${area.label}</span>
-                <span class="area-count">${zones.length} områder${urgentInArea ? ' · ⚠️' : ''}</span>
+                <span class="area-count">${zones.length} zoner${urgentInArea ? ' · ⚠️' : ''}</span>
                 <span class="area-chevron${collapsed ? ' closed' : ''}">▾</span>
             </div>
             ${collapsed ? '' : `<div class="area-zones">${zones.map(zoneCard).join('')}</div>`}
@@ -771,13 +771,13 @@ function renderHome() {
         ${urgentHTML}
         ${areasHTML}
         <div style="padding:0 1rem 0.5rem">
-            <button class="section-add-btn" onclick="openAddZone()">+ Tilføj nyt område</button>
+            <button class="section-add-btn" onclick="openAddZone()">+ Tilføj ny zone</button>
         </div>`;
 }
 
 function renderZone(zid) {
     const z = zone(zid);
-    if (!z) return '<div class="empty-state">Område ikke fundet</div>';
+    if (!z) return '<div class="empty-state">Zone ikke fundet</div>';
     const plants = zonePlants(zid);
     const reminders = entityReminders('zone', zid);
     const history = entityHistory('zone', zid);
@@ -1191,7 +1191,7 @@ function closeSheet() {
 function openAddZone() {
     const types = Object.entries(ZONE_TYPES).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
     const areas = Object.entries(AREAS).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
-    openSheet('Nyt område', `
+    openSheet('Ny zone', `
         <div class="form-body">
             <div class="field"><label>Navn</label><input id="f-name" placeholder="F.eks. Blomsterbed nord" autofocus></div>
             <div class="field-row">
@@ -1215,7 +1215,7 @@ function openEditZone(zid) {
     if (!z) return;
     const types = Object.entries(ZONE_TYPES).map(([k,v]) => `<option value="${k}"${z.type===k?' selected':''}>${v.icon} ${v.label}</option>`).join('');
     const areas = Object.entries(AREAS).map(([k,v]) => `<option value="${k}"${(z.area||'baghave')===k?' selected':''}>${v.icon} ${v.label}</option>`).join('');
-    openSheet('Rediger område', `
+    openSheet('Rediger zone', `
         <div class="form-body">
             <div class="field"><label>Navn</label><input id="f-name" value="${z.name}" autofocus></div>
             <div class="field-row">
@@ -1225,7 +1225,7 @@ function openEditZone(zid) {
             <div class="field"><label>Beskrivelse</label><input id="f-desc" value="${z.description||''}"></div>
         </div>
         <button class="btn-primary" onclick="submitEditZone('${zid}')">Gem ændringer</button>
-        <button class="btn-danger" onclick="deleteZone('${zid}')">Slet område</button>`);
+        <button class="btn-danger" onclick="deleteZone('${zid}')">Slet zone</button>`);
 }
 
 function submitEditZone(zid) {
@@ -1239,7 +1239,7 @@ function submitEditZone(zid) {
 }
 
 function deleteZone(zid) {
-    if (!confirm('Slet dette område og alle dets emner?')) return;
+    if (!confirm('Slet denne zone og alle dens emner?')) return;
     const plantIds = db.plants.filter(p => p.zoneId === zid).map(p => p.id);
     db.plants = db.plants.filter(p => p.zoneId !== zid);
     db.reminders = db.reminders.filter(r => !(r.entityType === 'zone' && r.entityId === zid) && !plantIds.includes(r.entityId));
