@@ -50,18 +50,33 @@
         }
         #header-title { flex: 1; color: white; font-size: 1.05rem; font-weight: 600; }
         #header-sub { color: rgba(255,255,255,0.6); font-size: 0.72rem; margin-top: 0.1rem; }
-        #add-btn {
+        #add-btn, #edit-btn {
             background: rgba(255,255,255,0.15);
             border: none;
             color: white;
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             width: 34px; height: 34px;
             border-radius: 50%;
             cursor: pointer;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
         }
-        #add-btn:hover { background: rgba(255,255,255,0.25); }
+        #add-btn { font-size: 1.3rem; }
+        #add-btn:hover, #edit-btn:hover { background: rgba(255,255,255,0.25); }
+
+        /* ── AREA GROUPING ── */
+        .area-group { padding: 1rem 1rem 0; }
+        .area-header {
+            display: flex; align-items: center; gap: 0.5rem;
+            margin-bottom: 0.7rem; cursor: pointer; user-select: none;
+        }
+        .area-icon { font-size: 0.95rem; }
+        .area-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--brown); flex: 1; }
+        .area-count { font-size: 0.65rem; color: var(--muted); }
+        .area-chevron { font-size: 0.7rem; color: var(--muted); transition: transform 0.2s; }
+        .area-chevron.closed { transform: rotate(-90deg); }
+        .area-zones { overflow: hidden; }
+        .area-zones.collapsed { display: none; }
 
         /* ── MAIN ── */
         #app { flex: 1; overflow-y: auto; padding-bottom: 2rem; }
@@ -226,6 +241,7 @@
         <div id="header-title">Min Have</div>
         <div id="header-sub"></div>
     </div>
+    <button id="edit-btn" onclick="handleEdit()" style="display:none">✏️</button>
     <button id="add-btn" onclick="handleAdd()">+</button>
 </div>
 
@@ -264,10 +280,17 @@ const ZONE_TYPES = {
 
 const PLANT_TYPES = ['Stauder','Løgplante','Grøntsag','Frugt','Træ','Busk','Klatrer','Etårig','Andet'];
 
+const AREAS = {
+    forhave:  { label: 'Forhave',  icon: '🏠' },
+    baghave:  { label: 'Baghave',  icon: '🌳' },
+    terrasse: { label: 'Terrasse', icon: '☀️' },
+    indgang:  { label: 'Indgang',  icon: '🚪' },
+};
+
 const REPEAT_LABELS = { none: 'Ingen', yearly: 'Hvert år', monthly: 'Hver måned' };
 
 function loadDB() {
-    const raw = localStorage.getItem('minhave-v2');
+    const raw = localStorage.getItem('minhave-v3');
     if (raw) {
         db = JSON.parse(raw);
     } else {
@@ -277,7 +300,7 @@ function loadDB() {
 }
 
 function saveDB() {
-    localStorage.setItem('minhave-v2', JSON.stringify(db));
+    localStorage.setItem('minhave-v3', JSON.stringify(db));
 }
 
 function seedDB() {
@@ -320,36 +343,36 @@ function seedDB() {
 
     db.zones = [
         // Forhave
-        { id: zFlisF,  name: 'Flis-bed i forhave',     type: 'blomsterbed', description: 'Forhave' },
-        { id: zStenF,  name: 'Sten-bed i forhave',      type: 'stenbed',     description: 'Forhave' },
-        { id: zHækF,   name: 'Hæk i forhave',           type: 'hæk',         description: 'Forhave' },
-        { id: zGræsF,  name: 'Græsplæne forhave',       type: 'græsplæne',   description: 'Forhave' },
+        { id: zFlisF,  name: 'Flis-bed i forhave',        type: 'blomsterbed', area: 'forhave',  description: '' },
+        { id: zStenF,  name: 'Sten-bed i forhave',         type: 'stenbed',     area: 'forhave',  description: '' },
+        { id: zHækF,   name: 'Hæk i forhave',              type: 'hæk',         area: 'forhave',  description: '' },
+        { id: zGræsF,  name: 'Græsplæne forhave',          type: 'græsplæne',   area: 'forhave',  description: '' },
         // Baghave - bede
-        { id: zStenB,  name: 'Sten-bed i baghave',      type: 'stenbed',     description: 'Baghave — her står figentræet og højbedene' },
-        { id: zHøj1,   name: 'Højbed 1',                type: 'højbed',      description: 'Baghave, i sten-bed' },
-        { id: zHøj2,   name: 'Højbed 2',                type: 'højbed',      description: 'Baghave, i sten-bed' },
-        { id: zHøj3,   name: 'Højbed 3',                type: 'højbed',      description: 'Baghave, i sten-bed' },
-        { id: zFlisB,  name: 'Flis-bed i baghave',      type: 'blomsterbed', description: 'Baghave — her står syrenerne' },
-        { id: zDråbe,  name: 'Dråbebed',                type: 'blomsterbed', description: 'Baghave' },
-        { id: zFløde,  name: 'Flødebolle',              type: 'blomsterbed', description: 'Baghave' },
-        { id: zSomm,   name: 'Sommerfuglebed',          type: 'blomsterbed', description: 'Baghave' },
-        // Baghave - øvrigt
-        { id: zÆble,   name: 'Æbletræ',                 type: 'træ',         description: 'Baghave, i græsplæne' },
-        { id: zGræsB,  name: 'Græsplæne baghave',       type: 'græsplæne',   description: 'Baghave' },
-        { id: zHækIb,  name: 'Hæk mod Ib',              type: 'hæk',         description: 'Baghave' },
-        { id: zHækXx,  name: 'Hæk mod nabo',            type: 'hæk',         description: 'Baghave — ret navn til naborens navn' },
+        { id: zStenB,  name: 'Sten-bed i baghave',         type: 'stenbed',     area: 'baghave',  description: 'Her står figentræet og de 3 højbede' },
+        { id: zHøj1,   name: 'Højbed 1',                   type: 'højbed',      area: 'baghave',  description: 'I sten-bed' },
+        { id: zHøj2,   name: 'Højbed 2',                   type: 'højbed',      area: 'baghave',  description: 'I sten-bed' },
+        { id: zHøj3,   name: 'Højbed 3',                   type: 'højbed',      area: 'baghave',  description: 'I sten-bed' },
+        { id: zFlisB,  name: 'Flis-bed i baghave',         type: 'blomsterbed', area: 'baghave',  description: 'Her står syrenerne' },
+        { id: zDråbe,  name: 'Dråbebed',                   type: 'blomsterbed', area: 'baghave',  description: '' },
+        { id: zFløde,  name: 'Flødebolle',                 type: 'blomsterbed', area: 'baghave',  description: '' },
+        { id: zSomm,   name: 'Sommerfuglebed',             type: 'blomsterbed', area: 'baghave',  description: '' },
+        { id: zÆble,   name: 'Æbletræ',                    type: 'træ',         area: 'baghave',  description: 'I græsplænen' },
+        { id: zGræsB,  name: 'Græsplæne baghave',          type: 'græsplæne',   area: 'baghave',  description: '' },
+        { id: zHækIb,  name: 'Hæk mod Ib',                 type: 'hæk',         area: 'baghave',  description: '' },
+        { id: zHækXx,  name: 'Hæk mod nabo',               type: 'hæk',         area: 'baghave',  description: 'Ret navn til naborens navn' },
         // Terrasse
-        { id: zKlem,   name: 'Klematis-bed',            type: 'terrassebed', description: 'Terrasse, lille bed' },
-        { id: zBirg,   name: 'Birgitte med det sorte øje', type: 'terrassebed', description: 'Terrasse, lille bed' },
-        { id: zK1,     name: 'Altankasse 1',            type: 'kasse',       description: 'Terrasse — tom' },
-        { id: zK2,     name: 'Altankasse 2',            type: 'kasse',       description: 'Terrasse' },
-        { id: zK3,     name: 'Altankasse 3',            type: 'kasse',       description: 'Terrasse' },
-        { id: zK4,     name: 'Altankasse 4',            type: 'kasse',       description: 'Terrasse' },
-        { id: zK5,     name: 'Altankasse 5',            type: 'kasse',       description: 'Terrasse' },
-        { id: zK6,     name: 'Altankasse 6',            type: 'kasse',       description: 'Terrasse' },
-        { id: zKrukT,  name: 'Blomsterkrukker terrasse',type: 'krukke',      description: 'Terrasse' },
-        { id: zKrukH,  name: 'Blomsterkrukker hoveddør',type: 'krukke',      description: 'Ved hoveddøren' },
-        { id: zKrukBr, name: 'Blomsterkrukker bryggerdør', type: 'krukke',   description: 'Ved bryggerdøren' },
+        { id: zKlem,   name: 'Klematis-bed',               type: 'terrassebed', area: 'terrasse', description: 'Lille bed på terrassen' },
+        { id: zBirg,   name: 'Birgitte med det sorte øje', type: 'terrassebed', area: 'terrasse', description: 'Lille bed på terrassen' },
+        { id: zK1,     name: 'Altankasse 1',               type: 'kasse',       area: 'terrasse', description: 'Tom' },
+        { id: zK2,     name: 'Altankasse 2',               type: 'kasse',       area: 'terrasse', description: '' },
+        { id: zK3,     name: 'Altankasse 3',               type: 'kasse',       area: 'terrasse', description: '' },
+        { id: zK4,     name: 'Altankasse 4',               type: 'kasse',       area: 'terrasse', description: '' },
+        { id: zK5,     name: 'Altankasse 5',               type: 'kasse',       area: 'terrasse', description: '' },
+        { id: zK6,     name: 'Altankasse 6',               type: 'kasse',       area: 'terrasse', description: '' },
+        { id: zKrukT,  name: 'Blomsterkrukker terrasse',   type: 'krukke',      area: 'terrasse', description: '' },
+        // Indgang
+        { id: zKrukH,  name: 'Blomsterkrukker hoveddør',   type: 'krukke',      area: 'indgang',  description: '' },
+        { id: zKrukBr, name: 'Blomsterkrukker bryggerdør', type: 'krukke',      area: 'indgang',  description: '' },
     ];
 
     db.plants = [
@@ -435,7 +458,9 @@ function render() {
     const title = document.getElementById('header-title');
     const sub = document.getElementById('header-sub');
 
+    const editBtn = document.getElementById('edit-btn');
     backBtn.style.display = nav.view === 'home' ? 'none' : 'block';
+    editBtn.style.display = nav.view === 'home' ? 'none' : 'flex';
 
     if (nav.view === 'home') {
         title.textContent = 'Min Have';
@@ -472,43 +497,53 @@ function renderHome() {
                 else { const z = zone(r.entityId); who = z ? z.name + ' · ' : ''; }
                 return `<div class="urgent-item" data-reminder="${r.id}">
                     <div class="urgent-dot${hot ? ' hot' : ''}"></div>
-                    <div>
-                        ${r.text}
-                        <span class="urgent-meta">${who}${days}</span>
-                    </div>
+                    <div>${r.text}<span class="urgent-meta">${who}${days}</span></div>
                 </div>`;
             }).join('')}
         </div>`;
 
-    const zonesHTML = db.zones.map(z => {
+    function zoneCard(z) {
         const plants = zonePlants(z.id);
         const status = zoneStatus(z.id);
         const icon = ZONE_TYPES[z.type]?.icon || '🏡';
         const badge = status === 'urgent'
             ? `<span class="zone-badge">Handling krævet</span>`
             : `<span class="zone-badge ok">OK</span>`;
+        const meta = [z.description, `${plants.length} plante${plants.length !== 1 ? 'r' : ''}`].filter(Boolean).join(' · ');
         return `<div class="zone-card" data-zone="${z.id}">
             <div class="zone-card-header">
                 <div class="zone-card-left">
                     <span class="zone-icon">${icon}</span>
                     <div>
                         <div class="zone-name">${z.name}</div>
-                        <div class="zone-meta">${z.description || ''} · ${plants.length} plante${plants.length !== 1 ? 'r' : ''}</div>
+                        <div class="zone-meta">${meta}</div>
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:0.4rem">${badge}<span class="zone-arrow">›</span></div>
+            </div>
+        </div>`;
+    }
+
+    const areasHTML = Object.entries(AREAS).map(([areaKey, area]) => {
+        const zones = db.zones.filter(z => (z.area || 'baghave') === areaKey);
+        if (zones.length === 0) return '';
+        return `<div class="area-group">
+            <div class="area-header" onclick="toggleArea('${areaKey}')">
+                <span class="area-icon">${area.icon}</span>
+                <span class="area-title">${area.label}</span>
+                <span class="area-count">${zones.length} zoner</span>
+                <span class="area-chevron" id="chev-${areaKey}">▾</span>
+            </div>
+            <div class="area-zones" id="area-${areaKey}">
+                ${zones.map(zoneCard).join('')}
             </div>
         </div>`;
     }).join('');
 
     return `
         ${urgentHTML}
-        <div class="section">
-            <div class="section-header">
-                <span class="section-icon">🌿</span>
-                <span class="section-title">Havens zoner</span>
-            </div>
-            ${zonesHTML}
+        ${areasHTML}
+        <div style="padding:0 1rem 0.5rem">
             <button class="section-add-btn" onclick="openAddZone()">+ Tilføj ny zone</button>
         </div>`;
 }
@@ -655,10 +690,23 @@ function setTab(t) {
     render();
 }
 
+function toggleArea(areaKey) {
+    const el = document.getElementById('area-' + areaKey);
+    const chev = document.getElementById('chev-' + areaKey);
+    if (!el) return;
+    el.classList.toggle('collapsed');
+    chev.classList.toggle('closed');
+}
+
 function handleAdd() {
     if (nav.view === 'home') openAddZone();
     else if (nav.view === 'zone') openAddPlant(nav.zoneId);
     else if (nav.view === 'plant') openAddReminder('plant', nav.plantId);
+}
+
+function handleEdit() {
+    if (nav.view === 'zone') openEditZone(nav.zoneId);
+    else if (nav.view === 'plant') openEditPlant(nav.plantId);
 }
 
 // ── COMPLETE REMINDER ──
@@ -697,10 +745,14 @@ function closeSheet() {
 
 function openAddZone() {
     const types = Object.entries(ZONE_TYPES).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
+    const areas = Object.entries(AREAS).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
     openSheet('Ny zone', `
         <div class="form-body">
             <div class="field"><label>Navn</label><input id="f-name" placeholder="F.eks. Blomsterbed nord" autofocus></div>
-            <div class="field"><label>Type</label><select id="f-type">${types}</select></div>
+            <div class="field-row">
+                <div class="field"><label>Type</label><select id="f-type">${types}</select></div>
+                <div class="field"><label>Område</label><select id="f-area">${areas}</select></div>
+            </div>
             <div class="field"><label>Beskrivelse</label><input id="f-desc" placeholder="F.eks. Mod hækken"></div>
         </div>
         <button class="btn-primary" onclick="submitAddZone()">Opret zone</button>`);
@@ -709,24 +761,65 @@ function openAddZone() {
 function submitAddZone() {
     const name = document.getElementById('f-name').value.trim();
     if (!name) return;
-    db.zones.push({ id: uuid(), name, type: document.getElementById('f-type').value, description: document.getElementById('f-desc').value.trim() });
+    db.zones.push({ id: uuid(), name, type: document.getElementById('f-type').value, area: document.getElementById('f-area').value, description: document.getElementById('f-desc').value.trim() });
     saveDB(); closeSheet(); render();
 }
 
-function openAddPlant(zid) {
-    const types = PLANT_TYPES.map(t => `<option>${t}</option>`).join('');
-    openSheet('Ny plante', `
+function openEditZone(zid) {
+    const z = zone(zid);
+    if (!z) return;
+    const types = Object.entries(ZONE_TYPES).map(([k,v]) => `<option value="${k}"${z.type===k?' selected':''}>${v.icon} ${v.label}</option>`).join('');
+    const areas = Object.entries(AREAS).map(([k,v]) => `<option value="${k}"${(z.area||'baghave')===k?' selected':''}>${v.icon} ${v.label}</option>`).join('');
+    openSheet('Rediger zone', `
         <div class="form-body">
-            <div class="field"><label>Navn</label><input id="f-name" placeholder="F.eks. Lavendel" autofocus></div>
-            <div class="field"><label>Latinsk navn</label><input id="f-latin" placeholder="F.eks. Lavandula angustifolia"></div>
+            <div class="field"><label>Navn</label><input id="f-name" value="${z.name}" autofocus></div>
             <div class="field-row">
                 <div class="field"><label>Type</label><select id="f-type">${types}</select></div>
-                <div class="field"><label>Plantet</label><input id="f-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+                <div class="field"><label>Område</label><select id="f-area">${areas}</select></div>
             </div>
-            <div class="field"><label>Note</label><textarea id="f-note" placeholder="Observationer, tips..."></textarea></div>
-            <div class="field"><label>Info-link (valgfrit)</label><input id="f-link" placeholder="https://..."></div>
+            <div class="field"><label>Beskrivelse</label><input id="f-desc" value="${z.description||''}"></div>
         </div>
-        <button class="btn-primary" onclick="submitAddPlant('${zid}')">Tilføj plante</button>`);
+        <button class="btn-primary" onclick="submitEditZone('${zid}')">Gem ændringer</button>
+        <button class="btn-danger" onclick="deleteZone('${zid}')">Slet zone</button>`);
+}
+
+function submitEditZone(zid) {
+    const z = zone(zid);
+    if (!z) return;
+    z.name = document.getElementById('f-name').value.trim() || z.name;
+    z.type = document.getElementById('f-type').value;
+    z.area = document.getElementById('f-area').value;
+    z.description = document.getElementById('f-desc').value.trim();
+    saveDB(); closeSheet(); render();
+}
+
+function deleteZone(zid) {
+    if (!confirm('Slet denne zone og alle dens planter?')) return;
+    const plantIds = db.plants.filter(p => p.zoneId === zid).map(p => p.id);
+    db.plants = db.plants.filter(p => p.zoneId !== zid);
+    db.reminders = db.reminders.filter(r => !(r.entityType === 'zone' && r.entityId === zid) && !plantIds.includes(r.entityId));
+    db.history = db.history.filter(h => !(h.entityType === 'zone' && h.entityId === zid) && !plantIds.includes(h.entityId));
+    db.zones = db.zones.filter(z => z.id !== zid);
+    saveDB(); closeSheet(); goTo('home');
+}
+
+function plantFormHTML(p = {}) {
+    const types = PLANT_TYPES.map(t => `<option${p.type===t?' selected':''}>${t}</option>`).join('');
+    return `
+        <div class="form-body">
+            <div class="field"><label>Navn</label><input id="f-name" value="${p.name||''}" placeholder="F.eks. Lavendel" autofocus></div>
+            <div class="field"><label>Latinsk navn</label><input id="f-latin" value="${p.latinName||''}" placeholder="F.eks. Lavandula angustifolia"></div>
+            <div class="field-row">
+                <div class="field"><label>Type</label><select id="f-type">${types}</select></div>
+                <div class="field"><label>Plantet</label><input id="f-date" type="date" value="${p.plantedDate||new Date().toISOString().slice(0,10)}"></div>
+            </div>
+            <div class="field"><label>Note</label><textarea id="f-note" placeholder="Observationer, tips...">${p.note||''}</textarea></div>
+            <div class="field"><label>Info-link (valgfrit)</label><input id="f-link" value="${p.infoLink||''}" placeholder="https://..."></div>
+        </div>`;
+}
+
+function openAddPlant(zid) {
+    openSheet('Ny plante', plantFormHTML() + `<button class="btn-primary" onclick="submitAddPlant('${zid}')">Tilføj plante</button>`);
 }
 
 function submitAddPlant(zid) {
@@ -741,6 +834,34 @@ function submitAddPlant(zid) {
         infoLink: document.getElementById('f-link').value.trim(),
     });
     saveDB(); closeSheet(); render();
+}
+
+function openEditPlant(pid) {
+    const p = plant(pid);
+    if (!p) return;
+    openSheet('Rediger plante', plantFormHTML(p) +
+        `<button class="btn-primary" onclick="submitEditPlant('${pid}')">Gem ændringer</button>
+         <button class="btn-danger" onclick="deletePlant('${pid}')">Slet plante</button>`);
+}
+
+function submitEditPlant(pid) {
+    const p = plant(pid);
+    if (!p) return;
+    p.name = document.getElementById('f-name').value.trim() || p.name;
+    p.latinName = document.getElementById('f-latin').value.trim();
+    p.type = document.getElementById('f-type').value;
+    p.plantedDate = document.getElementById('f-date').value;
+    p.note = document.getElementById('f-note').value.trim();
+    p.infoLink = document.getElementById('f-link').value.trim();
+    saveDB(); closeSheet(); render();
+}
+
+function deletePlant(pid) {
+    if (!confirm('Slet denne plante?')) return;
+    db.plants = db.plants.filter(p => p.id !== pid);
+    db.reminders = db.reminders.filter(r => !(r.entityType === 'plant' && r.entityId === pid));
+    db.history = db.history.filter(h => !(h.entityType === 'plant' && h.entityId === pid));
+    saveDB(); closeSheet(); goTo('zone', nav.zoneId);
 }
 
 function openAddReminder(entityType, entityId) {
