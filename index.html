@@ -492,7 +492,7 @@ firebase.initializeApp({
 });
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
-const VERSION = '2.3';
+const VERSION = '2.4';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
@@ -1103,9 +1103,9 @@ async function doPickZonePhoto(zid, source) {
         if (!file) return;
         const oldPhoto = zone(zid)?.photo;
         const base64 = await compressImage(file, 1200, 0.78);
-        localStorage.setItem('minhave-photo-zone-' + zid, base64);
         zone(zid).photo = base64;
         render();
+        try { localStorage.setItem('minhave-photo-zone-' + zid, base64); } catch (err) { console.warn('localStorage foto-gem fejlede:', err); }
         deleteStoragePhoto(oldPhoto);
         try {
             const url = await uploadPhoto(file);
@@ -1142,9 +1142,9 @@ async function doPickElementPhoto(pid, source) {
         if (!file) return;
         const oldPhoto = plant(pid)?.photo;
         const base64 = await compressImage(file, 1200, 0.78);
-        localStorage.setItem('minhave-photo-plant-' + pid, base64);
         plant(pid).photo = base64;
         render();
+        try { localStorage.setItem('minhave-photo-plant-' + pid, base64); } catch (err) { console.warn('localStorage foto-gem fejlede:', err); }
         deleteStoragePhoto(oldPhoto);
         try {
             const url = await uploadPhoto(file);
