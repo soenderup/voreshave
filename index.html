@@ -231,6 +231,90 @@
             color: var(--muted); font-size: 0.85rem; cursor: pointer;
         }
         .section-add-btn:hover { border-color: var(--green-mid); color: var(--green-mid); }
+
+        /* ── BOTTOM NAV ── */
+        #bottom-nav {
+            position: sticky; bottom: 0;
+            background: var(--white);
+            border-top: 1px solid var(--border);
+            display: flex;
+            z-index: 50;
+        }
+        .nav-btn {
+            flex: 1; display: flex; flex-direction: column; align-items: center;
+            gap: 0.2rem; padding: 0.55rem 0.5rem 0.65rem;
+            background: none; border: none; cursor: pointer;
+            font-size: 0.62rem; font-weight: 600; color: var(--muted);
+            letter-spacing: 0.04em; text-transform: uppercase;
+        }
+        .nav-btn .nav-icon { font-size: 1.2rem; line-height: 1; }
+        .nav-btn.active { color: var(--green-dark); }
+
+        /* ── KALENDER ── */
+        .cal-month-nav {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1rem 1.2rem 0.6rem;
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+        }
+        .cal-month-btn {
+            background: none; border: none; cursor: pointer;
+            font-size: 1.2rem; color: var(--green-dark); padding: 0.2rem 0.5rem;
+        }
+        .cal-month-label { font-size: 1rem; font-weight: 700; color: var(--text); }
+
+        .cal-grid { padding: 0.5rem 0.8rem 0.3rem; background: var(--white); }
+        .cal-weekdays {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            margin-bottom: 0.3rem;
+        }
+        .cal-wd { text-align: center; font-size: 0.6rem; font-weight: 700; color: var(--muted); text-transform: uppercase; padding: 0.2rem 0; }
+        .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+        .cal-day {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 0.3rem 0.1rem; border-radius: 8px; cursor: pointer; min-height: 38px;
+        }
+        .cal-day:hover { background: var(--green-light); }
+        .cal-day.today { background: var(--green-dark); }
+        .cal-day.today .cal-day-num { color: white; font-weight: 700; }
+        .cal-day.selected { background: var(--green-light); outline: 2px solid var(--green-dark); }
+        .cal-day.empty { cursor: default; }
+        .cal-day.empty:hover { background: none; }
+        .cal-day-num { font-size: 0.82rem; line-height: 1.4; color: var(--text); }
+        .cal-day.other-month .cal-day-num { color: var(--border); }
+        .cal-dots { display: flex; gap: 2px; margin-top: 1px; flex-wrap: wrap; justify-content: center; }
+        .cal-dot { width: 4px; height: 4px; border-radius: 50%; }
+        .cal-dot.upcoming { background: var(--terra); }
+        .cal-dot.history { background: var(--green-mid); }
+
+        /* Kalender liste */
+        .cal-section { padding: 0.9rem 1rem 0; }
+        .cal-section-title {
+            font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--brown); margin-bottom: 0.6rem;
+        }
+        .cal-event {
+            display: flex; gap: 0.8rem; padding: 0.65rem 0;
+            border-bottom: 1px solid var(--border); align-items: flex-start;
+        }
+        .cal-event:last-child { border-bottom: none; }
+        .cal-event-date {
+            min-width: 52px; text-align: center;
+            background: var(--cream); border-radius: 8px; padding: 0.3rem 0.4rem;
+            flex-shrink: 0;
+        }
+        .cal-event-day { font-size: 1.1rem; font-weight: 700; color: var(--green-dark); line-height: 1; }
+        .cal-event-month { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; }
+        .cal-event-body { flex: 1; }
+        .cal-event-text { font-size: 0.9rem; font-weight: 500; }
+        .cal-event-who { font-size: 0.73rem; color: var(--muted); margin-top: 0.1rem; }
+        .cal-event-tag {
+            display: inline-block; font-size: 0.62rem; font-weight: 600;
+            padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: 0.4rem;
+        }
+        .cal-event-tag.upcoming { background: var(--terra-light); color: var(--terra); }
+        .cal-event-tag.history { background: var(--green-light); color: var(--green-mid); }
+        .cal-event-tag.overdue { background: #fde8e8; color: #c0392b; }
     </style>
 </head>
 <body>
@@ -247,6 +331,15 @@
 
 <div id="app"></div>
 
+<nav id="bottom-nav">
+    <button class="nav-btn active" id="nav-home" onclick="goTo('home')">
+        <span class="nav-icon">🏡</span>Haven
+    </button>
+    <button class="nav-btn" id="nav-calendar" onclick="goTo('calendar')">
+        <span class="nav-icon">📅</span>Kalender
+    </button>
+</nav>
+
 <div class="overlay" id="overlay" onclick="closeSheet()"></div>
 <div class="sheet" id="sheet">
     <div class="sheet-handle"></div>
@@ -259,7 +352,8 @@
 const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 
 // ── STATE ──
-let nav = { view: 'home', zoneId: null, plantId: null, tab: 'main' };
+const today = new Date();
+let nav = { view: 'home', zoneId: null, plantId: null, tab: 'main', calYear: today.getFullYear(), calMonth: today.getMonth(), calSelected: null };
 
 // ── DATA ──
 let db = { zones: [], plants: [], reminders: [], history: [] };
@@ -442,7 +536,7 @@ function zoneStatus(zid) {
 
 // ── NAVIGATION ──
 function goTo(view, zoneId = null, plantId = null, tab = 'main') {
-    nav = { view, zoneId, plantId, tab };
+    nav = { ...nav, view, zoneId, plantId, tab };
     render();
 }
 function goBack() {
@@ -459,14 +553,23 @@ function render() {
     const sub = document.getElementById('header-sub');
 
     const editBtn = document.getElementById('edit-btn');
-    backBtn.style.display = nav.view === 'home' ? 'none' : 'block';
-    editBtn.style.display = nav.view === 'home' ? 'none' : 'flex';
+    const isTop = nav.view === 'home' || nav.view === 'calendar';
+    backBtn.style.display = isTop ? 'none' : 'block';
+    editBtn.style.display = (nav.view === 'zone' || nav.view === 'plant') ? 'flex' : 'none';
+    addBtn.style.display = nav.view === 'calendar' ? 'none' : 'flex';
+
+    // Bottom nav active state
+    document.getElementById('nav-home').classList.toggle('active', nav.view !== 'calendar');
+    document.getElementById('nav-calendar').classList.toggle('active', nav.view === 'calendar');
 
     if (nav.view === 'home') {
         title.textContent = 'Min Have';
         sub.textContent = new Date().toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' });
-        addBtn.style.display = 'flex';
         app.innerHTML = renderHome();
+    } else if (nav.view === 'calendar') {
+        title.textContent = 'Kalender';
+        sub.textContent = '';
+        app.innerHTML = renderCalendar();
     } else if (nav.view === 'zone') {
         const z = zone(nav.zoneId);
         title.textContent = z ? z.name : 'Zone';
@@ -687,6 +790,160 @@ function bindEvents() {
 
 function setTab(t) {
     nav.tab = t;
+    render();
+}
+
+// ── KALENDER ──
+function calEventSource() {
+    const upcoming = db.reminders.map(r => ({
+        date: r.date, text: r.text, entityType: r.entityType, entityId: r.entityId, kind: 'upcoming', rid: r.id
+    }));
+    const hist = db.history.map(h => ({
+        date: h.date, text: h.text, entityType: h.entityType, entityId: h.entityId, kind: 'history'
+    }));
+    return [...upcoming, ...hist];
+}
+
+function entityName(type, id) {
+    if (type === 'zone') { const z = zone(id); return z ? z.name : ''; }
+    if (type === 'plant') { const p = plant(id); return p ? p.name : ''; }
+    return '';
+}
+
+function renderCalendar() {
+    const year = nav.calYear, month = nav.calMonth;
+    const monthName = new Date(year, month, 1).toLocaleDateString('da-DK', { month: 'long', year: 'numeric' });
+    const firstDay = new Date(year, month, 1).getDay(); // 0=sun
+    const startOffset = (firstDay === 0 ? 6 : firstDay - 1); // mon-based
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayStr = new Date().toISOString().slice(0,10);
+    const selStr = nav.calSelected;
+
+    const events = calEventSource();
+    // Build set of dates with events this month
+    const dotsByDate = {};
+    events.forEach(e => {
+        if (!e.date) return;
+        const d = new Date(e.date);
+        if (d.getFullYear() === year && d.getMonth() === month) {
+            const key = e.date;
+            if (!dotsByDate[key]) dotsByDate[key] = { upcoming: 0, history: 0 };
+            dotsByDate[key][e.kind]++;
+        }
+    });
+
+    // Grid cells
+    let cells = '';
+    for (let i = 0; i < startOffset; i++) cells += `<div class="cal-day empty"></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+        const iso = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const dots = dotsByDate[iso] || {};
+        const isToday = iso === todayStr;
+        const isSel = iso === selStr;
+        let cls = 'cal-day';
+        if (isToday) cls += ' today';
+        if (isSel && !isToday) cls += ' selected';
+        const dotsHTML = [
+            ...(Array(Math.min(dots.upcoming||0, 3)).fill('<span class="cal-dot upcoming"></span>')),
+            ...(Array(Math.min(dots.history||0, 3)).fill('<span class="cal-dot history"></span>'))
+        ].join('');
+        cells += `<div class="${cls}" onclick="calSelectDay('${iso}')">
+            <span class="cal-day-num">${d}</span>
+            ${dotsHTML ? `<div class="cal-dots">${dotsHTML}</div>` : ''}
+        </div>`;
+    }
+
+    // Events list
+    let listHTML = '';
+    const filterDate = selStr && new Date(selStr).getFullYear() === year && new Date(selStr).getMonth() === month ? selStr : null;
+
+    // Upcoming
+    let upcomingEvents = events.filter(e => e.kind === 'upcoming');
+    if (filterDate) upcomingEvents = upcomingEvents.filter(e => e.date === filterDate);
+    upcomingEvents.sort((a,b) => a.date.localeCompare(b.date));
+
+    // History
+    let histEvents = events.filter(e => e.kind === 'history');
+    if (filterDate) histEvents = histEvents.filter(e => e.date === filterDate);
+    histEvents.sort((a,b) => b.date.localeCompare(a.date));
+
+    function eventCard(e) {
+        const d = new Date(e.date);
+        const day = d.getDate();
+        const mon = d.toLocaleDateString('da-DK', { month: 'short' });
+        const who = entityName(e.entityType, e.entityId);
+        const isPast = e.date < todayStr;
+        const tag = e.kind === 'history'
+            ? `<span class="cal-event-tag history">Udført</span>`
+            : isPast
+                ? `<span class="cal-event-tag overdue">Overskredet</span>`
+                : `<span class="cal-event-tag upcoming">Kommende</span>`;
+        return `<div class="cal-event">
+            <div class="cal-event-date">
+                <div class="cal-event-day">${day}</div>
+                <div class="cal-event-month">${mon}</div>
+            </div>
+            <div class="cal-event-body">
+                <div class="cal-event-text">${e.text}${tag}</div>
+                ${who ? `<div class="cal-event-who">${who}</div>` : ''}
+            </div>
+        </div>`;
+    }
+
+    const upcomingSection = upcomingEvents.length === 0 ? '' : `
+        <div class="cal-section">
+            <div class="cal-section-title">Kommende${filterDate ? ' — ' + formatDate(filterDate) : ''}</div>
+            ${upcomingEvents.map(eventCard).join('')}
+        </div>`;
+
+    const histSection = histEvents.length === 0 ? '' : `
+        <div class="cal-section">
+            <div class="cal-section-title">Historik${filterDate ? ' — ' + formatDate(filterDate) : ''}</div>
+            ${histEvents.map(eventCard).join('')}
+        </div>`;
+
+    const emptyMsg = (!upcomingSection && !histSection)
+        ? `<div class="empty-state"><span class="empty-icon">📅</span>${filterDate ? 'Ingen aktiviteter denne dag' : 'Ingen aktiviteter denne måned'}</div>` : '';
+
+    return `
+        <div class="cal-month-nav">
+            <button class="cal-month-btn" onclick="calPrev()">‹</button>
+            <span class="cal-month-label">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</span>
+            <button class="cal-month-btn" onclick="calNext()">›</button>
+        </div>
+        <div class="cal-grid">
+            <div class="cal-weekdays">
+                ${['Ma','Ti','On','To','Fr','Lø','Sø'].map(d => `<div class="cal-wd">${d}</div>`).join('')}
+            </div>
+            <div class="cal-days">${cells}</div>
+        </div>
+        <div style="padding:0.4rem 1rem;display:flex;gap:0.8rem;align-items:center;border-bottom:1px solid var(--border);background:var(--white)">
+            <span style="display:flex;align-items:center;gap:0.3rem;font-size:0.72rem;color:var(--muted)"><span class="cal-dot upcoming" style="width:7px;height:7px;display:inline-block"></span>Kommende</span>
+            <span style="display:flex;align-items:center;gap:0.3rem;font-size:0.72rem;color:var(--muted)"><span class="cal-dot history" style="width:7px;height:7px;display:inline-block"></span>Udført</span>
+            ${filterDate ? `<button onclick="calSelectDay(null)" style="margin-left:auto;font-size:0.72rem;background:none;border:none;color:var(--terra);cursor:pointer">Vis alle ×</button>` : ''}
+        </div>
+        ${upcomingSection}
+        ${histSection}
+        ${emptyMsg}
+        <div style="height:1rem"></div>`;
+}
+
+function calSelectDay(iso) {
+    nav.calSelected = nav.calSelected === iso ? null : iso;
+    render();
+}
+
+function calPrev() {
+    if (nav.calMonth === 0) { nav.calMonth = 11; nav.calYear--; }
+    else nav.calMonth--;
+    nav.calSelected = null;
+    render();
+}
+
+function calNext() {
+    if (nav.calMonth === 11) { nav.calMonth = 0; nav.calYear++; }
+    else nav.calMonth++;
+    nav.calSelected = null;
     render();
 }
 
