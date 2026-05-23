@@ -133,7 +133,7 @@
         .plant-row:active { background: var(--cream); }
         .plant-name-wrap .pname { font-size: 0.9rem; font-weight: 500; }
         .plant-name-wrap .platinname { font-size: 0.73rem; color: var(--muted); font-style: italic; }
-        .plant-name-wrap .phint { font-size: 0.73rem; color: var(--muted); }
+        .plant-name-wrap .ptype { display: inline-block; font-size: 0.63rem; font-weight: 600; background: var(--green-light); color: var(--green-mid); padding: 0.1rem 0.4rem; border-radius: 4px; margin-top: 0.15rem; }
         .plant-link-btn { font-size: 0.72rem; color: var(--green-mid); text-decoration: none; padding: 0.2rem 0.5rem; background: var(--green-light); border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
 
         /* ── ZONE / PLANT DETAIL ── */
@@ -284,7 +284,7 @@ const AREAS = {
     forhave:  { label: 'Forhave',  icon: '🏠' },
     baghave:  { label: 'Baghave',  icon: '🌳' },
     terrasse: { label: 'Terrasse', icon: '☀️' },
-    indgang:  { label: 'Indgang',  icon: '🚪' },
+    indgang:  { label: 'Indgange', icon: '🚪' },
 };
 
 const REPEAT_LABELS = { none: 'Ingen', yearly: 'Hvert år', monthly: 'Hver måned' };
@@ -509,7 +509,7 @@ function renderHome() {
         const badge = status === 'urgent'
             ? `<span class="zone-badge">Handling krævet</span>`
             : `<span class="zone-badge ok">OK</span>`;
-        const meta = [z.description, `${plants.length} plante${plants.length !== 1 ? 'r' : ''}`].filter(Boolean).join(' · ');
+        const meta = [z.description, `${plants.length} emne${plants.length !== 1 ? 'r' : ''}`].filter(Boolean).join(' · ');
         return `<div class="zone-card" data-zone="${z.id}">
             <div class="zone-card-header">
                 <div class="zone-card-left">
@@ -558,13 +558,13 @@ function renderZone(zid) {
     const tab = nav.tab;
 
     const plantsHTML = plants.length === 0
-        ? `<div class="empty-state"><span class="empty-icon">🌱</span>Ingen planter endnu</div>`
+        ? `<div class="empty-state"><span class="empty-icon">🌱</span>Ingen emner endnu</div>`
         : plants.map(p => `
             <div class="plant-row" data-plant="${p.id}">
                 <div class="plant-name-wrap">
                     <div class="pname">${p.name}</div>
                     ${p.latinName ? `<div class="platinname">${p.latinName}</div>` : ''}
-                    ${p.type ? `<div class="phint">${p.type}</div>` : ''}
+                    ${p.type ? `<div><span class="ptype">${p.type}</span></div>` : ''}
                 </div>
                 ${p.infoLink ? `<a href="${p.infoLink}" target="_blank" class="plant-link-btn" onclick="event.stopPropagation()">Info →</a>` : ''}
             </div>`).join('');
@@ -597,14 +597,14 @@ function renderZone(zid) {
             <div class="detail-hero-photo-placeholder">+ Tilføj billede af zonen</div>
         </div>
         <div class="tabs">
-            <button class="tab-btn${tab==='main'?' active':''}" onclick="setTab('main')">Planter (${plants.length})</button>
+            <button class="tab-btn${tab==='main'?' active':''}" onclick="setTab('main')">Emner (${plants.length})</button>
             <button class="tab-btn${tab==='reminders'?' active':''}" onclick="setTab('reminders')">Påmindelser (${reminders.length})</button>
             <button class="tab-btn${tab==='history'?' active':''}" onclick="setTab('history')">Historik (${history.length})</button>
         </div>
         ${tab === 'main' ? `
             <div class="plant-list">${plantsHTML}</div>
             <div style="padding:0.8rem 1rem 0">
-                <button class="section-add-btn" onclick="openAddPlant('${zid}')">+ Tilføj plante</button>
+                <button class="section-add-btn" onclick="openAddPlant('${zid}')">+ Tilføj emne</button>
             </div>` : ''}
         ${tab === 'reminders' ? `
             ${reminderHTML}
@@ -819,7 +819,7 @@ function plantFormHTML(p = {}) {
 }
 
 function openAddPlant(zid) {
-    openSheet('Ny plante', plantFormHTML() + `<button class="btn-primary" onclick="submitAddPlant('${zid}')">Tilføj plante</button>`);
+    openSheet('Nyt emne', plantFormHTML() + `<button class="btn-primary" onclick="submitAddPlant('${zid}')">Tilføj emne</button>`);
 }
 
 function submitAddPlant(zid) {
@@ -839,9 +839,9 @@ function submitAddPlant(zid) {
 function openEditPlant(pid) {
     const p = plant(pid);
     if (!p) return;
-    openSheet('Rediger plante', plantFormHTML(p) +
+    openSheet('Rediger emne', plantFormHTML(p) +
         `<button class="btn-primary" onclick="submitEditPlant('${pid}')">Gem ændringer</button>
-         <button class="btn-danger" onclick="deletePlant('${pid}')">Slet plante</button>`);
+         <button class="btn-danger" onclick="deletePlant('${pid}')">Slet emne</button>`);
 }
 
 function submitEditPlant(pid) {
