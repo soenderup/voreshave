@@ -1478,10 +1478,10 @@ function submitAddHistory(entityType, entityId) {
 
 // ── RENDER HELPERS ──
 function renderReminderItem(r) {
+    const initials = { 'Steen': 'S', 'Linda': 'L' };
     const assign = r.assignedTo && r.assignedTo !== 'alle'
-        ? `<span class="assignee-chip ${r.assignedTo.toLowerCase()}">${r.assignedTo}</span>`
-        : r.assignedTo === 'alle' ? `<span class="assignee-chip alle">👥 Alle</span>` : '';
-    const by = r.createdBy ? `<span class="user-tag${r.createdBy==='Linda'?' linda':''}">oprettet af ${r.createdBy}</span>` : '';
+        ? `<span class="assignee-chip ${r.assignedTo.toLowerCase()}">${initials[r.assignedTo] || r.assignedTo[0]}</span>`
+        : r.assignedTo === 'alle' ? `<span class="assignee-chip alle">👥</span>` : '';
     return `<div class="reminder-item">
         ${!isGuest() ? `<div class="reminder-check" data-complete="${r.id}" title="Marker som udført">✓</div>` : '<div style="width:22px;flex-shrink:0"></div>'}
         <div>
@@ -1490,16 +1490,14 @@ function renderReminderItem(r) {
                 ${r.repeat !== 'none' ? `<span class="reminder-repeat">${REPEAT_LABELS[r.repeat]}</span>` : ''}
                 ${assign}
             </div>
-            ${by}
         </div>
     </div>`;
 }
 
 function renderHistoryItem(h) {
-    const uTag = h.createdBy ? `<span class="user-tag${h.createdBy==='Linda'?' linda':''}">${h.createdBy}</span>` : '';
     return `<div class="history-item">
         <div class="history-date">${formatDate(h.date)}</div>
-        <div class="history-text">${h.text}${uTag}${h.fromReminder ? '<span class="history-tag">påmindelse</span>' : ''}</div>
+        <div class="history-text">${h.text}${h.fromReminder ? '<span class="history-tag">påmindelse</span>' : ''}</div>
     </div>`;
 }
 
@@ -1530,7 +1528,7 @@ function showLockscreen(mode) {
         nameselect: 'Hvem er du?',
         setup:      `Vælg PIN for ${setupName}`,
         setup2:     'Gentag koden for at bekræfte',
-        enter:      'Steen, Linda eller gæst',
+        enter:      'Indtast din PIN',
     };
     document.getElementById('ls-subtitle').textContent = subtitles[mode] || '';
 
