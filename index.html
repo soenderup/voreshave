@@ -545,8 +545,8 @@ async function loadDB() {
         if (raw) db = JSON.parse(raw);
         else seedDB();
     }
-    DATA_REF.onSnapshot(snap => {
-        if (snap.exists) {
+    DATA_REF.onSnapshot({ includeMetadataChanges: true }, snap => {
+        if (snap.exists && !snap.metadata.hasPendingWrites) {
             db = snap.data();
             localStorage.setItem('minhave-v3', JSON.stringify(db));
             if (sessionStorage.getItem('minhave-unlocked') === '1') render();
