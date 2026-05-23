@@ -3,23 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Min Have</title>
+    <title>Min Have — designforslag</title>
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, sans-serif;
+            background: #f5f2ec;
+            min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: #f0f4f0;
+            padding: 2rem 1rem;
         }
         h1 {
-            color: #2d5a27;
+            font-size: 1.1rem;
+            color: #666;
+            font-weight: 400;
+            margin-bottom: 0.4rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
         }
+        h2 {
+            font-size: 2rem;
+            color: #2d5a27;
+            margin-bottom: 2.5rem;
+        }
+        .cards {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+            max-width: 420px;
+        }
+        a.card {
+            display: block;
+            text-decoration: none;
+            background: white;
+            border-radius: 16px;
+            padding: 1.4rem 1.6rem;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        a.card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+        .card-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.3rem;
+        }
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+        }
+        .card-desc {
+            font-size: 0.9rem;
+            color: #888;
+        }
+        .d1 .card-label { color: #8B6F47; }
+        .d1 .card-title { color: #2d5a27; }
+        .d2 .card-label { color: #5b7fa6; }
+        .d2 .card-title { color: #1a3d28; }
+        .d3 .card-label { color: #a0b878; }
+        .d3 .card-title { color: #1a2e1a; }
     </style>
 </head>
 <body>
     <h1>Min Have</h1>
+    <h2>Vælg et designforslag</h2>
+    <div class="cards">
+        <a href="design-1.html" class="card d1">
+            <div class="card-label">Forslag 1</div>
+            <div class="card-title">Naturlig & varm</div>
+            <div class="card-desc">Jordfarver, terrakotta, grønt - som haven selv</div>
+        </a>
+        <a href="design-2.html" class="card d2">
+            <div class="card-label">Forslag 2</div>
+            <div class="card-title">Botanisk & clean</div>
+            <div class="card-desc">Hvid, frisk grøn, præcis og overskuelig</div>
+        </a>
+        <a href="design-3.html" class="card d3">
+            <div class="card-label">Forslag 3</div>
+            <div class="card-title">Mørk & stemningsmæssig</div>
+            <div class="card-desc">Dyb grøn, som at gå tur i haven om aftenen</div>
+        </a>
+    </div>
 </body>
 </html>
