@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check *)",
+      "Bash(python3 -m http.server *)",
+      "Bash(pkill -f *)",
+      "Bash(osascript *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/steensonderup/Documents/udvikling/minhave/scripts/dev-start.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/steensonderup/Documents/udvikling/minhave/scripts/dev-reload.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
