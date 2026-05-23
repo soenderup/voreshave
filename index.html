@@ -438,6 +438,7 @@
     <div class="ls-dots">
         <div class="ls-dot" id="d0"></div><div class="ls-dot" id="d1"></div>
         <div class="ls-dot" id="d2"></div><div class="ls-dot" id="d3"></div>
+        <div class="ls-dot" id="d4"></div><div class="ls-dot" id="d5"></div>
     </div>
     <div class="ls-error" id="ls-error"></div>
     <div id="ls-content"></div>
@@ -466,7 +467,24 @@
     <div id="sheet-body"></div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <script>
+// ── FIREBASE ──
+firebase.initializeApp({
+    apiKey: "AIzaSyDKpv0M9WgQrKdqrQMxJc9gy48F2gSyLXg",
+    authDomain: "minhave-e9ab6.firebaseapp.com",
+    projectId: "minhave-e9ab6",
+    storageBucket: "minhave-e9ab6.firebasestorage.app",
+    messagingSenderId: "628744294639",
+    appId: "1:628744294639:web:03a714fdcb3170b33e8b1a"
+});
+const fsDB = firebase.firestore();
+const fsStorage = firebase.storage();
+const DATA_REF = fsDB.collection('voreshave').doc('data');
+const PINS_REF = fsDB.collection('voreshave').doc('pins');
+
 // ── UUID ──
 const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 
@@ -474,6 +492,7 @@ const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2)
 const today = new Date();
 let nav = { view: 'home', zoneId: null, plantId: null, tab: 'main', calYear: today.getFullYear(), calMonth: today.getMonth(), calSelected: null };
 let collapsedAreas = new Set(Object.keys({ forhave:1, baghave:1, terrasse:1, indgang:1 }));
+let pins = {};
 
 // ── DATA ──
 let db = { zones: [], plants: [], reminders: [], history: [] };
@@ -503,18 +522,54 @@ const AREAS = {
 
 const REPEAT_LABELS = { none: 'Ingen', yearly: 'Hvert år', monthly: 'Hver måned' };
 
-function loadDB() {
-    const raw = localStorage.getItem('minhave-v3');
-    if (raw) {
-        db = JSON.parse(raw);
-    } else {
-        seedDB();
-        saveDB();
+async function loadDB() {
+    try {
+        const snap = await DATA_REF.get();
+        if (snap.exists) {
+            db = snap.data();
+        } else {
+            seedDB();
+            await DATA_REF.set(db);
+        }
+        localStorage.setItem('minhave-v3', JSON.stringify(db));
+    } catch (e) {
+        const raw = localStorage.getItem('minhave-v3');
+        if (raw) db = JSON.parse(raw);
+        else seedDB();
     }
+    DATA_REF.onSnapshot(snap => {
+        if (snap.exists) {
+            db = snap.data();
+            localStorage.setItem('minhave-v3', JSON.stringify(db));
+            if (sessionStorage.getItem('minhave-unlocked') === '1') render();
+        }
+    });
 }
 
 function saveDB() {
     localStorage.setItem('minhave-v3', JSON.stringify(db));
+    DATA_REF.set(db).catch(console.error);
+}
+
+async function loadPins() {
+    try {
+        const snap = await PINS_REF.get();
+        if (snap.exists) {
+            pins = snap.data();
+            localStorage.setItem('minhave-pins', JSON.stringify(pins));
+        } else {
+            const cached = localStorage.getItem('minhave-pins');
+            if (cached) pins = JSON.parse(cached);
+        }
+    } catch (e) {
+        const cached = localStorage.getItem('minhave-pins');
+        if (cached) pins = JSON.parse(cached);
+    }
+}
+
+function savePins() {
+    localStorage.setItem('minhave-pins', JSON.stringify(pins));
+    PINS_REF.set(pins).catch(console.error);
 }
 
 function seedDB() {
@@ -675,8 +730,8 @@ function render() {
     const editBtn = document.getElementById('edit-btn');
     const isTop = nav.view === 'home' || nav.view === 'calendar';
     backBtn.style.display = isTop ? 'none' : 'block';
-    editBtn.style.display = (nav.view === 'zone' || nav.view === 'plant') ? 'flex' : 'none';
-    addBtn.style.display = nav.view === 'calendar' ? 'none' : 'flex';
+    editBtn.style.display = (nav.view === 'zone' || nav.view === 'plant') && !isGuest() ? 'flex' : 'none';
+    addBtn.style.display = (nav.view === 'calendar' || isGuest()) ? 'none' : 'flex';
 
     // Bottom nav active state
     document.getElementById('nav-home').classList.toggle('active', nav.view !== 'calendar');
@@ -773,9 +828,9 @@ function renderHome() {
     return `
         ${urgentHTML}
         ${areasHTML}
-        <div style="padding:0 1rem 0.5rem">
+        ${!isGuest() ? `<div style="padding:0 1rem 0.5rem">
             <button class="section-add-btn" onclick="openAddZone()">+ Tilføj ny zone</button>
-        </div>`;
+        </div>` : ''}`;
 }
 
 function renderZone(zid) {
@@ -799,7 +854,7 @@ function renderZone(zid) {
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0">
                     ${p.photo
                         ? `<img class="plant-list-thumb" src="${p.photo}" onclick="viewPhoto('${p.photo}');event.stopPropagation()">`
-                        : `<button class="plant-photo-btn" onclick="pickElementPhoto('${p.id}');event.stopPropagation()" title="Tilføj foto">📷</button>`
+                        : (!isGuest() ? `<button class="plant-photo-btn" onclick="pickElementPhoto('${p.id}');event.stopPropagation()" title="Tilføj foto">📷</button>` : '')
                     }
                     ${p.infoLink ? `<a href="${p.infoLink}" target="_blank" class="plant-link-btn" onclick="event.stopPropagation()">Info →</a>` : ''}
                 </div>
@@ -818,8 +873,9 @@ function renderZone(zid) {
             <div style="font-size:1.8rem;margin-bottom:0.4rem">${icon}</div>
             ${z.description ? `<div class="detail-hero-sub">${z.description}</div>` : ''}
             ${z.photo
-                ? `<div style="position:relative;margin-top:0.7rem"><img class="detail-hero-photo" src="${z.photo}" onclick="viewPhoto('${z.photo}')"><button class="zone-photo-delete" onclick="deleteZonePhoto('${zid}',event)">×</button></div>`
-                : `<div class="detail-hero-photo-placeholder" onclick="pickZonePhoto('${zid}')">📷 Tilføj zonefoto</div>`
+                ? `<div style="position:relative;margin-top:0.7rem"><img class="detail-hero-photo" src="${z.photo}" onclick="viewPhoto('${z.photo}')">
+                   ${!isGuest() ? `<button class="zone-photo-delete" onclick="deleteZonePhoto('${zid}',event)">×</button>` : ''}</div>`
+                : (!isGuest() ? `<div class="detail-hero-photo-placeholder" onclick="pickZonePhoto('${zid}')">📷 Tilføj zonefoto</div>` : '')
             }
         </div>
         <div class="tabs">
@@ -829,19 +885,19 @@ function renderZone(zid) {
         </div>
         ${tab === 'main' ? `
             <div class="plant-list">${plantsHTML}</div>
-            <div style="padding:0.8rem 1rem 0">
+            ${!isGuest() ? `<div style="padding:0.8rem 1rem 0">
                 <button class="section-add-btn" onclick="openAddPlant('${zid}')">+ Tilføj element</button>
-            </div>` : ''}
+            </div>` : ''}` : ''}
         ${tab === 'reminders' ? `
             ${reminderHTML}
-            <div style="padding:0.8rem 1rem 0">
+            ${!isGuest() ? `<div style="padding:0.8rem 1rem 0">
                 <button class="section-add-btn" onclick="openAddReminder('zone','${zid}')">+ Tilføj påmindelse</button>
-            </div>` : ''}
+            </div>` : ''}` : ''}
         ${tab === 'history' ? `
             ${historyHTML}
-            <div style="padding:0.8rem 1rem 0">
+            ${!isGuest() ? `<div style="padding:0.8rem 1rem 0">
                 <button class="section-add-btn" onclick="openAddHistory('zone','${zid}')">+ Tilføj log-note</button>
-            </div>` : ''}`;
+            </div>` : ''}` : ''}`;
 }
 
 function renderPlant(pid) {
@@ -871,8 +927,9 @@ function renderPlant(pid) {
         ${tab === 'main' ? `
             <div class="info-section">
                 ${p.photo
-                    ? `<div class="info-row"><span class="label">Foto</span><span class="val" style="display:flex;align-items:center;gap:0.5rem"><img src="${p.photo}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;cursor:pointer" onclick="viewPhoto('${p.photo}')"><button onclick="deleteElementPhoto('${pid}',event)" style="font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Slet</button></span></div>`
-                    : `<div class="info-row"><span class="label">Foto</span><span class="val"><button class="plant-photo-btn" style="width:60px;height:60px" onclick="pickElementPhoto('${pid}')">📷</button></span></div>`
+                    ? `<div class="info-row"><span class="label">Foto</span><span class="val" style="display:flex;align-items:center;gap:0.5rem"><img src="${p.photo}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;cursor:pointer" onclick="viewPhoto('${p.photo}')">
+                       ${!isGuest() ? `<button onclick="deleteElementPhoto('${pid}',event)" style="font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Slet</button>` : ''}</span></div>`
+                    : (!isGuest() ? `<div class="info-row"><span class="label">Foto</span><span class="val"><button class="plant-photo-btn" style="width:60px;height:60px" onclick="pickElementPhoto('${pid}')">📷</button></span></div>` : '')
                 }
                 ${p.latinName ? `<div class="info-row"><span class="label">Latinsk navn</span><span class="val"><em>${p.latinName}</em></span></div>` : ''}
                 ${p.type ? `<div class="info-row"><span class="label">Type</span><span class="val">${p.type}</span></div>` : ''}
@@ -882,14 +939,14 @@ function renderPlant(pid) {
             ${p.note ? `<div class="info-note"><div class="info-note-label">Note</div>${p.note}</div>` : ''}` : ''}
         ${tab === 'reminders' ? `
             ${reminderHTML}
-            <div style="padding:0.8rem 1rem 0">
+            ${!isGuest() ? `<div style="padding:0.8rem 1rem 0">
                 <button class="section-add-btn" onclick="openAddReminder('plant','${pid}')">+ Tilføj påmindelse</button>
-            </div>` : ''}
+            </div>` : ''}` : ''}
         ${tab === 'history' ? `
             ${historyHTML}
-            <div style="padding:0.8rem 1rem 0">
+            ${!isGuest() ? `<div style="padding:0.8rem 1rem 0">
                 <button class="section-add-btn" onclick="openAddHistory('plant','${pid}')">+ Tilføj log-note</button>
-            </div>` : ''}`;
+            </div>` : ''}` : ''}`;
 }
 
 // ── EVENTS ──
@@ -927,6 +984,29 @@ function compressImage(file, maxPx, quality) {
     });
 }
 
+function base64ToBlob(base64) {
+    const [meta, data] = base64.split(',');
+    const mime = meta.match(/:(.*?);/)[1];
+    const bytes = atob(data);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+}
+
+async function uploadPhoto(file) {
+    const base64 = await compressImage(file, 1200, 0.78);
+    const blob = base64ToBlob(base64);
+    const ref = fsStorage.ref(`photos/${uuid()}.jpg`);
+    await ref.put(blob);
+    return await ref.getDownloadURL();
+}
+
+async function deleteStoragePhoto(url) {
+    if (url && url.startsWith('https://')) {
+        try { await fsStorage.refFromURL(url).delete(); } catch {}
+    }
+}
+
 function openPickPhotoSheet(title, onCamera, onLibrary) {
     openSheet(title, `
         <div style="padding:0.8rem 1.2rem 0; display:flex; flex-direction:column; gap:0.7rem;">
@@ -951,16 +1031,24 @@ async function doPickZonePhoto(zid, source) {
         const file = e.target.files[0];
         if (!file) return;
         const z = zone(zid);
-        z.photo = await compressImage(file, 1200, 0.78);
-        saveDB(); render();
+        const oldPhoto = z.photo;
+        const base64 = await compressImage(file, 1200, 0.78);
+        z.photo = base64;
+        render();
+        deleteStoragePhoto(oldPhoto);
+        const url = await uploadPhoto(file);
+        z.photo = url;
+        saveDB();
     };
     input.click();
 }
 
-function deleteZonePhoto(zid, e) {
+async function deleteZonePhoto(zid, e) {
     e.stopPropagation();
     if (!confirm('Slet zonefoto?')) return;
-    zone(zid).photo = null;
+    const z = zone(zid);
+    await deleteStoragePhoto(z.photo);
+    z.photo = null;
     saveDB(); render();
 }
 
@@ -977,16 +1065,24 @@ async function doPickElementPhoto(pid, source) {
         const file = e.target.files[0];
         if (!file) return;
         const p = plant(pid);
-        p.photo = await compressImage(file, 1200, 0.78);
-        saveDB(); render();
+        const oldPhoto = p.photo;
+        const base64 = await compressImage(file, 1200, 0.78);
+        p.photo = base64;
+        render();
+        deleteStoragePhoto(oldPhoto);
+        const url = await uploadPhoto(file);
+        p.photo = url;
+        saveDB();
     };
     input.click();
 }
 
-function deleteElementPhoto(pid, e) {
+async function deleteElementPhoto(pid, e) {
     e.stopPropagation();
     if (!confirm('Slet elementfoto?')) return;
-    plant(pid).photo = null;
+    const p = plant(pid);
+    await deleteStoragePhoto(p.photo);
+    p.photo = null;
     saveDB(); render();
 }
 
@@ -1387,7 +1483,7 @@ function renderReminderItem(r) {
         : r.assignedTo === 'alle' ? `<span class="assignee-chip alle">👥 Alle</span>` : '';
     const by = r.createdBy ? `<span class="user-tag${r.createdBy==='Linda'?' linda':''}">oprettet af ${r.createdBy}</span>` : '';
     return `<div class="reminder-item">
-        <div class="reminder-check" data-complete="${r.id}" title="Marker som udført">✓</div>
+        ${!isGuest() ? `<div class="reminder-check" data-complete="${r.id}" title="Marker som udført">✓</div>` : '<div style="width:22px;flex-shrink:0"></div>'}
         <div>
             <div class="reminder-text">${r.text}</div>
             <div class="reminder-date">${formatDate(r.date)} · ${daysUntil(r.date)}
@@ -1411,13 +1507,15 @@ function renderHistoryItem(h) {
 let pinBuffer = '';
 let pinTemp = '';
 let pinMode = '';
+let setupName = '';
 
-function currentUser() { return localStorage.getItem('minhave-user') || ''; }
+function currentUser() { return sessionStorage.getItem('minhave-user') || ''; }
+function isGuest() { return currentUser() === 'Gæst'; }
 
 function checkAccess() {
     if (sessionStorage.getItem('minhave-unlocked') === '1') return true;
-    const pin = localStorage.getItem('minhave-pin');
-    showLockscreen(pin ? 'enter' : 'setup');
+    const hasPins = pins.Steen || pins.Linda;
+    showLockscreen(hasPins ? 'enter' : 'nameselect');
     return false;
 }
 
@@ -1429,22 +1527,22 @@ function showLockscreen(mode) {
     document.getElementById('ls-error').textContent = '';
 
     const subtitles = {
-        setup:      'Vælg en 4-cifret PIN-kode',
+        nameselect: 'Hvem er du?',
+        setup:      `Vælg PIN for ${setupName}`,
         setup2:     'Gentag koden for at bekræfte',
-        enter:      currentUser() ? `Hej ${currentUser()} 👋` : 'Indtast PIN',
-        userselect: 'Hvem bruger denne enhed?',
+        enter:      'Steen, Linda eller gæst',
     };
     document.getElementById('ls-subtitle').textContent = subtitles[mode] || '';
 
-    const showDots = mode !== 'userselect';
+    const showDots = mode !== 'nameselect';
     document.querySelector('.ls-dots').style.display = showDots ? 'flex' : 'none';
     document.querySelector('.ls-error').style.display = showDots ? 'block' : 'none';
 
     const content = document.getElementById('ls-content');
-    if (mode === 'userselect') {
+    if (mode === 'nameselect') {
         content.innerHTML = `<div class="ls-users">
-            <button class="ls-user-btn" onclick="selectUser('Steen')">Steen</button>
-            <button class="ls-user-btn" onclick="selectUser('Linda')">Linda</button>
+            <button class="ls-user-btn" onclick="selectSetupName('Steen')">Steen</button>
+            <button class="ls-user-btn" onclick="selectSetupName('Linda')">Linda</button>
         </div>`;
     } else {
         content.innerHTML = `<div class="ls-pad">
@@ -1457,17 +1555,17 @@ function showLockscreen(mode) {
 }
 
 function updateDots() {
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 6; i++) {
         document.getElementById('d' + i)?.classList.toggle('filled', i < pinBuffer.length);
     }
 }
 
 function pinKey(k) {
     if (k === '⌫') { pinBuffer = pinBuffer.slice(0, -1); updateDots(); return; }
-    if (pinBuffer.length >= 4) return;
+    if (pinBuffer.length >= 6) return;
     pinBuffer += k;
     updateDots();
-    if (pinBuffer.length === 4) setTimeout(() => submitPin(), 180);
+    if (pinBuffer.length === 6) setTimeout(() => submitPin(), 180);
 }
 
 function submitPin() {
@@ -1475,18 +1573,19 @@ function submitPin() {
         pinTemp = pinBuffer; pinBuffer = ''; showLockscreen('setup2');
     } else if (pinMode === 'setup2') {
         if (pinBuffer === pinTemp) {
-            localStorage.setItem('minhave-pin', pinBuffer);
+            pins[setupName] = pinBuffer;
+            savePins();
             pinTemp = '';
-            showLockscreen(currentUser() ? 'enter' : 'userselect');
+            unlockAs(setupName);
         } else {
             document.getElementById('ls-error').textContent = 'Koderne matcher ikke';
             pinBuffer = ''; pinTemp = ''; updateDots();
             setTimeout(() => showLockscreen('setup'), 1200);
         }
     } else if (pinMode === 'enter') {
-        if (pinBuffer === localStorage.getItem('minhave-pin')) {
-            if (!currentUser()) { showLockscreen('userselect'); return; }
-            unlockApp();
+        const match = Object.entries(pins).find(([, p]) => p === pinBuffer);
+        if (match) {
+            unlockAs(match[0]);
         } else {
             document.getElementById('ls-error').textContent = 'Forkert kode — prøv igen';
             pinBuffer = ''; updateDots();
@@ -1494,36 +1593,42 @@ function submitPin() {
     }
 }
 
-function selectUser(name) {
-    localStorage.setItem('minhave-user', name);
-    unlockApp();
+function selectSetupName(name) {
+    setupName = name;
+    showLockscreen('setup');
 }
 
-function unlockApp() {
+function startChangePinFor(name) {
+    closeSheet();
+    setupName = name;
+    showLockscreen('setup');
+}
+
+function unlockAs(name) {
     sessionStorage.setItem('minhave-unlocked', '1');
+    sessionStorage.setItem('minhave-user', name);
     document.getElementById('lockscreen').classList.remove('visible');
     render();
 }
 
 function openUserMenu() {
     const user = currentUser();
-    openSheet(user, `
+    const otherUser = user === 'Steen' ? 'Linda' : 'Steen';
+    openSheet(user || 'Bruger', `
         <div style="padding:0.8rem 1.2rem 0;display:flex;flex-direction:column;gap:0.7rem">
-            <button class="btn-primary" style="margin:0" onclick="switchUser()">Skift bruger</button>
+            ${!isGuest() ? `
+            <button class="btn-primary" style="margin:0" onclick="startChangePinFor('${user}')">Skift min PIN</button>
+            <button class="btn-primary" style="margin:0;background:var(--green-mid)" onclick="startChangePinFor('${otherUser}')">Sæt ${otherUser}s PIN</button>
+            <button class="btn-primary" style="margin:0;background:var(--green-mid)" onclick="startChangePinFor('Gæst')">${pins.Gæst ? 'Skift gæste-PIN' : 'Opret gæste-PIN'}</button>
+            ` : ''}
             <button class="btn-primary" style="margin:0;background:var(--terra)" onclick="lockApp()">Lås appen</button>
         </div>
         <div style="height:1rem"></div>`);
 }
 
-function switchUser() {
-    localStorage.removeItem('minhave-user');
-    sessionStorage.removeItem('minhave-unlocked');
-    closeSheet();
-    showLockscreen('enter');
-}
-
 function lockApp() {
     sessionStorage.removeItem('minhave-unlocked');
+    sessionStorage.removeItem('minhave-user');
     closeSheet();
     showLockscreen('enter');
 }
@@ -1534,8 +1639,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── BOOT ──
-loadDB();
-if (checkAccess()) render();
+Promise.all([loadDB(), loadPins()]).then(() => { if (checkAccess()) render(); });
 </script>
 </body>
 </html>
