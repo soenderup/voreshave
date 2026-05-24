@@ -1060,7 +1060,14 @@ function renderPlant(pid) {
                 ${p.infoLink ? `<div class="info-row"><span class="label">Info-link</span><span class="val"><a href="${p.infoLink}" target="_blank" style="color:var(--green-mid)">Åbn →</a></span></div>` : ''}
             </div>
             ${p.note ? `<div class="info-note"><div class="info-note-label">Egne noter</div>${p.note}</div>` : ''}
-            ${p.aiInfo ? `<div class="info-note"><div class="info-note-label">Viden om</div>${p.aiInfo}</div>` : ''}` : ''}
+            <div class="info-note">
+                <div class="info-note-label">Viden om</div>
+                ${p.aiInfo
+                    ? `<span>${p.aiInfo}</span>${!isGuest() ? `<button onclick="refreshPlantInfo('${pid}')" style="margin-top:0.5rem;display:block;font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">↺ Opdater</button>` : ''}`
+                    : `<span id="ai-status" style="color:var(--muted);font-size:0.85rem">Henter...</span>
+                       ${!isGuest() ? `<button onclick="refreshPlantInfo('${pid}')" style="margin-top:0.4rem;display:none;font-size:0.82rem;color:var(--terra);background:none;border:none;cursor:pointer;padding:0" id="ai-retry">Prøv igen</button>` : ''}`
+                }
+            </div>` : ''}
         ${tab === 'reminders' ? `
             ${reminderHTML}
             ${!isGuest() ? `<div style="padding:0.8rem 1rem 0">
@@ -1605,13 +1612,26 @@ function submitEditPlant(pid) {
 async function fetchPlantInfo(pid) {
     const p = plant(pid);
     if (!p) return;
+    const setStatus = (msg) => {
+        const el = document.getElementById('ai-status');
+        if (el) el.textContent = msg;
+    };
+    const showRetry = () => {
+        const btn = document.getElementById('ai-retry');
+        if (btn) btn.style.display = 'block';
+    };
     try {
+        setStatus('Henter planteinfo...');
         const res = await fetch('/.netlify/functions/plant-info', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: p.name, latinName: p.latinName, plantType: p.type, note: p.note }),
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+            setStatus(`Fejl ${res.status} – funktionen svarede ikke korrekt.`);
+            showRetry();
+            return;
+        }
         const data = await res.json();
         const fresh = plant(pid);
         if (fresh && data.info) {
@@ -1619,8 +1639,15 @@ async function fetchPlantInfo(pid) {
             saveDB();
         }
     } catch (e) {
+        setStatus('Netværksfejl – er du online?');
+        showRetry();
         console.warn('fetchPlantInfo fejlede:', e);
     }
+}
+
+function refreshPlantInfo(pid) {
+    const p = plant(pid);
+    if (p) { p.aiInfo = null; render(); fetchPlantInfo(pid); }
 }
 
 function deletePlant(pid) {
