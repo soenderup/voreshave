@@ -27,18 +27,17 @@
             --white: #ffffff;
         }
 
-        html, body { height: 100%; background: var(--cream); color: var(--text); font-family: -apple-system, sans-serif; }
-        body { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; }
+        html, body { height: 100%; background: var(--cream); color: var(--text); font-family: -apple-system, sans-serif; overflow: hidden; }
+        body { max-width: 480px; margin: 0 auto; display: grid; grid-template-rows: auto 1fr auto; grid-template-areas: "header" "app" "nav"; }
 
         /* ── HEADER ── */
         #header {
+            grid-area: header;
             background: var(--green-dark);
             padding: 0.9rem 1rem 0.8rem;
             display: flex;
             align-items: center;
             gap: 0.6rem;
-            position: sticky;
-            top: 0;
             z-index: 100;
             min-height: 54px;
         }
@@ -83,7 +82,7 @@
         .area-zones.collapsed { display: none; }
 
         /* ── MAIN ── */
-        #app { flex: 1; overflow-y: auto; padding-bottom: 2rem; }
+        #app { grid-area: app; overflow-y: auto; padding-bottom: 2rem; }
 
         /* ── URGENT STRIP ── */
         .urgent-strip { background: var(--terra); padding: 0.8rem 1rem; }
@@ -152,11 +151,11 @@
         .zone-photo-delete { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,0.55); border: none; color: white; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
         /* ── ZONE / PLANT DETAIL ── */
-        .detail-hero { background: var(--green-dark); padding: 1rem; }
-        .detail-hero-name { color: white; font-size: 1.3rem; font-weight: 700; }
-        .detail-hero-sub { color: rgba(255,255,255,0.65); font-size: 0.8rem; margin-top: 0.2rem; }
+        .detail-hero { background: var(--green-light); padding: 1rem; border-bottom: 1px solid var(--border); }
+        .detail-hero-name { color: var(--green-dark); font-size: 1.3rem; font-weight: 700; }
+        .detail-hero-sub { color: var(--muted); font-size: 0.8rem; margin-top: 0.2rem; }
         .detail-hero-photo { width: 100%; height: 140px; object-fit: cover; display: block; border-radius: 10px; margin-top: 0.8rem; }
-        .detail-hero-photo-placeholder { width: 100%; height: 90px; background: rgba(255,255,255,0.08); border-radius: 10px; margin-top: 0.8rem; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.3); font-size: 0.78rem; cursor: pointer; border: 1.5px dashed rgba(255,255,255,0.25); }
+        .detail-hero-photo-placeholder { width: 100%; height: 90px; background: rgba(0,0,0,0.05); border-radius: 10px; margin-top: 0.8rem; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.78rem; cursor: pointer; border: 1.5px dashed var(--border); }
 
         /* Tabs */
         .tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); }
@@ -343,7 +342,7 @@
 
         /* ── BOTTOM NAV ── */
         #bottom-nav {
-            position: sticky; bottom: 0;
+            grid-area: nav;
             background: var(--white);
             border-top: 1px solid var(--border);
             display: flex;
@@ -366,6 +365,9 @@
             padding: 1rem 1.2rem 0.6rem;
             background: var(--white);
             border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 50;
         }
         .cal-month-btn {
             background: none; border: none; cursor: pointer;
@@ -432,7 +434,7 @@
 <div id="header">
     <button id="back-btn" onclick="goBack()">← Tilbage</button>
     <div style="flex:1">
-        <div id="header-title">Min Have</div>
+        <div id="header-title" onclick="goTo('home')" style="cursor:pointer">Min Have</div>
         <div id="header-sub"></div>
     </div>
     <button id="user-btn" onclick="openUserMenu()"></button>
@@ -492,7 +494,7 @@ firebase.initializeApp({
 });
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
-const VERSION = '1.9';
+const VERSION = '1.10';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
@@ -829,25 +831,18 @@ function render() {
     userBtn.style.display = 'flex';
     userBtn.style.background = user === 'Linda' ? 'rgba(123,79,166,0.4)' : 'rgba(255,255,255,0.18)';
 
+    // Header viser altid det samme
+    title.innerHTML = '🌿 Vores Have';
+    sub.textContent = new Date().toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' });
+
     if (nav.view === 'home') {
-        title.innerHTML = '🌿 Vores Have';
-        sub.textContent = new Date().toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' });
         app.innerHTML = renderHome();
     } else if (nav.view === 'calendar') {
-        title.textContent = 'Kalender';
-        sub.textContent = '';
         app.innerHTML = renderCalendar();
     } else if (nav.view === 'zone') {
-        const z = zone(nav.zoneId);
-        title.textContent = z ? z.name : 'Zone';
-        const parentZ = z?.parentZoneId ? zone(z.parentZoneId) : null;
-        sub.textContent = parentZ ? `Zone i ${parentZ.name}` : (z ? (ZONE_TYPES[z.type]?.label || z.type) : '');
         addBtn.style.display = 'flex';
         app.innerHTML = renderZone(nav.zoneId);
     } else if (nav.view === 'plant') {
-        const p = plant(nav.plantId);
-        title.textContent = p ? p.name : 'Plante';
-        sub.textContent = p ? (p.latinName || '') : '';
         addBtn.style.display = 'flex';
         app.innerHTML = renderPlant(nav.plantId);
     }
@@ -988,7 +983,9 @@ function renderZone(zid) {
 
     return `
         <div class="detail-hero">
-            <div style="font-size:1.8rem;margin-bottom:0.4rem">${icon}</div>
+            <div style="font-size:1.8rem;margin-bottom:0.3rem">${icon}</div>
+            <div style="font-size:1.25rem;font-weight:700;color:var(--green-dark);margin-bottom:0.15rem">${z.name}</div>
+            <div style="font-size:0.78rem;color:var(--muted);margin-bottom:${z.description ? '0.3rem' : '0'}">${ZONE_TYPES[z.type]?.label || z.type}</div>
             ${z.description ? `<div class="detail-hero-sub">${z.description}</div>` : ''}
             ${z.photo
                 ? `<div style="position:relative;margin-top:0.7rem"><img class="detail-hero-photo" src="${z.photo}" onclick="viewPhoto('${z.photo}')">
@@ -1038,6 +1035,7 @@ function renderPlant(pid) {
 
     return `
         <div class="detail-hero" style="padding-bottom:0.8rem">
+            <div style="font-size:1.25rem;font-weight:700;color:var(--green-dark);margin-bottom:0.15rem">${p.name}</div>
             ${p.latinName ? `<div class="detail-hero-sub">${p.latinName}</div>` : ''}
         </div>
         <div class="tabs">
@@ -1057,7 +1055,8 @@ function renderPlant(pid) {
                 ${p.plantedDate ? `<div class="info-row"><span class="label">Plantet</span><span class="val">${formatDate(p.plantedDate)}</span></div>` : ''}
                 ${p.infoLink ? `<div class="info-row"><span class="label">Info-link</span><span class="val"><a href="${p.infoLink}" target="_blank" style="color:var(--green-mid)">Åbn →</a></span></div>` : ''}
             </div>
-            ${p.note ? `<div class="info-note"><div class="info-note-label">Note</div>${p.note}</div>` : ''}` : ''}
+            ${p.note ? `<div class="info-note"><div class="info-note-label">Egne noter</div>${p.note}</div>` : ''}
+            ${p.aiInfo ? `<div class="info-note"><div class="info-note-label">Viden om</div>${p.aiInfo}</div>` : ''}` : ''}
         ${tab === 'reminders' ? `
             ${reminderHTML}
             ${!isGuest() ? `<div style="padding:0.8rem 1rem 0">
@@ -1233,7 +1232,7 @@ function calEventSource() {
         date: r.date, text: r.text, entityType: r.entityType, entityId: r.entityId, kind: 'upcoming', rid: r.id
     }));
     const hist = db.history.map(h => ({
-        date: h.date, text: h.text, entityType: h.entityType, entityId: h.entityId, kind: 'history'
+        date: h.date, text: h.text, entityType: h.entityType, entityId: h.entityId, kind: 'history', hid: h.id
     }));
     return [...upcoming, ...hist];
 }
@@ -1312,7 +1311,12 @@ function renderCalendar() {
             : isPast
                 ? `<span class="cal-event-tag overdue">Overskredet</span>`
                 : `<span class="cal-event-tag upcoming">Kommende</span>`;
-        return `<div class="cal-event">
+        const clickAttr = !isGuest() && e.kind === 'upcoming' && e.rid
+            ? `onclick="openEditReminder('${e.rid}')" style="cursor:pointer"`
+            : !isGuest() && e.kind === 'history' && e.hid
+            ? `onclick="openEditHistoryItem('${e.hid}')" style="cursor:pointer"`
+            : '';
+        return `<div class="cal-event" ${clickAttr}>
             <div class="cal-event-date">
                 <div class="cal-event-day">${day}</div>
                 <div class="cal-event-month">${mon}</div>
@@ -1546,7 +1550,7 @@ function plantFormHTML(p = {}) {
                 <div class="field"><label>Type</label><select id="f-type">${types}</select></div>
                 <div class="field"><label>Plantet</label><input id="f-date" type="date" value="${p.plantedDate||new Date().toISOString().slice(0,10)}"></div>
             </div>
-            <div class="field"><label>Note</label><textarea id="f-note" placeholder="Observationer, tips...">${p.note||''}</textarea></div>
+            <div class="field"><label>Egne noter</label><textarea id="f-note" placeholder="Observationer, tips...">${p.note||''}</textarea></div>
             <div class="field"><label>Info-link (valgfrit)</label><input id="f-link" value="${p.infoLink||''}" placeholder="https://..."></div>
         </div>`;
 }
@@ -1558,15 +1562,17 @@ function openAddPlant(zid) {
 function submitAddPlant(zid) {
     const name = document.getElementById('f-name').value.trim();
     if (!name) return;
-    db.plants.push({
+    const newPlant = {
         id: uuid(), zoneId: zid, name,
         latinName: document.getElementById('f-latin').value.trim(),
         type: document.getElementById('f-type').value,
         plantedDate: document.getElementById('f-date').value,
         note: document.getElementById('f-note').value.trim(),
         infoLink: document.getElementById('f-link').value.trim(),
-    });
+    };
+    db.plants.push(newPlant);
     saveDB(); closeSheet(); render();
+    fetchPlantInfo(newPlant.id);
 }
 
 function openEditPlant(pid) {
@@ -1580,6 +1586,8 @@ function openEditPlant(pid) {
 function submitEditPlant(pid) {
     const p = plant(pid);
     if (!p) return;
+    const oldLatin = p.latinName;
+    const oldNote = p.note;
     p.name = document.getElementById('f-name').value.trim() || p.name;
     p.latinName = document.getElementById('f-latin').value.trim();
     p.type = document.getElementById('f-type').value;
@@ -1587,6 +1595,28 @@ function submitEditPlant(pid) {
     p.note = document.getElementById('f-note').value.trim();
     p.infoLink = document.getElementById('f-link').value.trim();
     saveDB(); closeSheet(); render();
+    if (p.latinName !== oldLatin || p.note !== oldNote) fetchPlantInfo(pid);
+}
+
+async function fetchPlantInfo(pid) {
+    const p = plant(pid);
+    if (!p) return;
+    try {
+        const res = await fetch('/.netlify/functions/plant-info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: p.name, latinName: p.latinName, plantType: p.type, note: p.note }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const fresh = plant(pid);
+        if (fresh && data.info) {
+            fresh.aiInfo = data.info;
+            saveDB();
+        }
+    } catch (e) {
+        console.warn('fetchPlantInfo fejlede:', e);
+    }
 }
 
 function deletePlant(pid) {
@@ -1642,6 +1672,78 @@ function submitAddHistory(entityType, entityId) {
     const text = document.getElementById('f-text').value.trim();
     if (!text) return;
     db.history.push({ id: uuid(), entityType, entityId, date: document.getElementById('f-date').value, text, createdBy: currentUser() });
+    saveDB(); closeSheet(); render();
+}
+
+function openEditReminder(rid) {
+    const r = db.reminders.find(x => x.id === rid);
+    if (!r) return;
+    openSheet('Rediger påmindelse', `
+        <div class="form-body">
+            <div class="field"><label>Hvad skal gøres?</label><input id="f-text" value="${r.text.replace(/"/g,'&quot;')}" autofocus></div>
+            <div class="field-row">
+                <div class="field"><label>Dato</label><input id="f-date" type="date" value="${r.date}"></div>
+                <div class="field"><label>Gentagelse</label>
+                    <select id="f-repeat">
+                        <option value="none"${r.repeat==='none'?' selected':''}>Ingen</option>
+                        <option value="yearly"${r.repeat==='yearly'?' selected':''}>Hvert år</option>
+                        <option value="monthly"${r.repeat==='monthly'?' selected':''}>Hver måned</option>
+                    </select>
+                </div>
+            </div>
+            <div class="field"><label>Ansvarlig</label>
+                <select id="f-assign">
+                    <option value="alle"${r.assignedTo==='alle'?' selected':''}>👥 Alle</option>
+                    <option value="Steen"${r.assignedTo==='Steen'?' selected':''}>Steen</option>
+                    <option value="Linda"${r.assignedTo==='Linda'?' selected':''}>Linda</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn-primary" onclick="submitEditReminder('${rid}')">Gem ændringer</button>
+        <button class="btn-danger" onclick="doDeleteReminder('${rid}')">Slet påmindelse</button>`);
+}
+
+function submitEditReminder(rid) {
+    const r = db.reminders.find(x => x.id === rid);
+    if (!r) return;
+    const text = document.getElementById('f-text').value.trim();
+    if (!text) return;
+    r.text = text;
+    r.date = document.getElementById('f-date').value;
+    r.repeat = document.getElementById('f-repeat').value;
+    r.assignedTo = document.getElementById('f-assign').value;
+    saveDB(); closeSheet(); render();
+}
+
+function doDeleteReminder(rid) {
+    db.reminders = db.reminders.filter(x => x.id !== rid);
+    saveDB(); closeSheet(); render();
+}
+
+function openEditHistoryItem(hid) {
+    const h = db.history.find(x => x.id === hid);
+    if (!h) return;
+    openSheet('Rediger log-note', `
+        <div class="form-body">
+            <div class="field"><label>Dato</label><input id="f-date" type="date" value="${h.date}"></div>
+            <div class="field"><label>Hvad skete der?</label><textarea id="f-text">${h.text}</textarea></div>
+        </div>
+        <button class="btn-primary" onclick="submitEditHistory('${hid}')">Gem ændringer</button>
+        <button class="btn-danger" onclick="doDeleteHistory('${hid}')">Slet log-note</button>`);
+}
+
+function submitEditHistory(hid) {
+    const h = db.history.find(x => x.id === hid);
+    if (!h) return;
+    const text = document.getElementById('f-text').value.trim();
+    if (!text) return;
+    h.text = text;
+    h.date = document.getElementById('f-date').value;
+    saveDB(); closeSheet(); render();
+}
+
+function doDeleteHistory(hid) {
+    db.history = db.history.filter(x => x.id !== hid);
     saveDB(); closeSheet(); render();
 }
 
