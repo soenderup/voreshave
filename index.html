@@ -834,6 +834,14 @@ function zone(id) { return db.zones.find(z => z.id === id); }
 function plant(id) { return db.plants.find(p => p.id === id); }
 function zonePlants(zid) { return db.plants.filter(p => p.zoneId === zid); }
 function subZones(zid) { return db.zones.filter(z => z.parentZoneId === zid); }
+// En "direkte" zone er en ghost-zone der vises som element direkte under området
+function isDirectZone(zid) {
+    const z = zone(zid);
+    if (!z) return false;
+    if (z.isDirect) return true;
+    // Heuristik for eksisterende data: type 'andet', ingen beskrivelse, ingen underzoner, præcis 1 element
+    return z.type === 'andet' && !z.description && subZones(zid).length === 0 && zonePlants(zid).length === 1;
+}
 function entityReminders(type, id) { return db.reminders.filter(r => r.entityType === type && r.entityId === id); }
 function entityHistory(type, id) { return db.history.filter(h => h.entityType === type && h.entityId === id).sort((a,b) => b.date.localeCompare(a.date)); }
 
@@ -1024,19 +1032,55 @@ function renderHome() {
         </div>`;
     }
 
+    function directElementCard(z, p) {
+        const status = zoneStatus(z.id);
+        const badge = status === 'urgent'
+            ? `<span class="zone-badge">Handling krævet</span>`
+            : `<span class="zone-badge ok">OK</span>`;
+        const meta = [p.latinName, p.type].filter(Boolean).join(' · ');
+        const thumb = p.photo
+            ? `<img src="${p.photo}" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0">`
+            : `<span class="zone-icon">🌱</span>`;
+        return `<div class="zone-card" onclick="goTo('plant','${z.id}','${p.id}')">
+            <div class="zone-card-header">
+                <div class="zone-card-left">
+                    ${thumb}
+                    <div>
+                        <div class="zone-name">${p.name}${p.quantity > 1 ? ` <span style="color:var(--muted);font-weight:400;font-size:0.85rem">× ${p.quantity}</span>` : ''}</div>
+                        ${meta ? `<div class="zone-meta">${meta}</div>` : ''}
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.4rem">${badge}<span class="zone-arrow">›</span></div>
+            </div>
+        </div>`;
+    }
+
     const areasHTML = Object.entries(AREAS).map(([areaKey, area]) => {
         const zones = db.zones.filter(z => (z.area || 'baghave') === areaKey && !z.parentZoneId);
         if (zones.length === 0) return '';
         const collapsed = collapsedAreas.has(areaKey);
         const urgentInArea = zones.some(z => zoneStatus(z.id) === 'urgent');
+        const regularZones = zones.filter(z => !isDirectZone(z.id));
+        const directZones  = zones.filter(z => isDirectZone(z.id));
+        const countParts = [];
+        if (regularZones.length > 0) countParts.push(`${regularZones.length} zone${regularZones.length !== 1 ? 'r' : ''}`);
+        if (directZones.length  > 0) countParts.push(`${directZones.length} element${directZones.length !== 1 ? 'er' : ''}`);
+        const countStr = (countParts.join(' · ') || '0') + (urgentInArea ? ' · ⚠️' : '');
+        const zonesHTML = zones.map(z => {
+            if (isDirectZone(z.id)) {
+                const p = zonePlants(z.id)[0];
+                return p ? directElementCard(z, p) : zoneCard(z);
+            }
+            return zoneCard(z);
+        }).join('');
         return `<div class="area-group">
             <div class="area-header" onclick="toggleArea('${areaKey}')">
                 <span class="area-icon">${area.icon}</span>
                 <span class="area-title">${area.label}</span>
-                <span class="area-count">${zones.length} zone${zones.length !== 1 ? 'r' : ''}${urgentInArea ? ' · ⚠️' : ''}</span>
+                <span class="area-count">${countStr}</span>
                 <span class="area-chevron${collapsed ? ' closed' : ''}">▾</span>
             </div>
-            ${collapsed ? '' : `<div class="area-zones">${zones.map(zoneCard).join('')}</div>`}
+            ${collapsed ? '' : `<div class="area-zones">${zonesHTML}</div>`}
             ${!collapsed && canEdit() ? `<div style="padding:0.2rem 1rem 0.6rem;display:flex;gap:0.5rem">
                 <button class="section-add-btn" onclick="openAddDirectPlant('${areaKey}');event.stopPropagation()">+ Tilføj element</button>
             </div>` : ''}
@@ -2034,7 +2078,7 @@ function openAddDirectPlant(areaKey) {
 function submitAddDirectPlant(areaKey) {
     const name = document.getElementById('f-name').value.trim();
     if (!name) return;
-    const newZone = { id: uuid(), name, type: 'andet', area: areaKey, description: '', parentZoneId: null };
+    const newZone = { id: uuid(), name, type: 'andet', area: areaKey, description: '', parentZoneId: null, isDirect: true };
     db.zones.push(newZone);
     const qty2 = parseInt(document.getElementById('f-qty').value) || 1;
     const newPlant = {
@@ -2119,6 +2163,8 @@ function submitEditPlant(pid) {
     const oldLatin = p.latinName;
     const oldNote = p.note;
     const newZoneId = document.getElementById('f-zone')?.value;
+    const oldZoneId = p.zoneId;
+    const movingFromDirect = newZoneId && newZoneId !== oldZoneId && isDirectZone(oldZoneId);
     if (newZoneId) p.zoneId = newZoneId;
     p.name = document.getElementById('f-name').value.trim() || p.name;
     p.latinName = document.getElementById('f-latin').value.trim();
@@ -2128,6 +2174,10 @@ function submitEditPlant(pid) {
     p.plantedDate = document.getElementById('f-date').value;
     p.note = document.getElementById('f-note').value.trim();
     p.infoLink = document.getElementById('f-link').value.trim();
+    // Auto-slet tom direkte zone ved flytning
+    if (movingFromDirect && zonePlants(oldZoneId).length === 0) {
+        db.zones = db.zones.filter(z => z.id !== oldZoneId);
+    }
     saveDB(); closeSheet();
     goTo('plant', p.zoneId, pid);
     if (p.latinName !== oldLatin || p.note !== oldNote) fetchPlantInfo(pid);
@@ -2175,11 +2225,20 @@ function refreshPlantInfo(pid) {
 }
 
 function deletePlant(pid) {
-    if (!confirm('Slet denne plante?')) return;
-    db.plants = db.plants.filter(p => p.id !== pid);
+    if (!confirm('Slet dette element?')) return;
+    const p = plant(pid);
+    const zid = p?.zoneId;
+    const wasDirectZone = zid && isDirectZone(zid);
+    db.plants = db.plants.filter(x => x.id !== pid);
     db.reminders = db.reminders.filter(r => !(r.entityType === 'plant' && r.entityId === pid));
     db.history = db.history.filter(h => !(h.entityType === 'plant' && h.entityId === pid));
-    saveDB(); closeSheet(); goTo('zone', nav.zoneId);
+    // Auto-slet tom direkte zone
+    if (wasDirectZone && zonePlants(zid).length === 0) {
+        db.zones = db.zones.filter(z => z.id !== zid);
+        saveDB(); closeSheet(); goTo('home');
+    } else {
+        saveDB(); closeSheet(); goTo('zone', nav.zoneId);
+    }
 }
 
 function openAddReminder(entityType, entityId) {
