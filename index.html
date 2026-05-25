@@ -1651,8 +1651,9 @@ function openAddPlantFromIdentify() {
     const areaOptions = Object.entries(AREAS).map(([k,v]) =>
         `<option value="${k}"${k===defaultAreaKey?' selected':''}>${v.icon} ${v.label}</option>`
     ).join('');
-    const initialZones = db.zones.filter(z => (z.area||'baghave') === defaultAreaKey);
-    const zoneOptions = initialZones.map(z => `<option value="${z.id}">${z.name}</option>`).join('');
+    const initialZones = db.zones.filter(z => (z.area||'baghave') === defaultAreaKey && !z.isDirect);
+    const zoneOptions = '<option value="__direct__">— Direkte i området —</option>' +
+        initialZones.map(z => `<option value="${z.id}">${z.name}</option>`).join('');
     const types = PLANT_TYPES.map(t => `<option${t===r.type?' selected':''}>${t}</option>`).join('');
 
     openSheet('Opret element', `
@@ -1663,7 +1664,7 @@ function openAddPlantFromIdentify() {
             </div>
             <div class="field">
                 <label>Zone</label>
-                <select id="f-zone">${zoneOptions || '<option value="">Ingen zoner i dette område</option>'}</select>
+                <select id="f-zone">${zoneOptions}</select>
             </div>
             <div class="field"><label>Navn</label><input id="f-name" value="${r.name||''}" placeholder="F.eks. Lavendel"></div>
             <div class="field"><label>Latinsk navn</label><input id="f-latin" value="${r.latinName||''}" placeholder="F.eks. Lavandula angustifolia"></div>
@@ -1680,16 +1681,23 @@ function openAddPlantFromIdentify() {
 }
 
 function updateIdentifyZones(areaKey) {
-    const zones = db.zones.filter(z => (z.area||'baghave') === areaKey);
-    document.getElementById('f-zone').innerHTML = zones.length
-        ? zones.map(z => `<option value="${z.id}">${z.name}</option>`).join('')
-        : '<option value="">Ingen zoner i dette område</option>';
+    const zones = db.zones.filter(z => (z.area||'baghave') === areaKey && !z.isDirect);
+    const directOpt = '<option value="__direct__">— Direkte i området —</option>';
+    document.getElementById('f-zone').innerHTML = directOpt +
+        zones.map(z => `<option value="${z.id}">${z.name}</option>`).join('');
 }
 
 function submitAddPlantFromIdentify() {
     const name = document.getElementById('f-name').value.trim();
-    const zid  = document.getElementById('f-zone').value;
-    if (!name || !zid) return;
+    if (!name) return;
+    let zid = document.getElementById('f-zone').value;
+    if (zid === '__direct__') {
+        const areaKey = document.getElementById('f-area')?.value || 'baghave';
+        const dz = { id: uuid(), name, type: 'andet', area: areaKey, description: '', parentZoneId: null, isDirect: true };
+        db.zones.push(dz);
+        zid = dz.id;
+    }
+    if (!zid) return;
     const qty = parseInt(document.getElementById('f-qty').value) || 1;
     const photoBase64 = identifyState.imageDataUrl || null;
     const newPlant = {
@@ -2101,12 +2109,14 @@ function openEditPlant(pid) {
     if (!p) return;
     const currentZone = zone(p.zoneId);
     const currentAreaKey = currentZone?.area || 'baghave';
+    const currentlyDirect = isDirectZone(p.zoneId);
     const areaOptions = Object.entries(AREAS).map(([k,v]) =>
         `<option value="${k}"${k===currentAreaKey?' selected':''}>${v.icon} ${v.label}</option>`
     ).join('');
-    const zonesInArea = db.zones.filter(z => (z.area||'baghave') === currentAreaKey);
-    const zoneOptions = zonesInArea.map(z =>
-        `<option value="${z.id}"${z.id===p.zoneId?' selected':''}>${z.name}</option>`
+    const zonesInArea = db.zones.filter(z => (z.area||'baghave') === currentAreaKey && !z.isDirect);
+    const directOpt = `<option value="__direct__"${currentlyDirect?' selected':''}>— Direkte i området —</option>`;
+    const zoneOptions = directOpt + zonesInArea.map(z =>
+        `<option value="${z.id}"${!currentlyDirect && z.id===p.zoneId?' selected':''}>${z.name}</option>`
     ).join('');
     const zonePicker = `
         <div class="field">
@@ -2124,10 +2134,10 @@ function openEditPlant(pid) {
 }
 
 function updateEditZones(areaKey) {
-    const zones = db.zones.filter(z => (z.area||'baghave') === areaKey);
-    document.getElementById('f-zone').innerHTML = zones.length
-        ? zones.map(z => `<option value="${z.id}">${z.name}</option>`).join('')
-        : '<option value="">Ingen zoner i dette område</option>';
+    const zones = db.zones.filter(z => (z.area||'baghave') === areaKey && !z.isDirect);
+    const directOpt = '<option value="__direct__">— Direkte i området —</option>';
+    document.getElementById('f-zone').innerHTML = directOpt +
+        zones.map(z => `<option value="${z.id}">${z.name}</option>`).join('');
 }
 
 function duplicatePlant(pid) {
@@ -2165,7 +2175,15 @@ function submitEditPlant(pid) {
     const newZoneId = document.getElementById('f-zone')?.value;
     const oldZoneId = p.zoneId;
     const movingFromDirect = newZoneId && newZoneId !== oldZoneId && isDirectZone(oldZoneId);
-    if (newZoneId) p.zoneId = newZoneId;
+    if (newZoneId === '__direct__') {
+        const areaKey = document.getElementById('f-area')?.value || 'baghave';
+        const name = document.getElementById('f-name').value.trim() || p.name;
+        const dz = { id: uuid(), name, type: 'andet', area: areaKey, description: '', parentZoneId: null, isDirect: true };
+        db.zones.push(dz);
+        p.zoneId = dz.id;
+    } else if (newZoneId) {
+        p.zoneId = newZoneId;
+    }
     p.name = document.getElementById('f-name').value.trim() || p.name;
     p.latinName = document.getElementById('f-latin').value.trim();
     p.type = document.getElementById('f-type').value;
