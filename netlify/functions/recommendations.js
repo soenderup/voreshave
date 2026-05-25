@@ -36,7 +36,9 @@ exports.handler = async function (event) {
         `- EntityID:${r.entityId} | ${r.text} | Dato: ${r.date}`
     ).join('\n');
 
-    const prompt = `Du er en dansk haveekspert. Nedenfor er en liste over planter og haveelementer. Giv konkrete, månedsvise plejehandlinger for det kommende år baseret på dansk klima.
+    const prompt = `Du er en dansk haveekspert. Giv konkrete, månedsvise plejehandlinger for planterne og elementerne nedenfor baseret på dansk klima.
+
+Skriv i naturligt, hverdagsdansk som en erfaren dansk haveentusiast ville sige det. Undgå engelske låneord og tekniske termer. Eksempler på GOD tekst: "Fjern visne blomster", "Klip ned til 10 cm", "Gød med have-gødning", "Del planten op". Eksempler på DÅRLIG tekst: "Dødblom", "Deadhead", "Pinch out".
 
 PLANTER:
 ${plantLines || '(ingen)'}
@@ -52,7 +54,7 @@ Returner KUN et JSON-array uden forklaring eller markdown. Hvert objekt skal hav
 - entityId: ID fra listen ovenfor
 - entityName: navn på planten/elementet
 - months: array af månedsnumre (1-12) hvor handlingen skal udføres
-- text: kort, konkret handlingsbeskrivelse på dansk (maks 60 tegn)
+- text: kort, konkret handlingsbeskrivelse på naturligt dansk (maks 60 tegn)
 - repeat: altid "yearly"
 
 Medtag KUN handlinger der ikke allerede er dækket af eksisterende påmindelser. Maks 3 anbefalinger pr. element.`;
