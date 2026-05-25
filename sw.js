@@ -1,4 +1,4 @@
-const CACHE = 'vores-have-v3';
+const CACHE = 'vores-have-v4';
 const SHELL = ['/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png'];
 const HTML = ['/', '/index.html'];
 
