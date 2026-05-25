@@ -1441,7 +1441,7 @@ async function fetchRecommendations() {
         console.log('[REC] 4. fetch svar status:', res.status, 'ok?', res.ok);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        console.log('[REC] 5. data parsed. items:', data.items?.length, 'data:', data);
+        console.log('[REC] 5. data parsed. items:', data.items?.length, '_debug:', data._debug);
         db.recommendations = { generatedAt: new Date().toISOString().slice(0,10), items: data.items || [] };
         console.log('[REC] 6. db.recommendations sat:', db.recommendations);
         saveDB();
