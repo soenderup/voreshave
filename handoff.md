@@ -1,156 +1,47 @@
 # Handoff — Vores Have
-*Opdateret: 23. maj 2026 (aften)*
+*Opdateret: 25. maj 2026 (nat)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v2.6 på `https://voreshave.netlify.app`
-- **Foto-persistens VIRKER på Steens iPhone** via IndexedDB - overlever reload, deployment, app-genstart
-- **Fotos synker IKKE til Linda endnu** - de ligger kun lokalt på Steens enhed
-- **Cloud-billedlager er stadig uafklaret** - se "Hvad blev opdaget i dag" nedenfor
-
-## Hvad blev opdaget i dag (23. maj)
-
-### Foto-mysteriet løst (delvist)
-Fotos forsvandt hver gang en ny version blev pushet. Grundårsagen viste sig at være:
-1. Firebase Storage-uploaden fejlede stille (silent fejl) - se næste punkt
-2. saveDB() blev kun kaldt med URL'en fra Storage. Hvis Storage fejlede, blev intet gemt
-3. Photo lå kun i hukommelsen og forsvandt ved reload
-4. Forsøg på at gemme base64 i localStorage som backup fejlede på iOS Safari pga. kvote-grænser
-
-**Endelig løsning (v2.6):** IndexedDB. Robust på iOS Safari (50MB+ kvote), pålideligt. Fotos er nu gemt under nøgler som `zone-{id}` og `plant-{id}` i en IndexedDB-database kaldet `minhave-photos`. `photoCache` (en in-memory Map) loades ved opstart, og `mergeLocalPhotos()` flikker fotos ind i db-objektet ved hver opdatering fra Firestore.
-
-### Firebase Storage-bombe
-**handoff.md sagde tidligere at Blaze-planen var aktiveret. Det var FORKERT.** Projektet kørte på Spark-planen (gratis), hvor Storage slet ikke er tilgængeligt. Det er årsagen til at uploads har fejlet hele tiden - Storage findes simpelthen ikke.
-
-Steen opgraderede til Blaze i dag (Pay-as-you-go, eksisterende "Firebase Payment"-konto blev tilknyttet). Men da vi prøvede at oprette Storage-bucket bagefter, fik vi **403 Forbidden** i konsollen, selv efter 30 minutters ventetid. Det er enten:
-- Blaze-billing-propagering der tager længere tid (kan tage timer)
-- Cloud Storage API skal aktiveres manuelt i Google Cloud Console
-- Anden Google-bøvl
-
-### Vurderede alternativer til Firebase Storage
-- **Supabase** (1 GB foto, 500 MB DB, 5 GB trafik gratis, ingen kreditkort) - MEN: projektet pauser efter en uges inaktivitet og kræver manuel klik på supabase.com for at reaktivere. Reel ulempe.
-- **Cloudinary** (25 GB foto gratis, direkte browser-upload) - kun til billeder. Vi beholder Firestore til data.
-- **Cloudflare** (Pages + D1 + R2, alt samlet, ingen pause) - kræver mest omskrivning.
-- **Bliv på IndexedDB** - virker for Steen alene, Linda ser ikke fotos.
-
-## Hvad der skal afklares næste session
-
-1. **Prøv Firebase Storage igen i morgen** - Blaze-propagering har måske endelig sat sig. Hvis ja: vi sætter Storage-regler op (test mode → senere mere restriktive), og fotos uploades til skyen. Linda kan så også se dem.
-
-2. **Hvis Firebase Storage stadig fejler:** beslutning skal tages mellem:
-   - Cloudinary (kun fotos, ingen Google, ingen pause)
-   - Supabase (alt nyt, pause-irritation)
-   - Cloudflare (alt nyt, mere arbejde, men mest samlet)
-   - Steen er meget træt af Google-bureaukrati. Cloudinary er det letteste skift.
-
-3. **Migration fra IndexedDB:** Når cloud-storage virker, skal Steens nuværende fotos i IndexedDB uploades til skyen og URL'en gemmes i Firestore. Engangsoperation - kan klares med en lille "migrer fotos"-knap i appen.
-
-## Tekniske ændringer i dag (v1.8 → v2.6)
-
-- **v1.9-v2.2:** Forsøg på saveDB-rækkefølge og base64-fallback i Firestore - flere regressioner
-- **v2.3-v2.4:** localStorage-baseret foto-backup - fejlede på iOS Safari
-- **v2.5:** Skift til IndexedDB - virkede
-- **v2.6:** Test af deployment-overlevelse - bestået
-
-Vigtige kodeændringer (alle i `index.html`):
-- Tilføjet `photoCache`, `openPhotoDB()`, `loadPhotoCache()`, `savePhotoToIDB()`, `deletePhotoFromIDB()` (linje ~512+)
-- `mergeLocalPhotos()` bruger nu `photoCache` i stedet for `localStorage`
-- `doPickZonePhoto` og `doPickElementPhoto`: gemmer i IndexedDB via `savePhotoToIDB`
-- `deleteZonePhoto` og `deleteElementPhoto`: sletter fra IndexedDB
-- `saveDB()` pakket i try/catch så localStorage-fejl ikke crasher flowet
-- Boot-sekvens: `loadPhotoCache()` køres før `loadDB()` så cache er klar
+- **Live version:** v1.10 på `https://voreshave.soenderup.dk`
+- **Alt virker:** Foto-upload til Firebase Storage, data i Firestore, "Viden om" via Claude AI
+- **Firebase:** Nyt projekt på ny standard Gmail-konto (det gamle Google Workspace-problem er løst)
+- **Linda:** Kan installere appen og logge ind med sin PIN - alt synkroniserer
 
 ---
 
-## Hvad er lavet (samlet)
+## Hvad blev lavet i dag (24-25. maj)
 
-### App og design
-- Appen hedder **Vores Have** og er live på `https://voreshave.netlify.app`
-- Design: naturlig og varm (jordfarver, terrakotta, hvide kort)
-- Mobilvenlig, PWA — installeret på iPhone via Safari → "Føj til hjemmeskærm"
+### Firebase-skift (nyt projekt)
+Det gamle Firebase-projekt (`minhave-e9ab6`) kørte på en Google Workspace/familie-konto som gav 403-fejl på Storage. Løsning: ny standard Gmail-konto → nyt Firebase-projekt (`voreshave-5e7de`).
 
-### Struktur
-- **Haven → Zoner → Elementer** (to niveauer)
-- Zoner grupperet i **Forhave / Baghave / Terrasse / Indgange** — accordion, kun ét område åbent ad gangen
-- Alle Steens rigtige zoner er oprettet (27 stk)
+- Firestore data migreret via `saveDB()` i browser-konsollen
+- Firebase Storage virker nu - fotos uploades til skyen og ses på alle enheder
+- PINs sat op igen (de lå i separat Firestore-dokument der ikke var med i migreringen)
+- Blaze-plan aktiveret på det nye projekt
 
-### Funktioner
-- **Opret / rediger / slet** zoner og elementer (✏️ i header)
-- **Elementfelter:** navn, latinsk navn, type, plantet dato, note, info-link
-- **Foto per zone** — ét coverfoto. Tryk for tilføj/skift, × for slet
-- **Foto per element** — thumbnail i listen, lightbox ved tryk
-- **Påmindelser** — engangs eller tilbagevendende — med "Ansvarlig: Alle / Steen / Linda"
-- **Historik** — log per zone og element — fuldførte påmindelser flyttes automatisk hertil
-- **Kalender** — månedsoversigt med farvede prikker
-- **Snart / Nu** — urgent strip øverst på forsiden
-- **Brugerstyring** — Steen, Linda og Gæst med individuelle 6-cifrede PIN-koder
+### UI-ændringer
+- **Fast header:** Viser altid "🌿 Vores Have" uanset hvilken side man er på
+- **Zone/plante-navn:** Vises i lyst grønt banner i indholdet (ikke i headeren)
+- **CSS Grid layout:** Header og bundnavigation sidder fast - kun midten scroller
+- **Logo-klik:** Tryk på "🌿 Vores Have" navigerer til forsiden
+- **Kalender:** Klik på påmindelser og historik-noter åbner rediger/slet
+- **Måneds-navigation:** Sticky i kalenderen ved scroll
+- **"Note" → "Egne noter":** Omdøbt i plantevisning
 
-### Foto-persistens (nyt 23. maj)
-- **Lokal**: IndexedDB (`minhave-photos` database, `photos` object store)
-- **Sky**: Firebase Storage skal aktiveres - venter på Blaze-propagering
-- **Synk**: Endnu ikke - kun lokal Steen pt.
+### Viden om (AI-funktion)
+- Netlify Function (`netlify/functions/plant-info.js`) kalder Claude Haiku
+- Hentes automatisk når en plante åbnes uden `aiInfo` og har latinsk navn
+- Genindlæses hvis latinsk navn eller egne noter ændres ved redigering
+- API-nøgle gemt som secret i Netlify environment variables (`ANTHROPIC_API_KEY`)
+- Ny nøgle oprettet på console.anthropic.com (den gamle fra portrait-projektet virkede ikke)
 
-### PIN-system
-- Steen, Linda og Gæst har hver sin 6-cifrede PIN
-- PINs gemmes i Firestore (`voreshave/pins`) og caches i localStorage
-- Gæst-PIN giver read-only adgang
-- Sæt/skift PINs via S-knappen i headeren
-
-### Firebase-integration
-- **Firestore** (`voreshave/data`) — al havedata synkroniseres mellem enheder
-- **Firebase Storage** — IKKE i drift endnu (Blaze nu aktiveret, men bucket-oprettelse fejler med 403)
-- Firebase projekt: `minhave-e9ab6`, plan: **Blaze (Pay-as-you-go)** siden 23. maj
-
-### Teknisk
-- Rent HTML/CSS/JS — ingen frameworks
-- Firebase SDK 10.12.0 via CDN (compat-version)
-- localStorage-nøgler: `minhave-v3` (data-cache), `minhave-pins` (PIN-cache)
-- IndexedDB: `minhave-photos` database med `photos` store
-- GitHub: `github.com/soenderup/voreshave` → auto-deploy til Netlify
-- PWA: manifest.json + service worker
-
----
-
-## Hvad mangler — i prioriteret rækkefølge
-
-### 1. Sky-billedlager (kritisk - blokerer foto-deling med Linda)
-Beslut hvad der skal bruges:
-- Firebase Storage (hvis det virker i morgen efter Blaze-propagering)
-- Cloudinary (hvis Firebase fortsat fejler)
-- Supabase eller Cloudflare som større skifte
-
-### 2. Firestore sikkerhedsregler
-Firestore kører i "test mode" — alle kan læse/skrive i 30 dage fra oprettelse.
-Inden appen deles bredt skal reglerne strammes. Kræver Firebase Authentication (punkt 3).
-
-### 3. Firebase Authentication
-- Google Sign-In eller email/password for Steen og Linda
-- Erstatter PIN-løsningen helt på sigt
-
-### 4. Push-notifikationer på iPhone
-- Kræver Firebase Cloud Messaging (FCM) + opdateret service worker
-- iOS kræver PWA installeret på hjemmeskærmen
-
-### 5. Rediger og slet påmindelser og historik
-- Man kan i dag kun tilføje — ikke redigere
-
-### 6. Auto-forslag til info-links
-- Kræver et API-kald (f.eks. plantebasen.dk)
-
-### 7. Søgefunktion
-- Med 27 zoner kan det blive relevant
-
----
-
-## Ting der skal huskes
-
-- **Firebase plan**: Blaze (Pay-as-you-go) siden 23. maj 2026. "Firebase Payment"-billingkonto er tilknyttet. Du betaler kun ved overforbrug.
-- **Firestore test mode udløber** ~30 dage efter oprettelse — husk at opdatere sikkerhedsreglerne
-- **PIN-nulstilling:** Hvis en PIN glemmes, kan den sættes igen fra brugermenuen af den anden bruger
-- **Offline:** Appen fungerer offline med cached data
-- **Hvis foto-flytning til sky lykkes:** kør migrering af Steens IndexedDB-fotos op i skyen
+### Versionering rettet
+- Sprang fejlagtigt fra v1.8 til v2.0 i en tidligere session
+- Rettet tilbage til v1.x - nu på v1.10
+- Service worker cache bumped til `vores-have-v3`
 
 ---
 
@@ -158,33 +49,83 @@ Inden appen deles bredt skal reglerne strammes. Kræver Firebase Authentication 
 
 ```
 voreshave/
-├── index.html          ← hele appen
-├── manifest.json       ← PWA-manifest
-├── sw.js               ← Service worker (cache)
-├── icons/              ← App-ikoner
-├── scripts/            ← Dev-miljø
-├── CLAUDE.md           ← projektinstruktioner til Claude
-└── handoff.md          ← dette dokument
+├── index.html              ← hele appen (v1.10)
+├── manifest.json           ← PWA-manifest
+├── sw.js                   ← Service worker (cache: vores-have-v3)
+├── netlify.toml            ← Netlify config (Node 18, secrets-scanner slået fra)
+├── netlify/functions/
+│   └── plant-info.js       ← Claude Haiku - genererer "Viden om" tekst
+├── icons/                  ← App-ikoner
+├── scripts/                ← Dev-miljø (ikke deployed)
+├── CLAUDE.md               ← projektinstruktioner til Claude
+└── handoff.md              ← dette dokument
 ```
 
-**Firebase-struktur:**
+**Firebase (nyt projekt: voreshave-5e7de):**
 ```
 Firestore:
   voreshave/data    ← al havedata (zones, plants, reminders, history)
-  voreshave/pins    ← PIN-koder
+  voreshave/pins    ← PIN-koder (Steen, Linda, Gæst)
 
 Storage:
-  photos/{uuid}.jpg ← (KOMMER - mangler bucket)
+  photos/{uuid}.jpg ← zone- og elementfotos
 ```
 
-**Lokal foto-storage (IndexedDB):**
+**Netlify:**
+- Site: voreshave.netlify.app → voreshave.soenderup.dk
+- Environment variables: ANTHROPIC_API_KEY (secret), NODE_VERSION=18
+- Secrets scanning: slået fra (Firebase API-nøgle false positive)
+
+**Lokal foto-storage (IndexedDB - fallback):**
 ```
-minhave-photos (database)
-  photos (object store)
-    zone-{id}  ← base64 zonefoto
-    plant-{id} ← base64 elementfoto
+minhave-photos → photos store
+  zone-{id}   ← base64 zonefoto (backup hvis cloud fejler)
+  plant-{id}  ← base64 elementfoto
 ```
 
-**Dev-miljø:** `kode` → vælg `minhave` → server på `http://localhost:8766`
+---
 
-**Deploy:** `git push` → GitHub → Netlify auto-deploy. Spørg ALTID Claude inden push.
+## Hvad mangler — prioriteret
+
+### 1. Firestore sikkerhedsregler (vigtigt - deadline)
+Firestore kører i "test mode" — alle kan læse/skrive i **30 dage fra oprettelse** af det nye projekt (ca. 24. juni 2026). Inden da skal reglerne strammes til kun at tillade kendte brugere. Kræver Firebase Authentication.
+
+### 2. Firebase Authentication
+- Erstatter PIN-systemet på sigt
+- Email/password for Steen og Linda
+- Nødvendigt for at stramme Firestore-regler
+
+### 3. Rediger/slet påmindelser fra zone/plante-visning
+- I dag kan man kun redigere/slette fra kalenderen
+- Ville give bedre UX at kunne gøre det direkte på zonen/planten
+
+### 4. Push-notifikationer på iPhone
+- Kræver Firebase Cloud Messaging + opdateret service worker
+- iOS kræver PWA installeret på hjemmeskærmen
+
+### 5. Søgefunktion
+- Med 27 zoner kan det blive relevant
+
+---
+
+## Ting der skal huskes
+
+- **Firestore test mode udløber ~24. juni 2026** - husk sikkerhedsregler!
+- **Firebase plan:** Blaze (Pay-as-you-go) - betaler kun ved overforbrug
+- **Viden om:** Koster øre pr. opslag via Anthropic API (Claude Haiku er billigst)
+- **PIN-nulstilling:** Kan sættes igen fra S-menuen af enhver logget ind bruger
+- **Dev-miljø:** `kode` → vælg `minhave` → server på `http://localhost:8766`
+- **Deploy:** `git push` → GitHub → Netlify auto-deploy. Spørg ALTID Claude inden push.
+- **Cache:** Bump `sw.js` CACHE-konstant + VERSION i `index.html` ved større ændringer
+
+---
+
+## Brugeropsætning
+
+| Bruger | Adgang | PIN |
+|--------|--------|-----|
+| Steen  | Fuld   | Sat |
+| Linda  | Fuld   | Sat |
+| Gæst   | Læse   | Sat |
+
+Linda installerer appen: åbn `voreshave.soenderup.dk` i Safari → del-knap → "Føj til hjemmeskærm"
