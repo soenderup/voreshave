@@ -1971,10 +1971,11 @@ function deleteZone(zid) {
     else goTo('home');
 }
 
-function plantFormHTML(p = {}) {
+function plantFormHTML(p = {}, prefixHTML = '') {
     const types = PLANT_TYPES.map(t => `<option${p.type===t?' selected':''}>${t}</option>`).join('');
     return `
         <div class="form-body">
+            ${prefixHTML}
             <div class="field"><label>Navn</label><input id="f-name" value="${p.name||''}" placeholder="F.eks. Lavendel" autofocus></div>
             <div class="field"><label>Latinsk navn</label><input id="f-latin" value="${p.latinName||''}" placeholder="F.eks. Lavandula angustifolia"></div>
             <div class="field-row">
@@ -2037,10 +2038,35 @@ function submitAddDirectPlant(areaKey) {
 function openEditPlant(pid) {
     const p = plant(pid);
     if (!p) return;
-    openSheet('Rediger element', plantFormHTML(p) +
+    const currentZone = zone(p.zoneId);
+    const currentAreaKey = currentZone?.area || 'baghave';
+    const areaOptions = Object.entries(AREAS).map(([k,v]) =>
+        `<option value="${k}"${k===currentAreaKey?' selected':''}>${v.icon} ${v.label}</option>`
+    ).join('');
+    const zonesInArea = db.zones.filter(z => (z.area||'baghave') === currentAreaKey);
+    const zoneOptions = zonesInArea.map(z =>
+        `<option value="${z.id}"${z.id===p.zoneId?' selected':''}>${z.name}</option>`
+    ).join('');
+    const zonePicker = `
+        <div class="field">
+            <label>Område</label>
+            <select id="f-area" onchange="updateEditZones(this.value)">${areaOptions}</select>
+        </div>
+        <div class="field">
+            <label>Zone</label>
+            <select id="f-zone">${zoneOptions}</select>
+        </div>`;
+    openSheet('Rediger element', plantFormHTML(p, zonePicker) +
         `<button class="btn-primary" onclick="submitEditPlant('${pid}')">Gem ændringer</button>
          <button class="btn-secondary" onclick="duplicatePlant('${pid}')">Dubler element</button>
          <button class="btn-danger" onclick="deletePlant('${pid}')">Slet element</button>`);
+}
+
+function updateEditZones(areaKey) {
+    const zones = db.zones.filter(z => (z.area||'baghave') === areaKey);
+    document.getElementById('f-zone').innerHTML = zones.length
+        ? zones.map(z => `<option value="${z.id}">${z.name}</option>`).join('')
+        : '<option value="">Ingen zoner i dette område</option>';
 }
 
 function duplicatePlant(pid) {
@@ -2075,6 +2101,8 @@ function submitEditPlant(pid) {
     if (!p) return;
     const oldLatin = p.latinName;
     const oldNote = p.note;
+    const newZoneId = document.getElementById('f-zone')?.value;
+    if (newZoneId) p.zoneId = newZoneId;
     p.name = document.getElementById('f-name').value.trim() || p.name;
     p.latinName = document.getElementById('f-latin').value.trim();
     p.type = document.getElementById('f-type').value;
@@ -2083,7 +2111,8 @@ function submitEditPlant(pid) {
     p.plantedDate = document.getElementById('f-date').value;
     p.note = document.getElementById('f-note').value.trim();
     p.infoLink = document.getElementById('f-link').value.trim();
-    saveDB(); closeSheet(); render();
+    saveDB(); closeSheet();
+    goTo('plant', p.zoneId, pid);
     if (p.latinName !== oldLatin || p.note !== oldNote) fetchPlantInfo(pid);
 }
 
