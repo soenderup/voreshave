@@ -1454,7 +1454,7 @@ function renderIdentify() {
 
     const uploadHTML = `
         <div class="identify-upload-area" onclick="document.getElementById('identify-file').click()" id="identify-dropzone">
-            <input type="file" id="identify-file" accept="image/*" capture="environment"
+            <input type="file" id="identify-file" accept="image/*"
                 style="display:none" onchange="previewIdentifyImage(this)">
             ${hasImage
                 ? `<img src="${identifyState.imageDataUrl}" alt="Valgt billede">
