@@ -1,90 +1,80 @@
 # Handoff — Vores Have
-*Opdateret: 25. maj 2026 (dag 2)*
+*Opdateret: 25. maj 2026 (dag 2 - aften)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
 - **Live version:** v1.10 på `https://voreshave.soenderup.dk`
-- **Næsten alt virker** - se undtagelse nedenfor
-- **🔴 Anbefalinger virker ikke:** Knappen "Tjek for nye" gør tilsyneladende ingenting. Netlify-funktionen virker fint (testet direkte med curl - returnerer korrekt JSON). Problemet er i klienten. Tre fixes er forsøgt, ingen har virket endnu. Ny session skal debugge dette.
+- **Alt virker** - anbefalinger-bugget er fundet og fikset i aften
+- **Næste session:** ny funktion til planteidentifikation (se nederst)
 
 ---
 
-## Hvad blev lavet i dag (25. maj - dag 2)
+## Aftenens arbejde - anbefalinger-bug FIKSET
 
-### UI-forbedringer
-- **Antal-felt** på elementer (vises som "× N" i listen, "N stk." i detaljevisning)
-- **Ny zone-type:** Rum/værelse 🏠
-- **Nyt område:** Indendørs 🪴
-- **Omdøbte typer:** Sten-bed → Stenbed, Terrasse-bed → Terrassebed, Altankasse → Bedopsats
-- **Thumbnails** samme størrelse (110×78px) i liste og detaljevisning
-- **Dubler-funktion** på elementer (kopierer alt inkl. billede, historik, påmindelser)
-- **Tilføj element direkte fra område** på forsiden (auto-opretter zone med samme navn)
+**Årsag:** Netlify-funktionens `max_tokens: 2000` var for lavt. Med 30 planter i prompten genererede Claude mere JSON-output end der kunne være i 2000 tokens. JSON-arrayet blev afkortet (4381 tegn ind), og `JSON.parse` fejlede med "Unexpected end of JSON input". Funktionen slugte fejlen og returnerede `{items: []}` - derfor "Tjek for nye gør ingenting".
 
-### Opmærksomhedsflag på historiknoter
-- Checkbox "Kræver opmærksomhed" når man logger en ny note
-- Kun ét flag pr. element ad gangen - ny log rydder altid det gamle flag
-- Vises som rød badge på elementet og som rød "⚑ Kræver opmærksomhed"-tag i zonelisten
-- Forsidesektionen "Kræver opmærksomhed (x)" - kollapsibel, klikbar, åbner historikfanen
+**Diagnose:** Tilføjede midlertidig `console.log`-debugging gennem hele flowet + `_debug`-felt i Netlify-funktionen der returnerede stage (api-error / no-json-match / json-parse-fail / ok) + stop_reason. På live så vi straks:
+```
+stage: "json-parse-fail", stopReason: "max_tokens", error: "Unexpected end of JSON input"
+```
 
-### Påmindelsesindikator i zonelisten
-- 🔔 gul tag: påmindelse inden for 7 dage
-- ⚠ rød tag: forfalden påmindelse
-- Vises direkte under elementnavnet i zonevisningen
+**Fix:** Hævet `max_tokens` til 8000 i `netlify/functions/recommendations.js`. Claude Haiku 4.5 understøtter op til 8192 output tokens.
 
-### Forside-strips
-- Begge strips (Kræver opmærksomhed + Påmindelser) er nu kollapsible
-- Klik på strip-header folder ud/ind
-- Klik på enkelt element navigerer til korrekt fane (historik / påmindelser)
+**Bonus-forbedringer (beholdt):**
+- Null-safe payload-konstruktion i klienten (`db.plants || []` osv.)
+- Granulær try/catch omkring JSON.parse i Netlify-funktionen
+- Bedre error-logging i Netlify console (uden at lække debug til klient)
 
-### Slet-knapper
-- Diskret × på historiknoter (kun Steen)
-- Diskret × på kalendervisningens noter og påmindelser (kun Steen)
-
-### Permissions (Gæst / Linda / Steen)
-Erstattet `!isGuest()` med `canEdit()` og `canLog()`:
-
-| | Gæst | Linda | Steen |
-|---|---|---|---|
-| Se alt | ✓ | ✓ | ✓ |
-| Tilføj noter & påmindelser | - | ✓ | ✓ |
-| Fuldfør påmindelser (✓) | - | ✓ | ✓ |
-| Anbefalinger (se + hente) | - | ✓ | ✓ |
-| Opret/rediger/slet zoner & elementer | - | - | ✓ |
-| Fotos | - | - | ✓ |
-| Slet noter & påmindelser | - | - | ✓ |
-| PIN-administration | - | - | ✓ |
-
-### Anbefalinger (💡 ny fane)
-- Ny bundmenu-fane: 💡 Anbefalinger
-- Netlify function: `netlify/functions/recommendations.js` (Claude Haiku)
-- Sender alle planter + relevante zoner (hæk, græsplæne, træ, busk) + eksisterende påmindelser
-- Returnerer månedsvise plejeråd som JSON
-- "+ Påmindelse"-knap sætter dato til 1. i måneden, yearly gentagelse
-- "✓ Planlagt" hvis der allerede er påmindelse inden for ±1 måned
-- **Gemmes kun i localStorage** (ikke Firestore - for at undgå at onSnapshot overskriver)
-
-### Versionsnummer
-- Fjernet fra bundmenu
-- Vises nu diskret i brugermenuen (S-knappen) nederst
+**Commits i aften:**
+- `800427b` debug: tilføj midlertidig logging til anbefalinger
+- `5df8128` debug: returner _debug-info fra recommendations-funktion
+- `4a6965b` fix: hæv max_tokens fra 2000 til 8000 i anbefalinger
+- `6ced1c4` chore: fjern debug-logs fra anbefalinger
 
 ---
 
-## 🔴 Anbefalinger - hvad der er forsøgt
+## ⚠ Steen skal tjekke i næste session
 
-Netlify-funktionen virker (bekræftet med curl - returnerer korrekte anbefalinger).
+**Virker anbefalingerne som ønsket?**
+- Er rådene relevante for danske haver i de rigtige måneder?
+- Er der dubletter med eksisterende påmindelser?
+- Er teksten kort og handlingsorienteret nok (maks 60 tegn-grænsen overholdt)?
+- Er der nok / for mange anbefalinger pr. element?
 
-**Forsøg 1:** Første implementering - onclick-bug: `JSON.stringify` producerede dobbelt-anførselstegn i HTML-attribut → ødelagde HTML-parsing
-**Forsøg 2:** `onSnapshot` overskrev `db.recommendations` - tilføjede bevarelseskode (`if (!db.recommendations && prevRec)`)
-**Forsøg 3:** Fjernede `recommendations` fra Firestore helt - gemmes nu kun i localStorage. `onSnapshot` gendanner altid fra in-memory `db.recommendations`. loadDB henter fra localStorage.
+Hvis ja → så er anbefalinger-funktionen helt færdig.
+Hvis nej → juster prompt i `netlify/functions/recommendations.js`.
 
-**Hvad der skal debugges i ny session:**
-- Åbn Safari → Develop → Vis JavaScript-konsol på voreshave.soenderup.dk
-- Tryk "Tjek for nye" og se hvad der logges
-- Tjek om `fetchRecommendations` overhovedet kører (netværksfejl? JS-fejl?)
-- Tjek om `db.recommendations.items` sættes korrekt efter API-kald
-- Mulig årsag: `render()` kaldes fra `onSnapshot` og overskriver siden før `fetchRecommendations` er færdig
+---
+
+## 🆕 Idé til ny funktion - planteidentifikation
+
+**Koncept:** "Identificer denne plante/busk/træ" - tag billede → AI identificerer → opret element direkte derfra.
+
+**Skitse:**
+1. Ny knap fx på forsiden eller i zone-visningen: 📸 "Identificer plante"
+2. Brugeren tager/uploader billede
+3. Billedet sendes til Claude (Haiku eller Sonnet med vision)
+4. Claude returnerer: navn (dansk), latinsk navn, type (Stauder/Busk/Træ etc.), kort beskrivelse, confidence
+5. Brugeren ser forslaget med billede + info
+6. Hvis korrekt: ét tryk for at oprette element (med billede, navn, latinsk navn, type pre-udfyldt) - skal kunne vælge zone
+7. Hvis forkert: kassér / prøv igen
+
+**Tekniske overvejelser:**
+- Ny Netlify function: `netlify/functions/identify-plant.js`
+- Brug Claude Sonnet 4.6 (`claude-sonnet-4-6`) for bedre vision - Haiku kan også lave vision men er mindre præcis på arter
+- Billede sendes base64-encoded (eller via Anthropic Files API ved store billeder)
+- Returner struktureret JSON med felter: `name`, `latinName`, `type`, `confidence` (0-1), `description`, `notRecognized` (boolean)
+- Confidence-threshold: hvis < 0.6, vis "Usikker - tjek selv" advarsel
+- Pris: vision-kald koster mere end tekst - overvej caching eller brugsstatistik
+
+**UI-flow forslag:**
+- Modal/sheet med billede øverst + identifikations-resultat under
+- Knapper: "Opret som element" / "Prøv igen med nyt billede" / "Annullér"
+- Ved "Opret": dropdown til zone-valg + redigerbare felter (forudfyldt)
+
+**Permissions:** Antagelig kun `canEdit()` (Steen) - kan diskuteres om Linda også skal kunne det.
 
 ---
 
@@ -125,23 +115,26 @@ Storage:
 
 ## Hvad mangler — prioriteret
 
-### 1. 🔴 Anbefalinger debug (akut)
+### 1. Steen tjekker anbefalinger giver mening
 Se sektion ovenfor.
 
-### 2. Firestore sikkerhedsregler (deadline ~24. juni 2026)
+### 2. Ny funktion: planteidentifikation via foto
+Se idé-sektion ovenfor.
+
+### 3. Firestore sikkerhedsregler (deadline ~24. juni 2026)
 Firestore kører i "test mode" - alle kan læse/skrive. Kræver Firebase Authentication.
 
-### 3. Firebase Authentication
+### 4. Firebase Authentication
 - Erstatter PIN-systemet på sigt
 - Email/password for Steen og Linda
 
-### 4. Rediger/slet påmindelser fra zone/plante-visning
+### 5. Rediger/slet påmindelser fra zone/plante-visning
 Kun muligt fra kalenderen i dag.
 
-### 5. Push-notifikationer på iPhone
+### 6. Push-notifikationer på iPhone
 Kræver Firebase Cloud Messaging + opdateret service worker.
 
-### 6. Søgefunktion
+### 7. Søgefunktion
 Med mange zoner kan det blive relevant.
 
 ---
@@ -152,6 +145,7 @@ Med mange zoner kan det blive relevant.
 - **Firebase plan:** Blaze (Pay-as-you-go)
 - **Viden om + Anbefalinger:** Koster øre pr. opslag via Anthropic API (Claude Haiku)
 - **Dev-miljø:** `kode` → vælg `minhave` → server på `http://localhost:8766`
+- **Lokal server understøtter IKKE POST** - Netlify-funktioner kan kun testes på live (eller via `netlify dev` der ikke er sat op endnu)
 - **Deploy:** `git push` → GitHub → Netlify auto-deploy. Spørg ALTID Claude inden push.
 - **Cache:** Bump `sw.js` CACHE-konstant + VERSION i `index.html` ved større ændringer
 - **Anbefalinger gemmes i localStorage** - de forsvinder hvis man rydder browser-data
