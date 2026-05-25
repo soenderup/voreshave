@@ -377,7 +377,7 @@
             letter-spacing: 0.04em; text-transform: uppercase;
         }
         .nav-btn .nav-icon { font-size: 1.2rem; line-height: 1; }
-        .nav-version { display: flex; align-items: center; font-size: 0.55rem; color: var(--muted); opacity: 0.5; letter-spacing: 0.03em; }
+
         .nav-btn.active { color: var(--green-dark); }
 
         /* ── KALENDER ── */
@@ -482,7 +482,7 @@
     <button class="nav-btn active" id="nav-home" onclick="goTo('home')">
         <span class="nav-icon">🏡</span>Haven
     </button>
-    <div class="nav-version" id="nav-version"></div>
+
     <button class="nav-btn" id="nav-calendar" onclick="goTo('calendar')">
         <span class="nav-icon">📅</span>Kalender
     </button>
@@ -630,6 +630,8 @@ function mergeLocalPhotos() {
 }
 
 async function loadDB() {
+    const localRaw = localStorage.getItem('minhave-v3');
+    const localRec = localRaw ? (JSON.parse(localRaw).recommendations || null) : null;
     try {
         const snap = await DATA_REF.get();
         if (snap.exists) {
@@ -638,19 +640,20 @@ async function loadDB() {
             seedDB();
             await DATA_REF.set(db);
         }
+        db.recommendations = localRec || { generatedAt: null, items: [] };
         mergeLocalPhotos();
         localStorage.setItem('minhave-v3', JSON.stringify(db));
     } catch (e) {
-        const raw = localStorage.getItem('minhave-v3');
-        if (raw) db = JSON.parse(raw);
+        if (localRaw) db = JSON.parse(localRaw);
         else seedDB();
+        if (!db.recommendations) db.recommendations = { generatedAt: null, items: [] };
         mergeLocalPhotos();
     }
     DATA_REF.onSnapshot({ includeMetadataChanges: true }, snap => {
         if (snap.exists && !snap.metadata.hasPendingWrites) {
-            const prevRec = db.recommendations;
+            const savedRec = db.recommendations;
             db = snap.data();
-            if (!db.recommendations && prevRec) db.recommendations = prevRec;
+            db.recommendations = savedRec || { generatedAt: null, items: [] };
             mergeLocalPhotos();
             localStorage.setItem('minhave-v3', JSON.stringify(db));
             if (sessionStorage.getItem('minhave-unlocked') === '1') render();
@@ -660,7 +663,8 @@ async function loadDB() {
 
 function saveDB() {
     try { localStorage.setItem('minhave-v3', JSON.stringify(db)); } catch (e) { console.warn('localStorage write failed:', e); }
-    DATA_REF.set(db).catch(console.error);
+    const { recommendations: _rec, ...dbForFirestore } = db;
+    DATA_REF.set(dbForFirestore).catch(console.error);
 }
 
 async function loadPins() {
@@ -2186,7 +2190,7 @@ function openUserMenu() {
             ` : ''}
             <button class="btn-primary" style="margin:0;background:var(--terra)" onclick="lockApp()">Lås appen</button>
         </div>
-        <div style="height:1rem"></div>`);
+        <div style="padding:1.2rem 1.2rem 0.5rem;text-align:center;font-size:0.65rem;color:var(--muted);opacity:0.6">Vores Have v${VERSION}</div>`);
 }
 
 function lockApp() {
@@ -2203,7 +2207,6 @@ if ('serviceWorker' in navigator) {
 
 // ── BOOT ──
 loadPhotoCache().then(() => Promise.all([loadDB(), loadPins()])).then(() => { if (checkAccess()) render(); });
-document.getElementById('nav-version').textContent = `v${VERSION}`;
 </script>
 </body>
 </html>
