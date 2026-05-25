@@ -1481,7 +1481,7 @@ function renderIdentify() {
         <button class="btn-primary" id="identify-btn"
             onclick="identifyPlant()"
             ${!hasImage ? 'disabled style="opacity:0.45"' : ''}>
-            🔍 Identificer plante
+            🔍 Identificer
         </button>`;
 
     let resultHTML = '';
@@ -1510,7 +1510,7 @@ function renderIdentify() {
                     <div class="identify-confidence ${confClass}">${confLabel} (${confPct}%)</div>
                     ${result.description ? `<div class="identify-result-desc">${result.description}</div>` : ''}
                     <div class="identify-actions">
-                        ${canEdit() ? `<button class="btn-primary" onclick="openAddPlantFromIdentify()">+ Opret element i haven</button>` : ''}
+                        ${canEdit() ? `<button class="btn-primary" onclick="openAddPlantFromIdentify()">+ Opret element</button>` : ''}
                         <button class="btn-secondary" onclick="resetIdentify()">↩ Prøv igen</button>
                     </div>
                 </div>`;
@@ -1519,7 +1519,7 @@ function renderIdentify() {
 
     return `<div class="identify-wrap">
         <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--brown);margin-bottom:1rem">
-            Planteidentifikation via foto
+            Identifikation via foto
         </div>
         ${uploadHTML}
         ${hintHTML}
@@ -1594,14 +1594,25 @@ function resetIdentify() {
 function openAddPlantFromIdentify() {
     const r = identifyState.result;
     if (!r || r.notRecognized) return;
-    const zones = db.zones;
-    const zoneOptions = zones.map(z => `<option value="${z.id}">${z.name}</option>`).join('');
+
+    // Default til første område der har zoner, ellers første område
+    const defaultAreaKey = Object.keys(AREAS).find(k => db.zones.some(z => (z.area||'baghave') === k)) || Object.keys(AREAS)[0];
+    const areaOptions = Object.entries(AREAS).map(([k,v]) =>
+        `<option value="${k}"${k===defaultAreaKey?' selected':''}>${v.icon} ${v.label}</option>`
+    ).join('');
+    const initialZones = db.zones.filter(z => (z.area||'baghave') === defaultAreaKey);
+    const zoneOptions = initialZones.map(z => `<option value="${z.id}">${z.name}</option>`).join('');
     const types = PLANT_TYPES.map(t => `<option${t===r.type?' selected':''}>${t}</option>`).join('');
+
     openSheet('Opret element', `
         <div class="form-body">
             <div class="field">
+                <label>Område</label>
+                <select id="f-area" onchange="updateIdentifyZones(this.value)">${areaOptions}</select>
+            </div>
+            <div class="field">
                 <label>Zone</label>
-                <select id="f-zone">${zoneOptions}</select>
+                <select id="f-zone">${zoneOptions || '<option value="">Ingen zoner i dette område</option>'}</select>
             </div>
             <div class="field"><label>Navn</label><input id="f-name" value="${r.name||''}" placeholder="F.eks. Lavendel"></div>
             <div class="field"><label>Latinsk navn</label><input id="f-latin" value="${r.latinName||''}" placeholder="F.eks. Lavandula angustifolia"></div>
@@ -1615,6 +1626,13 @@ function openAddPlantFromIdentify() {
         </div>
         <button class="btn-primary" onclick="submitAddPlantFromIdentify()">Tilføj element</button>
     `);
+}
+
+function updateIdentifyZones(areaKey) {
+    const zones = db.zones.filter(z => (z.area||'baghave') === areaKey);
+    document.getElementById('f-zone').innerHTML = zones.length
+        ? zones.map(z => `<option value="${z.id}">${z.name}</option>`).join('')
+        : '<option value="">Ingen zoner i dette område</option>';
 }
 
 function submitAddPlantFromIdentify() {
