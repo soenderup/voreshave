@@ -650,18 +650,25 @@ async function loadDB() {
         mergeLocalPhotos();
     }
     DATA_REF.onSnapshot({ includeMetadataChanges: true }, snap => {
+        console.log('[REC] onSnapshot fired. hasPendingWrites:', snap.metadata.hasPendingWrites, 'fromCache:', snap.metadata.fromCache);
         if (snap.exists && !snap.metadata.hasPendingWrites) {
             const savedRec = db.recommendations;
+            console.log('[REC] onSnapshot: savedRec items før overskrivning:', savedRec?.items?.length);
             db = snap.data();
             db.recommendations = savedRec || { generatedAt: null, items: [] };
+            console.log('[REC] onSnapshot: db.recommendations efter genoprettelse:', db.recommendations?.items?.length);
             mergeLocalPhotos();
             localStorage.setItem('minhave-v3', JSON.stringify(db));
-            if (sessionStorage.getItem('minhave-unlocked') === '1') render();
+            if (sessionStorage.getItem('minhave-unlocked') === '1') {
+                console.log('[REC] onSnapshot kalder render()');
+                render();
+            }
         }
     });
 }
 
 function saveDB() {
+    console.log('[REC] saveDB: db.recommendations.items:', db.recommendations?.items?.length);
     try { localStorage.setItem('minhave-v3', JSON.stringify(db)); } catch (e) { console.warn('localStorage write failed:', e); }
     const { recommendations: _rec, ...dbForFirestore } = db;
     DATA_REF.set(dbForFirestore).catch(console.error);
@@ -1411,32 +1418,41 @@ function renderRecommendations() {
 let recError = null;
 
 async function fetchRecommendations() {
+    console.log('[REC] 1. fetchRecommendations kaldt');
     recError = null;
     const btn = document.getElementById('rec-btn');
+    console.log('[REC] 2. btn fundet?', !!btn);
     if (btn) { btn.textContent = 'Henter...'; btn.disabled = true; }
 
-    const relevantZoneTypes = ['hæk','græsplæne','træ','busk'];
-    const payload = {
-        plants: db.plants.map(p => ({ id: p.id, name: p.name, latinName: p.latinName, type: p.type })),
-        zones: db.zones.filter(z => relevantZoneTypes.includes(z.type)).map(z => ({ id: z.id, name: z.name, type: z.type })),
-        reminders: db.reminders.map(r => ({ entityId: r.entityId, text: r.text, date: r.date })),
-    };
-
     try {
+        const relevantZoneTypes = ['hæk','græsplæne','træ','busk'];
+        const payload = {
+            plants: (db.plants || []).map(p => ({ id: p.id, name: p.name, latinName: p.latinName, type: p.type })),
+            zones: (db.zones || []).filter(z => relevantZoneTypes.includes(z.type)).map(z => ({ id: z.id, name: z.name, type: z.type })),
+            reminders: (db.reminders || []).map(r => ({ entityId: r.entityId, text: r.text, date: r.date })),
+        };
+        console.log('[REC] 3. payload bygget. plants:', payload.plants.length, 'zones:', payload.zones.length, 'reminders:', payload.reminders.length);
+
         const res = await fetch('/.netlify/functions/recommendations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
+        console.log('[REC] 4. fetch svar status:', res.status, 'ok?', res.ok);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        console.log('[REC] 5. data parsed. items:', data.items?.length, 'data:', data);
         db.recommendations = { generatedAt: new Date().toISOString().slice(0,10), items: data.items || [] };
+        console.log('[REC] 6. db.recommendations sat:', db.recommendations);
         saveDB();
+        console.log('[REC] 7. saveDB kaldt');
     } catch (e) {
-        console.error('Anbefalinger fejl:', e);
+        console.error('[REC] X. Anbefalinger fejl:', e);
         recError = 'Kunne ikke hente anbefalinger – prøv igen.';
     }
+    console.log('[REC] 8. kalder render(). db.recommendations.items:', db.recommendations?.items?.length);
     render();
+    console.log('[REC] 9. render() færdig. nav.view:', nav.view);
 }
 
 function addRecommendationAsReminder(entityType, entityId, date, text) {
