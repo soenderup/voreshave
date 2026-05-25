@@ -98,6 +98,18 @@ Medtag KUN handlinger der ikke allerede er dækket af eksisterende påmindelser.
             return { statusCode: 200, body: JSON.stringify({ items: [] }) };
         }
 
+        // Erstat kendte uønskede termer med naturligt dansk
+        const replacements = [
+            [/dødblom\w*/gi, 'fjern visne blomster'],
+            [/deadhead\w*/gi, 'fjern visne blomster'],
+            [/pinch\s*out/gi, 'knib skuddene'],
+            [/mulch\w*/gi, 'dæk med kompost'],
+        ];
+        items = items.map(item => ({
+            ...item,
+            text: replacements.reduce((t, [pattern, replacement]) => t.replace(pattern, replacement), item.text),
+        }));
+
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
