@@ -361,6 +361,55 @@
         .assignee-chip.steen { background: var(--green-light); color: var(--green-mid); }
         .assignee-chip.linda { background: #f0e8f8; color: #7b4fa6; }
 
+        /* ── IDENTIFY VIEW ── */
+        .identify-wrap { padding: 1.2rem 1rem 2rem; }
+        .identify-upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            background: var(--white);
+            min-height: 200px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 0.6rem; cursor: pointer; overflow: hidden;
+            transition: border-color 0.2s;
+            position: relative;
+        }
+        .identify-upload-area:active { border-color: var(--green-mid); }
+        .identify-upload-area img { width: 100%; height: 220px; object-fit: cover; border-radius: 14px; }
+        .identify-upload-icon { font-size: 2.8rem; }
+        .identify-upload-label { font-size: 0.9rem; color: var(--muted); text-align: center; line-height: 1.4; }
+        .identify-upload-change {
+            position: absolute; bottom: 0.6rem; right: 0.6rem;
+            background: rgba(0,0,0,0.55); color: white;
+            border: none; border-radius: 8px; padding: 0.3rem 0.7rem;
+            font-size: 0.75rem; cursor: pointer;
+        }
+        .identify-result-card {
+            background: var(--white); border-radius: 16px;
+            border: 1px solid var(--border); overflow: hidden; margin-top: 1.2rem;
+        }
+        .identify-result-header { padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); }
+        .identify-result-name { font-size: 1.15rem; font-weight: 700; color: var(--text); }
+        .identify-result-latin { font-size: 0.85rem; color: var(--muted); font-style: italic; margin-top: 0.15rem; }
+        .identify-result-type {
+            display: inline-block; font-size: 0.72rem; font-weight: 600;
+            padding: 0.2rem 0.6rem; border-radius: 20px;
+            background: var(--green-light); color: var(--green-dark); margin-top: 0.5rem;
+        }
+        .identify-confidence {
+            display: flex; align-items: center; gap: 0.5rem;
+            font-size: 0.8rem; font-weight: 600; padding: 0.65rem 1.2rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .identify-confidence.high { color: var(--green-dark); }
+        .identify-confidence.medium { color: var(--terra); }
+        .identify-confidence.low { color: #c0392b; }
+        .identify-result-desc {
+            padding: 0.9rem 1.2rem; font-size: 0.9rem;
+            line-height: 1.5; color: var(--text); border-bottom: 1px solid var(--border);
+        }
+        .identify-actions { padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: 0.6rem; }
+
         /* ── BOTTOM NAV ── */
         #bottom-nav {
             grid-area: nav;
@@ -483,6 +532,10 @@
         <span class="nav-icon">🏡</span>Haven
     </button>
 
+    <button class="nav-btn" id="nav-identify" onclick="goTo('identify')">
+        <span class="nav-icon">📸</span>Identificer
+    </button>
+
     <button class="nav-btn" id="nav-calendar" onclick="goTo('calendar')">
         <span class="nav-icon">📅</span>Kalender
     </button>
@@ -515,7 +568,7 @@ firebase.initializeApp({
 });
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
-const VERSION = '1.12';
+const VERSION = '1.13';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
@@ -530,6 +583,7 @@ let collapsedAreas = new Set(Object.keys({ forhave:1, baghave:1, terrasse:1, ind
 let urgentOpen = false;
 let attentionOpen = false;
 let pins = {};
+let identifyState = { imageDataUrl: null, result: null };
 
 // ── DATA ──
 let db = { zones: [], plants: [], reminders: [], history: [] };
@@ -860,15 +914,16 @@ function render() {
     const sub = document.getElementById('header-sub');
 
     const editBtn = document.getElementById('edit-btn');
-    const isTop = nav.view === 'home' || nav.view === 'calendar';
+    const isTop = nav.view === 'home' || nav.view === 'calendar' || nav.view === 'identify';
     backBtn.style.display = isTop ? 'none' : 'block';
     editBtn.style.display = (nav.view === 'zone' || nav.view === 'plant') && canEdit() ? 'flex' : 'none';
-    const showAdd = nav.view !== 'calendar' &&
+    const showAdd = nav.view !== 'calendar' && nav.view !== 'identify' &&
         (canEdit() || (canLog() && nav.view === 'plant'));
     addBtn.style.display = showAdd ? 'flex' : 'none';
 
     // Bottom nav active state
-    document.getElementById('nav-home').classList.toggle('active', nav.view !== 'calendar');
+    document.getElementById('nav-home').classList.toggle('active', nav.view !== 'calendar' && nav.view !== 'identify');
+    document.getElementById('nav-identify').classList.toggle('active', nav.view === 'identify');
     document.getElementById('nav-calendar').classList.toggle('active', nav.view === 'calendar');
 
     // Bruger-knap
@@ -886,6 +941,8 @@ function render() {
         app.innerHTML = renderHome();
     } else if (nav.view === 'calendar') {
         app.innerHTML = renderCalendar();
+    } else if (nav.view === 'identify') {
+        app.innerHTML = renderIdentify();
     } else if (nav.view === 'zone') {
         addBtn.style.display = 'flex';
         app.innerHTML = renderZone(nav.zoneId);
@@ -1387,6 +1444,198 @@ async function openPlantSuggestions(pid) {
         const body = document.getElementById('suggestions-body');
         if (body) body.innerHTML = `<div style="padding:1rem;color:#c0392b;font-size:0.85rem">Kunne ikke hente anbefalinger – prøv igen.</div>`;
     }
+}
+
+// ── IDENTIFY ──
+
+function renderIdentify() {
+    const hasImage = !!identifyState.imageDataUrl;
+    const result   = identifyState.result;
+
+    const uploadHTML = `
+        <div class="identify-upload-area" onclick="document.getElementById('identify-file').click()" id="identify-dropzone">
+            <input type="file" id="identify-file" accept="image/*" capture="environment"
+                style="display:none" onchange="previewIdentifyImage(this)">
+            ${hasImage
+                ? `<img src="${identifyState.imageDataUrl}" alt="Valgt billede">
+                   <button class="identify-upload-change" onclick="event.stopPropagation();document.getElementById('identify-file').click()">Skift foto</button>`
+                : `<div class="identify-upload-icon">📸</div>
+                   <div class="identify-upload-label">Tag et billede<br>eller vælg fra biblioteket</div>`
+            }
+        </div>`;
+
+    const hintHTML = `
+        <div style="margin-top:1rem">
+            <div class="field">
+                <label style="font-size:0.82rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em">
+                    Hjælp AI'en på vej (valgfrit)
+                </label>
+                <input id="identify-hint" placeholder="F.eks. 'blomstrer lilla i juni', 'vokser i skygge'"
+                    value="${identifyState.hint || ''}"
+                    oninput="identifyState.hint=this.value"
+                    style="margin-top:0.4rem">
+            </div>
+        </div>`;
+
+    const btnHTML = `
+        <button class="btn-primary" id="identify-btn"
+            onclick="identifyPlant()"
+            ${!hasImage ? 'disabled style="opacity:0.45"' : ''}>
+            🔍 Identificer plante
+        </button>`;
+
+    let resultHTML = '';
+    if (result) {
+        if (result.notRecognized) {
+            resultHTML = `
+                <div class="identify-result-card" style="padding:1.2rem;text-align:center">
+                    <div style="font-size:1.5rem;margin-bottom:0.5rem">🤷</div>
+                    <div style="font-weight:600;color:var(--text)">Kunne ikke identificere</div>
+                    <div style="font-size:0.85rem;color:var(--muted);margin-top:0.3rem">
+                        Prøv med et tydeligere billede eller tilføj en beskrivelse
+                    </div>
+                </div>`;
+        } else {
+            const conf = result.confidence || 0;
+            const confClass = conf >= 0.75 ? 'high' : conf >= 0.5 ? 'medium' : 'low';
+            const confLabel = conf >= 0.75 ? '✓ Høj sikkerhed' : conf >= 0.5 ? '~ Middel sikkerhed — tjek selv' : '⚠ Lav sikkerhed — tjek selv';
+            const confPct = Math.round(conf * 100);
+            resultHTML = `
+                <div class="identify-result-card">
+                    <div class="identify-result-header">
+                        <div class="identify-result-name">${result.name || 'Ukendt plante'}</div>
+                        ${result.latinName ? `<div class="identify-result-latin">${result.latinName}</div>` : ''}
+                        ${result.type ? `<div class="identify-result-type">${result.type}</div>` : ''}
+                    </div>
+                    <div class="identify-confidence ${confClass}">${confLabel} (${confPct}%)</div>
+                    ${result.description ? `<div class="identify-result-desc">${result.description}</div>` : ''}
+                    <div class="identify-actions">
+                        ${canEdit() ? `<button class="btn-primary" onclick="openAddPlantFromIdentify()">+ Opret element i haven</button>` : ''}
+                        <button class="btn-secondary" onclick="resetIdentify()">↩ Prøv igen</button>
+                    </div>
+                </div>`;
+        }
+    }
+
+    return `<div class="identify-wrap">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--brown);margin-bottom:1rem">
+            Planteidentifikation via foto
+        </div>
+        ${uploadHTML}
+        ${hintHTML}
+        ${!result ? btnHTML : ''}
+        ${resultHTML}
+    </div>`;
+}
+
+function previewIdentifyImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        resizeImageForAPI(e.target.result, 800).then(resized => {
+            identifyState.imageDataUrl = resized;
+            identifyState.result = null;
+            const app = document.getElementById('app');
+            app.innerHTML = renderIdentify();
+        });
+    };
+    reader.readAsDataURL(file);
+}
+
+function resizeImageForAPI(dataUrl, maxPx) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            let w = img.width, h = img.height;
+            if (w > maxPx || h > maxPx) {
+                if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
+                else       { w = Math.round(w * maxPx / h); h = maxPx; }
+            }
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(c.toDataURL('image/jpeg', 0.85));
+        };
+        img.src = dataUrl;
+    });
+}
+
+async function identifyPlant() {
+    if (!identifyState.imageDataUrl) return;
+    const btn = document.getElementById('identify-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Analyserer...'; }
+
+    try {
+        const res = await fetch('/.netlify/functions/identify-plant', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                imageBase64: identifyState.imageDataUrl,
+                hint: identifyState.hint || '',
+            }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        identifyState.result = await res.json();
+    } catch (e) {
+        identifyState.result = { notRecognized: true };
+    }
+
+    const app = document.getElementById('app');
+    app.innerHTML = renderIdentify();
+}
+
+function resetIdentify() {
+    identifyState = { imageDataUrl: null, result: null, hint: '' };
+    const app = document.getElementById('app');
+    app.innerHTML = renderIdentify();
+}
+
+function openAddPlantFromIdentify() {
+    const r = identifyState.result;
+    if (!r || r.notRecognized) return;
+    const zones = db.zones;
+    const zoneOptions = zones.map(z => `<option value="${z.id}">${z.name}</option>`).join('');
+    const types = PLANT_TYPES.map(t => `<option${t===r.type?' selected':''}>${t}</option>`).join('');
+    openSheet('Opret element', `
+        <div class="form-body">
+            <div class="field">
+                <label>Zone</label>
+                <select id="f-zone">${zoneOptions}</select>
+            </div>
+            <div class="field"><label>Navn</label><input id="f-name" value="${r.name||''}" placeholder="F.eks. Lavendel"></div>
+            <div class="field"><label>Latinsk navn</label><input id="f-latin" value="${r.latinName||''}" placeholder="F.eks. Lavandula angustifolia"></div>
+            <div class="field-row">
+                <div class="field"><label>Type</label><select id="f-type">${types}</select></div>
+                <div class="field" style="max-width:80px"><label>Antal</label><input id="f-qty" type="number" min="1" value="1"></div>
+                <div class="field"><label>Plantet</label><input id="f-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+            </div>
+            <div class="field"><label>Egne noter</label><textarea id="f-note" placeholder="Observationer, tips...">${r.description||''}</textarea></div>
+            <div class="field"><label>Info-link (valgfrit)</label><input id="f-link" value="" placeholder="https://..."></div>
+        </div>
+        <button class="btn-primary" onclick="submitAddPlantFromIdentify()">Tilføj element</button>
+    `);
+}
+
+function submitAddPlantFromIdentify() {
+    const name = document.getElementById('f-name').value.trim();
+    const zid  = document.getElementById('f-zone').value;
+    if (!name || !zid) return;
+    const qty = parseInt(document.getElementById('f-qty').value) || 1;
+    const newPlant = {
+        id: uuid(), zoneId: zid, name,
+        latinName: document.getElementById('f-latin').value.trim(),
+        type: document.getElementById('f-type').value,
+        quantity: qty > 1 ? qty : null,
+        plantedDate: document.getElementById('f-date').value,
+        note: document.getElementById('f-note').value.trim(),
+        infoLink: document.getElementById('f-link').value.trim(),
+    };
+    db.plants.push(newPlant);
+    saveDB(); closeSheet();
+    identifyState = { imageDataUrl: null, result: null, hint: '' };
+    goTo('plant', zid, newPlant.id);
+    fetchPlantInfo(newPlant.id);
 }
 
 function addSuggestionAsReminder(entityType, entityId, date, text, rowId) {
