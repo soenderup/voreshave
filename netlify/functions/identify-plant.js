@@ -33,7 +33,7 @@ Returner KUN et JSON-objekt uden forklaring:
 {
   "name": "dansk plantenavn",
   "latinName": "latinsk navn eller null",
-  "type": "én af: Stauder, Løgplante, Grøntsag, Frugt, Træ, Busk, Klatrer, Etårig, Andet",
+  "type": "én af: Stauder, Blomst, Løgplante, Grøntsag, Frugt, Træ, Busk, Hæk, Klatrer, Græs, Etårig, Andet",
   "confidence": 0.0-1.0,
   "description": "2-3 sætninger om planten på naturligt hverdagsdansk"
 }

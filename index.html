@@ -568,7 +568,7 @@ firebase.initializeApp({
 });
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
-const VERSION = '1.13';
+const VERSION = '1.14';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
@@ -659,7 +659,7 @@ const ZONE_TYPES = {
     andet:       { label: 'Andet',       icon: '🏡' },
 };
 
-const PLANT_TYPES = ['Stauder','Løgplante','Grøntsag','Frugt','Træ','Busk','Klatrer','Etårig','Andet'];
+const PLANT_TYPES = ['Stauder','Blomst','Løgplante','Grøntsag','Frugt','Træ','Busk','Hæk','Klatrer','Græs','Etårig','Andet'];
 
 const AREAS = {
     forhave:   { label: 'Forhave',    icon: '🏠' },
