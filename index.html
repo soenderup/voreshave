@@ -85,8 +85,13 @@
         #app { grid-area: app; overflow-y: auto; padding-bottom: 2rem; }
 
         /* ── URGENT STRIP ── */
-        .urgent-strip { background: var(--terra); padding: 0.8rem 1rem; }
-        .urgent-strip h2 { color: rgba(255,255,255,0.75); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+        .urgent-strip { background: var(--terra); padding: 0.6rem 1rem; }
+        .attention-strip { background: #c0392b; padding: 0.6rem 1rem; }
+        .strip-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+        .strip-header h2 { color: rgba(255,255,255,0.75); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin: 0; }
+        .strip-chevron { color: rgba(255,255,255,0.6); font-size: 0.75rem; transition: transform 0.2s; }
+        .strip-chevron.open { transform: rotate(180deg); }
+        .strip-body { margin-top: 0.5rem; }
         .urgent-item {
             display: flex; align-items: flex-start; gap: 0.5rem;
             color: white; font-size: 0.88rem; padding: 0.3rem 0;
@@ -146,7 +151,7 @@
         .plant-name-wrap .platinname { font-size: 0.73rem; color: var(--muted); font-style: italic; }
         .plant-name-wrap .ptype { display: inline-block; font-size: 0.63rem; font-weight: 600; background: var(--green-light); color: var(--green-mid); padding: 0.1rem 0.4rem; border-radius: 4px; margin-top: 0.15rem; }
         .plant-link-btn { font-size: 0.72rem; color: var(--green-mid); text-decoration: none; padding: 0.2rem 0.5rem; background: var(--green-light); border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
-        .plant-list-thumb { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; flex-shrink: 0; cursor: pointer; border: 1px solid rgba(0,0,0,0.08); }
+        .plant-list-thumb { width: 110px; height: 78px; border-radius: 8px; object-fit: cover; flex-shrink: 0; cursor: pointer; border: 1px solid rgba(0,0,0,0.08); }
         .plant-photo-btn { width: 52px; height: 52px; border-radius: 8px; background: var(--green-light); border: 1.5px dashed var(--green-mid); color: var(--green-mid); font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .zone-photo-delete { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,0.55); border: none; color: white; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
@@ -212,14 +217,14 @@
         .form-body { padding: 1rem 1.2rem 0; }
         .field { margin-bottom: 1rem; }
         .field label { display: block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--brown); margin-bottom: 0.35rem; }
-        .field input, .field select, .field textarea {
+        .field input:not([type=checkbox]), .field select, .field textarea {
             width: 100%; padding: 0.65rem 0.8rem;
             border: 1.5px solid var(--border); border-radius: 10px;
             font-size: 0.92rem; font-family: inherit; color: var(--text);
             background: var(--cream);
             -webkit-appearance: none;
         }
-        .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--green-mid); background: white; }
+        .field input:not([type=checkbox]):focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--green-mid); background: white; }
         .field textarea { min-height: 80px; resize: none; }
         .field-row { display: flex; gap: 0.7rem; }
         .field-row .field { flex: 1; }
@@ -231,6 +236,22 @@
             font-size: 0.95rem; font-weight: 600; cursor: pointer;
         }
         .btn-primary:active { opacity: 0.85; }
+        .btn-secondary {
+            width: calc(100% - 2.4rem); margin: 0.5rem 1.2rem 0;
+            background: none; color: var(--green-dark);
+            border: 1.5px solid var(--green-mid); border-radius: 12px; padding: 0.75rem;
+            font-size: 0.88rem; cursor: pointer;
+        }
+        .btn-secondary:active { opacity: 0.8; }
+        .status-tag { display: inline-block; font-size: 0.65rem; border-radius: 4px; padding: 0.1rem 0.4rem; margin-top: 0.15rem; font-weight: 600; }
+        .status-tag.attention { background: #fdecea; color: #c0392b; }
+        .status-tag.overdue   { background: #fdecea; color: #c0392b; }
+        .status-tag.upcoming  { background: #fef6e4; color: #b07d00; }
+        .attention-badge { margin: 0.5rem 1rem 0; background: #fdecea; color: #c0392b; border-radius: 8px; padding: 0.45rem 0.7rem; font-size: 0.82rem; font-weight: 600; }
+        .history-item.has-attention { border-left: 3px solid #c0392b; padding-left: calc(1rem - 3px); }
+        .history-tag.attention { background: #fdecea; color: #c0392b; }
+        .field-toggle { display: flex; align-items: center; justify-content: space-between; }
+        .field-toggle input[type=checkbox] { width: 22px; height: 22px; accent-color: #c0392b; cursor: pointer; }
         .btn-danger {
             width: calc(100% - 2.4rem); margin: 0.5rem 1.2rem 0;
             background: none; color: #c0392b;
@@ -505,7 +526,9 @@ const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2)
 // ── STATE ──
 const today = new Date();
 let nav = { view: 'home', zoneId: null, plantId: null, tab: 'main', calYear: today.getFullYear(), calMonth: today.getMonth(), calSelected: null };
-let collapsedAreas = new Set(Object.keys({ forhave:1, baghave:1, terrasse:1, indgang:1 }));
+let collapsedAreas = new Set(Object.keys({ forhave:1, baghave:1, terrasse:1, indgang:1, indendørs:1 }));
+let urgentOpen = false;
+let attentionOpen = false;
 let pins = {};
 
 // ── DATA ──
@@ -569,25 +592,27 @@ async function deletePhotoFromIDB(key) {
 
 const ZONE_TYPES = {
     blomsterbed: { label: 'Blomsterbed', icon: '🌸' },
-    stenbed:     { label: 'Sten-bed',    icon: '🪨' },
+    stenbed:     { label: 'Stenbed',     icon: '🪨' },
     højbed:      { label: 'Højbed',      icon: '🥕' },
-    terrassebed: { label: 'Terrasse-bed',icon: '🌿' },
-    kasse:       { label: 'Altankasse',  icon: '📦' },
+    terrassebed: { label: 'Terrassebed', icon: '🌿' },
+    kasse:       { label: 'Bedopsats',   icon: '📦' },
     krukke:      { label: 'Krukke/potte',icon: '🪴' },
     træ:         { label: 'Træ',         icon: '🌳' },
     busk:        { label: 'Busk',        icon: '🌾' },
     hæk:         { label: 'Hæk',        icon: '🌿' },
     græsplæne:   { label: 'Græsplæne',  icon: '🌱' },
+    rum:         { label: 'Rum/værelse',  icon: '🏠' },
     andet:       { label: 'Andet',       icon: '🏡' },
 };
 
 const PLANT_TYPES = ['Stauder','Løgplante','Grøntsag','Frugt','Træ','Busk','Klatrer','Etårig','Andet'];
 
 const AREAS = {
-    forhave:  { label: 'Forhave',  icon: '🏠' },
-    baghave:  { label: 'Baghave',  icon: '🌳' },
-    terrasse: { label: 'Terrasse', icon: '☀️' },
-    indgang:  { label: 'Indgange', icon: '🚪' },
+    forhave:   { label: 'Forhave',    icon: '🏠' },
+    baghave:   { label: 'Baghave',    icon: '🌳' },
+    terrasse:  { label: 'Terrasse',   icon: '☀️' },
+    indgang:   { label: 'Indgange',   icon: '🚪' },
+    indendørs: { label: 'Indendørs',  icon: '🪴' },
 };
 
 const REPEAT_LABELS = { none: 'Ingen', yearly: 'Hvert år', monthly: 'Hver måned' };
@@ -758,6 +783,22 @@ function subZones(zid) { return db.zones.filter(z => z.parentZoneId === zid); }
 function entityReminders(type, id) { return db.reminders.filter(r => r.entityType === type && r.entityId === id); }
 function entityHistory(type, id) { return db.history.filter(h => h.entityType === type && h.entityId === id).sort((a,b) => b.date.localeCompare(a.date)); }
 
+function plantAttentionFlag(pid) {
+    return db.history.some(h => h.entityType === 'plant' && h.entityId === pid && h.needsAttention);
+}
+function plantReminderStatus(pid) {
+    const todayStr = new Date().toISOString().slice(0,10);
+    const in7 = new Date(); in7.setDate(in7.getDate() + 7);
+    const in7Str = in7.toISOString().slice(0,10);
+    const reminders = entityReminders('plant', pid);
+    let overdue = false, upcoming = false;
+    for (const r of reminders) {
+        if (r.date < todayStr) overdue = true;
+        else if (r.date <= in7Str) upcoming = true;
+    }
+    return overdue ? 'overdue' : upcoming ? 'upcoming' : null;
+}
+
 function urgentReminders() {
     const today = new Date();
     const limit = new Date(); limit.setDate(limit.getDate() + 7);
@@ -855,21 +896,46 @@ function render() {
 }
 
 function renderHome() {
+    const attentionPlants = db.history
+        .filter(h => h.entityType === 'plant' && h.needsAttention)
+        .map(h => db.plants.find(p => p.id === h.entityId))
+        .filter(Boolean);
+    const attentionHTML = attentionPlants.length === 0 ? '' : `
+        <div class="attention-strip">
+            <div class="strip-header" onclick="attentionOpen=!attentionOpen;render()">
+                <h2>Kræver opmærksomhed (${attentionPlants.length})</h2>
+                <span class="strip-chevron${attentionOpen ? ' open' : ''}">▾</span>
+            </div>
+            ${attentionOpen ? `<div class="strip-body">${attentionPlants.map(p => {
+                const z = zone(p.zoneId);
+                return `<div class="urgent-item" onclick="goTo('plant','${p.zoneId}','${p.id}','history')">
+                    <div class="urgent-dot hot"></div>
+                    <div>${p.name}<span class="urgent-meta">${z ? z.name : ''}</span></div>
+                </div>`;
+            }).join('')}</div>` : ''}
+        </div>`;
+
     const urgent = urgentReminders();
     const urgentHTML = urgent.length === 0 ? '' : `
         <div class="urgent-strip">
-            <h2>Snart / Nu</h2>
-            ${urgent.map(r => {
+            <div class="strip-header" onclick="urgentOpen=!urgentOpen;render()">
+                <h2>Påmindelser (${urgent.length})</h2>
+                <span class="strip-chevron${urgentOpen ? ' open' : ''}">▾</span>
+            </div>
+            ${urgentOpen ? `<div class="strip-body">${urgent.map(r => {
                 const days = daysUntil(r.date);
                 const hot = new Date(r.date) <= new Date();
                 let who = '';
                 if (r.entityType === 'plant') { const p = plant(r.entityId); who = p ? p.name + ' · ' : ''; }
                 else { const z = zone(r.entityId); who = z ? z.name + ' · ' : ''; }
-                return `<div class="urgent-item" data-reminder="${r.id}">
+                const navTarget = r.entityType === 'plant'
+                    ? `goTo('plant','${r.entityId ? plant(r.entityId)?.zoneId : ''}','${r.entityId}','reminders')`
+                    : `goTo('zone','${r.entityId}',null,'reminders')`;
+                return `<div class="urgent-item" onclick="${navTarget}">
                     <div class="urgent-dot${hot ? ' hot' : ''}"></div>
                     <div>${r.text}<span class="urgent-meta">${who}${days}</span></div>
                 </div>`;
-            }).join('')}
+            }).join('')}</div>` : ''}
         </div>`;
 
     function zoneCard(z) {
@@ -912,13 +978,17 @@ function renderHome() {
                 <span class="area-chevron${collapsed ? ' closed' : ''}">▾</span>
             </div>
             ${collapsed ? '' : `<div class="area-zones">${zones.map(zoneCard).join('')}</div>`}
+            ${!collapsed && !isGuest() ? `<div style="padding:0.2rem 1rem 0.6rem;display:flex;gap:0.5rem">
+                <button class="section-add-btn" onclick="openAddDirectPlant('${areaKey}');event.stopPropagation()">+ Tilføj element</button>
+            </div>` : ''}
         </div>`;
     }).join('');
 
     return `
+        ${attentionHTML}
         ${urgentHTML}
         ${areasHTML}
-        ${!isGuest() ? `<div style="padding:0 1rem 0.5rem">
+        ${!isGuest() ? `<div style="padding:0 1rem 0.5rem;display:flex;gap:0.5rem;flex-wrap:wrap">
             <button class="section-add-btn" onclick="openAddZone()">+ Tilføj ny zone</button>
         </div>` : ''}`;
 }
@@ -959,12 +1029,17 @@ function renderZone(zid) {
     const plantsHTML = plants.length === 0 && subs.length === 0
         ? `<div class="empty-state"><span class="empty-icon">🌱</span>Ingen elementer endnu</div>`
         : plants.length === 0 ? ''
-        : `<div class="plant-list">${plants.map(p => `
+        : `<div class="plant-list">${plants.map(p => {
+            const attn = plantAttentionFlag(p.id);
+            const remSt = plantReminderStatus(p.id);
+            return `
             <div class="plant-row" data-plant="${p.id}">
                 <div class="plant-name-wrap">
-                    <div class="pname">${p.name}</div>
+                    <div class="pname">${p.name}${p.quantity > 1 ? ` <span style="color:var(--muted);font-weight:400">× ${p.quantity}</span>` : ''}</div>
                     ${p.latinName ? `<div class="platinname">${p.latinName}</div>` : ''}
                     ${p.type ? `<div><span class="ptype">${p.type}</span></div>` : ''}
+                    ${attn ? `<div><span class="status-tag attention">⚑ Kræver opmærksomhed</span></div>` : ''}
+                    ${remSt === 'overdue' ? `<div><span class="status-tag overdue">⚠ Forfalden påmindelse</span></div>` : remSt === 'upcoming' ? `<div><span class="status-tag upcoming">🔔 Påmindelse snart</span></div>` : ''}
                 </div>
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0">
                     ${p.photo
@@ -973,7 +1048,8 @@ function renderZone(zid) {
                     }
                     ${p.infoLink ? `<a href="${p.infoLink}" target="_blank" class="plant-link-btn" onclick="event.stopPropagation()">Info →</a>` : ''}
                 </div>
-            </div>`).join('')}</div>`;
+            </div>`;
+        }).join('')}</div>`;
 
     const reminderHTML = reminders.length === 0
         ? `<div class="empty-state"><span class="empty-icon">⏰</span>Ingen påmindelser</div>`
@@ -1042,6 +1118,7 @@ function renderPlant(pid) {
             <div style="font-size:1.25rem;font-weight:700;color:var(--green-dark);margin-bottom:0.15rem">${p.name}</div>
             ${p.latinName ? `<div class="detail-hero-sub">${p.latinName}</div>` : ''}
         </div>
+        ${plantAttentionFlag(pid) ? `<div class="attention-badge">⚑ Kræver opmærksomhed</div>` : ''}
         <div class="tabs">
             <button class="tab-btn${tab==='main'?' active':''}" onclick="setTab('main')">Info</button>
             <button class="tab-btn${tab==='reminders'?' active':''}" onclick="setTab('reminders')">Påmindelser (${reminders.length})</button>
@@ -1050,12 +1127,13 @@ function renderPlant(pid) {
         ${tab === 'main' ? `
             <div class="info-section">
                 ${p.photo
-                    ? `<div class="info-row"><span class="label">Foto</span><span class="val" style="display:flex;align-items:center;gap:0.5rem"><img src="${p.photo}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;cursor:pointer" onclick="viewPhoto('${p.photo}')">
+                    ? `<div class="info-row"><span class="label">Foto</span><span class="val" style="display:flex;align-items:center;gap:0.5rem"><img src="${p.photo}" style="width:110px;height:78px;border-radius:8px;object-fit:cover;cursor:pointer" onclick="viewPhoto('${p.photo}')">
                        ${!isGuest() ? `<button onclick="deleteElementPhoto('${pid}',event)" style="font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Slet</button>` : ''}</span></div>`
                     : (!isGuest() ? `<div class="info-row"><span class="label">Foto</span><span class="val"><button class="plant-photo-btn" style="width:60px;height:60px" onclick="pickElementPhoto('${pid}')">📷</button></span></div>` : '')
                 }
                 ${p.latinName ? `<div class="info-row"><span class="label">Latinsk navn</span><span class="val"><em>${p.latinName}</em></span></div>` : ''}
                 ${p.type ? `<div class="info-row"><span class="label">Type</span><span class="val">${p.type}</span></div>` : ''}
+                ${p.quantity > 1 ? `<div class="info-row"><span class="label">Antal</span><span class="val">${p.quantity} stk.</span></div>` : ''}
                 ${p.plantedDate ? `<div class="info-row"><span class="label">Plantet</span><span class="val">${formatDate(p.plantedDate)}</span></div>` : ''}
                 ${p.infoLink ? `<div class="info-row"><span class="label">Info-link</span><span class="val"><a href="${p.infoLink}" target="_blank" style="color:var(--green-mid)">Åbn →</a></span></div>` : ''}
             </div>
@@ -1327,15 +1405,21 @@ function renderCalendar() {
             : !isGuest() && e.kind === 'history' && e.hid
             ? `onclick="openEditHistoryItem('${e.hid}')" style="cursor:pointer"`
             : '';
-        return `<div class="cal-event" ${clickAttr}>
+        const deleteBtn = !isGuest() && e.kind === 'history' && e.hid
+            ? `<button onclick="doDeleteHistory('${e.hid}');event.stopPropagation()" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0;flex-shrink:0" title="Slet">×</button>`
+            : !isGuest() && e.kind === 'upcoming' && e.rid
+            ? `<button onclick="if(confirm('Slet påmindelse?')){db.reminders=db.reminders.filter(r=>r.id!=='${e.rid}');saveDB();render();}event.stopPropagation()" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0;flex-shrink:0" title="Slet">×</button>`
+            : '';
+        return `<div class="cal-event" ${clickAttr} style="display:flex;align-items:flex-start;gap:0.5rem">
             <div class="cal-event-date">
                 <div class="cal-event-day">${day}</div>
                 <div class="cal-event-month">${mon}</div>
             </div>
-            <div class="cal-event-body">
+            <div class="cal-event-body" style="flex:1">
                 <div class="cal-event-text">${e.text}${tag}</div>
                 ${who ? `<div class="cal-event-who">${who}</div>` : ''}
             </div>
+            ${deleteBtn}
         </div>`;
     }
 
@@ -1559,6 +1643,7 @@ function plantFormHTML(p = {}) {
             <div class="field"><label>Latinsk navn</label><input id="f-latin" value="${p.latinName||''}" placeholder="F.eks. Lavandula angustifolia"></div>
             <div class="field-row">
                 <div class="field"><label>Type</label><select id="f-type">${types}</select></div>
+                <div class="field" style="max-width:80px"><label>Antal</label><input id="f-qty" type="number" min="1" value="${p.quantity||1}"></div>
                 <div class="field"><label>Plantet</label><input id="f-date" type="date" value="${p.plantedDate||new Date().toISOString().slice(0,10)}"></div>
             </div>
             <div class="field"><label>Egne noter</label><textarea id="f-note" placeholder="Observationer, tips...">${p.note||''}</textarea></div>
@@ -1573,10 +1658,12 @@ function openAddPlant(zid) {
 function submitAddPlant(zid) {
     const name = document.getElementById('f-name').value.trim();
     if (!name) return;
+    const qty = parseInt(document.getElementById('f-qty').value) || 1;
     const newPlant = {
         id: uuid(), zoneId: zid, name,
         latinName: document.getElementById('f-latin').value.trim(),
         type: document.getElementById('f-type').value,
+        quantity: qty > 1 ? qty : null,
         plantedDate: document.getElementById('f-date').value,
         note: document.getElementById('f-note').value.trim(),
         infoLink: document.getElementById('f-link').value.trim(),
@@ -1586,12 +1673,65 @@ function submitAddPlant(zid) {
     fetchPlantInfo(newPlant.id);
 }
 
+function openAddDirectPlant(areaKey) {
+    openSheet('Nyt element', plantFormHTML() + `<button class="btn-primary" onclick="submitAddDirectPlant('${areaKey}')">Tilføj element</button>`);
+}
+
+function submitAddDirectPlant(areaKey) {
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) return;
+    const newZone = { id: uuid(), name, type: 'andet', area: areaKey, description: '', parentZoneId: null };
+    db.zones.push(newZone);
+    const qty2 = parseInt(document.getElementById('f-qty').value) || 1;
+    const newPlant = {
+        id: uuid(), zoneId: newZone.id, name,
+        latinName: document.getElementById('f-latin').value.trim(),
+        type: document.getElementById('f-type').value,
+        quantity: qty2 > 1 ? qty2 : null,
+        plantedDate: document.getElementById('f-date').value,
+        note: document.getElementById('f-note').value.trim(),
+        infoLink: document.getElementById('f-link').value.trim(),
+    };
+    db.plants.push(newPlant);
+    saveDB(); closeSheet();
+    goTo('plant', newZone.id, newPlant.id);
+    fetchPlantInfo(newPlant.id);
+}
+
 function openEditPlant(pid) {
     const p = plant(pid);
     if (!p) return;
     openSheet('Rediger element', plantFormHTML(p) +
         `<button class="btn-primary" onclick="submitEditPlant('${pid}')">Gem ændringer</button>
+         <button class="btn-secondary" onclick="duplicatePlant('${pid}')">Dubler element</button>
          <button class="btn-danger" onclick="deletePlant('${pid}')">Slet element</button>`);
+}
+
+function duplicatePlant(pid) {
+    const src = plant(pid);
+    if (!src) return;
+    const newId = uuid();
+    db.plants.push({
+        id: newId, zoneId: src.zoneId, name: src.name,
+        latinName: src.latinName, type: src.type,
+        plantedDate: src.plantedDate, note: src.note,
+        infoLink: src.infoLink,
+        photo: src.photo || null,
+        aiInfo: src.aiInfo || null,
+    });
+    entityReminders('plant', pid).forEach(r => db.reminders.push({
+        id: uuid(), entityType: 'plant', entityId: newId,
+        text: r.text, date: r.date, repeat: r.repeat, completedDates: [],
+    }));
+    entityHistory('plant', pid).forEach(h => db.history.push({
+        id: uuid(), entityType: 'plant', entityId: newId,
+        date: h.date, text: h.text,
+        fromReminder: h.fromReminder || false, createdBy: h.createdBy || null,
+    }));
+    saveDB();
+    closeSheet();
+    goTo('plant', src.zoneId, newId);
+    openEditPlant(newId);
 }
 
 function submitEditPlant(pid) {
@@ -1602,6 +1742,8 @@ function submitEditPlant(pid) {
     p.name = document.getElementById('f-name').value.trim() || p.name;
     p.latinName = document.getElementById('f-latin').value.trim();
     p.type = document.getElementById('f-type').value;
+    const qtyE = parseInt(document.getElementById('f-qty').value) || 1;
+    p.quantity = qtyE > 1 ? qtyE : null;
     p.plantedDate = document.getElementById('f-date').value;
     p.note = document.getElementById('f-note').value.trim();
     p.infoLink = document.getElementById('f-link').value.trim();
@@ -1695,6 +1837,7 @@ function openAddHistory(entityType, entityId) {
         <div class="form-body">
             <div class="field"><label>Dato</label><input id="f-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
             <div class="field"><label>Hvad skete der?</label><textarea id="f-text" placeholder="F.eks. Beskåret — fjernede 3 grene" autofocus></textarea></div>
+            <div class="field field-toggle"><label for="f-attention">⚑ Kræver opmærksomhed</label><input type="checkbox" id="f-attention"></div>
         </div>
         <button class="btn-primary" onclick="submitAddHistory('${entityType}','${entityId}')">Gem note</button>`);
 }
@@ -1702,7 +1845,10 @@ function openAddHistory(entityType, entityId) {
 function submitAddHistory(entityType, entityId) {
     const text = document.getElementById('f-text').value.trim();
     if (!text) return;
-    db.history.push({ id: uuid(), entityType, entityId, date: document.getElementById('f-date').value, text, createdBy: currentUser() });
+    const attention = document.getElementById('f-attention')?.checked || false;
+    db.history.filter(h => h.entityType === entityType && h.entityId === entityId)
+        .forEach(h => { h.needsAttention = false; });
+    db.history.push({ id: uuid(), entityType, entityId, date: document.getElementById('f-date').value, text, needsAttention: attention, createdBy: currentUser() });
     saveDB(); closeSheet(); render();
 }
 
@@ -1797,9 +1943,12 @@ function renderReminderItem(r) {
 }
 
 function renderHistoryItem(h) {
-    return `<div class="history-item">
-        <div class="history-date">${formatDate(h.date)}</div>
-        <div class="history-text">${h.text}${h.fromReminder ? '<span class="history-tag">påmindelse</span>' : ''}</div>
+    return `<div class="history-item${h.needsAttention ? ' has-attention' : ''}" style="display:flex;align-items:flex-start;gap:0.5rem">
+        <div style="flex:1">
+            <div class="history-date">${formatDate(h.date)}</div>
+            <div class="history-text">${h.text}${h.fromReminder ? '<span class="history-tag">påmindelse</span>' : ''}${h.needsAttention ? '<span class="history-tag attention">⚑ opmærksomhed</span>' : ''}</div>
+        </div>
+        ${!isGuest() ? `<button onclick="doDeleteHistory('${h.id}')" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0;flex-shrink:0;line-height:1" title="Slet">×</button>` : ''}
     </div>`;
 }
 
