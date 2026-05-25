@@ -78,33 +78,31 @@ Medtag KUN handlinger der ikke allerede er dækket af eksisterende påmindelser.
 
         if (result.status !== 200) {
             console.error('Anthropic API fejl:', result.status, result.body);
-            return { statusCode: 200, body: JSON.stringify({ items: [], _debug: { stage: 'api-error', status: result.status, body: result.body.slice(0, 500) } }) };
+            return { statusCode: 200, body: JSON.stringify({ items: [] }) };
         }
 
         const data = JSON.parse(result.body);
         const raw = data.content?.[0]?.text || '';
-        const stopReason = data.stop_reason;
 
         // Udtræk JSON selv om Claude tilføjer tekst omkring
         const match = raw.match(/\[[\s\S]*\]/);
-        if (!match) {
-            return { statusCode: 200, body: JSON.stringify({ items: [], _debug: { stage: 'no-json-match', stopReason, rawLength: raw.length, rawStart: raw.slice(0, 300), rawEnd: raw.slice(-300) } }) };
-        }
+        if (!match) return { statusCode: 200, body: JSON.stringify({ items: [] }) };
 
         let items;
         try {
             items = JSON.parse(match[0]);
         } catch (parseErr) {
-            return { statusCode: 200, body: JSON.stringify({ items: [], _debug: { stage: 'json-parse-fail', stopReason, error: parseErr.message, matchLength: match[0].length, matchStart: match[0].slice(0, 300), matchEnd: match[0].slice(-300) } }) };
+            console.error('JSON parse fejl:', parseErr.message, 'stop_reason:', data.stop_reason);
+            return { statusCode: 200, body: JSON.stringify({ items: [] }) };
         }
 
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items, _debug: { stage: 'ok', stopReason, count: items.length } }),
+            body: JSON.stringify({ items }),
         };
     } catch (e) {
         console.error('recommendations function fejl:', e);
-        return { statusCode: 200, body: JSON.stringify({ items: [], _debug: { stage: 'exception', error: e.message } }) };
+        return { statusCode: 200, body: JSON.stringify({ items: [] }) };
     }
 };
