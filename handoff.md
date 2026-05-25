@@ -1,47 +1,90 @@
 # Handoff — Vores Have
-*Opdateret: 25. maj 2026 (nat)*
+*Opdateret: 25. maj 2026 (dag 2)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
 - **Live version:** v1.10 på `https://voreshave.soenderup.dk`
-- **Alt virker:** Foto-upload til Firebase Storage, data i Firestore, "Viden om" via Claude AI
-- **Firebase:** Nyt projekt på ny standard Gmail-konto (det gamle Google Workspace-problem er løst)
-- **Linda:** Kan installere appen og logge ind med sin PIN - alt synkroniserer
+- **Næsten alt virker** - se undtagelse nedenfor
+- **🔴 Anbefalinger virker ikke:** Knappen "Tjek for nye" gør tilsyneladende ingenting. Netlify-funktionen virker fint (testet direkte med curl - returnerer korrekt JSON). Problemet er i klienten. Tre fixes er forsøgt, ingen har virket endnu. Ny session skal debugge dette.
 
 ---
 
-## Hvad blev lavet i dag (24-25. maj)
+## Hvad blev lavet i dag (25. maj - dag 2)
 
-### Firebase-skift (nyt projekt)
-Det gamle Firebase-projekt (`minhave-e9ab6`) kørte på en Google Workspace/familie-konto som gav 403-fejl på Storage. Løsning: ny standard Gmail-konto → nyt Firebase-projekt (`voreshave-5e7de`).
+### UI-forbedringer
+- **Antal-felt** på elementer (vises som "× N" i listen, "N stk." i detaljevisning)
+- **Ny zone-type:** Rum/værelse 🏠
+- **Nyt område:** Indendørs 🪴
+- **Omdøbte typer:** Sten-bed → Stenbed, Terrasse-bed → Terrassebed, Altankasse → Bedopsats
+- **Thumbnails** samme størrelse (110×78px) i liste og detaljevisning
+- **Dubler-funktion** på elementer (kopierer alt inkl. billede, historik, påmindelser)
+- **Tilføj element direkte fra område** på forsiden (auto-opretter zone med samme navn)
 
-- Firestore data migreret via `saveDB()` i browser-konsollen
-- Firebase Storage virker nu - fotos uploades til skyen og ses på alle enheder
-- PINs sat op igen (de lå i separat Firestore-dokument der ikke var med i migreringen)
-- Blaze-plan aktiveret på det nye projekt
+### Opmærksomhedsflag på historiknoter
+- Checkbox "Kræver opmærksomhed" når man logger en ny note
+- Kun ét flag pr. element ad gangen - ny log rydder altid det gamle flag
+- Vises som rød badge på elementet og som rød "⚑ Kræver opmærksomhed"-tag i zonelisten
+- Forsidesektionen "Kræver opmærksomhed (x)" - kollapsibel, klikbar, åbner historikfanen
 
-### UI-ændringer
-- **Fast header:** Viser altid "🌿 Vores Have" uanset hvilken side man er på
-- **Zone/plante-navn:** Vises i lyst grønt banner i indholdet (ikke i headeren)
-- **CSS Grid layout:** Header og bundnavigation sidder fast - kun midten scroller
-- **Logo-klik:** Tryk på "🌿 Vores Have" navigerer til forsiden
-- **Kalender:** Klik på påmindelser og historik-noter åbner rediger/slet
-- **Måneds-navigation:** Sticky i kalenderen ved scroll
-- **"Note" → "Egne noter":** Omdøbt i plantevisning
+### Påmindelsesindikator i zonelisten
+- 🔔 gul tag: påmindelse inden for 7 dage
+- ⚠ rød tag: forfalden påmindelse
+- Vises direkte under elementnavnet i zonevisningen
 
-### Viden om (AI-funktion)
-- Netlify Function (`netlify/functions/plant-info.js`) kalder Claude Haiku
-- Hentes automatisk når en plante åbnes uden `aiInfo` og har latinsk navn
-- Genindlæses hvis latinsk navn eller egne noter ændres ved redigering
-- API-nøgle gemt som secret i Netlify environment variables (`ANTHROPIC_API_KEY`)
-- Ny nøgle oprettet på console.anthropic.com (den gamle fra portrait-projektet virkede ikke)
+### Forside-strips
+- Begge strips (Kræver opmærksomhed + Påmindelser) er nu kollapsible
+- Klik på strip-header folder ud/ind
+- Klik på enkelt element navigerer til korrekt fane (historik / påmindelser)
 
-### Versionering rettet
-- Sprang fejlagtigt fra v1.8 til v2.0 i en tidligere session
-- Rettet tilbage til v1.x - nu på v1.10
-- Service worker cache bumped til `vores-have-v3`
+### Slet-knapper
+- Diskret × på historiknoter (kun Steen)
+- Diskret × på kalendervisningens noter og påmindelser (kun Steen)
+
+### Permissions (Gæst / Linda / Steen)
+Erstattet `!isGuest()` med `canEdit()` og `canLog()`:
+
+| | Gæst | Linda | Steen |
+|---|---|---|---|
+| Se alt | ✓ | ✓ | ✓ |
+| Tilføj noter & påmindelser | - | ✓ | ✓ |
+| Fuldfør påmindelser (✓) | - | ✓ | ✓ |
+| Anbefalinger (se + hente) | - | ✓ | ✓ |
+| Opret/rediger/slet zoner & elementer | - | - | ✓ |
+| Fotos | - | - | ✓ |
+| Slet noter & påmindelser | - | - | ✓ |
+| PIN-administration | - | - | ✓ |
+
+### Anbefalinger (💡 ny fane)
+- Ny bundmenu-fane: 💡 Anbefalinger
+- Netlify function: `netlify/functions/recommendations.js` (Claude Haiku)
+- Sender alle planter + relevante zoner (hæk, græsplæne, træ, busk) + eksisterende påmindelser
+- Returnerer månedsvise plejeråd som JSON
+- "+ Påmindelse"-knap sætter dato til 1. i måneden, yearly gentagelse
+- "✓ Planlagt" hvis der allerede er påmindelse inden for ±1 måned
+- **Gemmes kun i localStorage** (ikke Firestore - for at undgå at onSnapshot overskriver)
+
+### Versionsnummer
+- Fjernet fra bundmenu
+- Vises nu diskret i brugermenuen (S-knappen) nederst
+
+---
+
+## 🔴 Anbefalinger - hvad der er forsøgt
+
+Netlify-funktionen virker (bekræftet med curl - returnerer korrekte anbefalinger).
+
+**Forsøg 1:** Første implementering - onclick-bug: `JSON.stringify` producerede dobbelt-anførselstegn i HTML-attribut → ødelagde HTML-parsing
+**Forsøg 2:** `onSnapshot` overskrev `db.recommendations` - tilføjede bevarelseskode (`if (!db.recommendations && prevRec)`)
+**Forsøg 3:** Fjernede `recommendations` fra Firestore helt - gemmes nu kun i localStorage. `onSnapshot` gendanner altid fra in-memory `db.recommendations`. loadDB henter fra localStorage.
+
+**Hvad der skal debugges i ny session:**
+- Åbn Safari → Develop → Vis JavaScript-konsol på voreshave.soenderup.dk
+- Tryk "Tjek for nye" og se hvad der logges
+- Tjek om `fetchRecommendations` overhovedet kører (netværksfejl? JS-fejl?)
+- Tjek om `db.recommendations.items` sættes korrekt efter API-kald
+- Mulig årsag: `render()` kaldes fra `onSnapshot` og overskriver siden før `fetchRecommendations` er færdig
 
 ---
 
@@ -54,17 +97,19 @@ voreshave/
 ├── sw.js                   ← Service worker (cache: vores-have-v3)
 ├── netlify.toml            ← Netlify config (Node 18, secrets-scanner slået fra)
 ├── netlify/functions/
-│   └── plant-info.js       ← Claude Haiku - genererer "Viden om" tekst
+│   ├── plant-info.js       ← Claude Haiku - genererer "Viden om" tekst
+│   └── recommendations.js  ← Claude Haiku - genererer månedsvise plejeråd
 ├── icons/                  ← App-ikoner
 ├── scripts/                ← Dev-miljø (ikke deployed)
 ├── CLAUDE.md               ← projektinstruktioner til Claude
 └── handoff.md              ← dette dokument
 ```
 
-**Firebase (nyt projekt: voreshave-5e7de):**
+**Firebase (projekt: voreshave-5e7de):**
 ```
 Firestore:
   voreshave/data    ← al havedata (zones, plants, reminders, history)
+                       OBS: recommendations gemmes IKKE her - kun localStorage
   voreshave/pins    ← PIN-koder (Steen, Linda, Gæst)
 
 Storage:
@@ -76,47 +121,40 @@ Storage:
 - Environment variables: ANTHROPIC_API_KEY (secret), NODE_VERSION=18
 - Secrets scanning: slået fra (Firebase API-nøgle false positive)
 
-**Lokal foto-storage (IndexedDB - fallback):**
-```
-minhave-photos → photos store
-  zone-{id}   ← base64 zonefoto (backup hvis cloud fejler)
-  plant-{id}  ← base64 elementfoto
-```
-
 ---
 
 ## Hvad mangler — prioriteret
 
-### 1. Firestore sikkerhedsregler (vigtigt - deadline)
-Firestore kører i "test mode" — alle kan læse/skrive i **30 dage fra oprettelse** af det nye projekt (ca. 24. juni 2026). Inden da skal reglerne strammes til kun at tillade kendte brugere. Kræver Firebase Authentication.
+### 1. 🔴 Anbefalinger debug (akut)
+Se sektion ovenfor.
 
-### 2. Firebase Authentication
+### 2. Firestore sikkerhedsregler (deadline ~24. juni 2026)
+Firestore kører i "test mode" - alle kan læse/skrive. Kræver Firebase Authentication.
+
+### 3. Firebase Authentication
 - Erstatter PIN-systemet på sigt
 - Email/password for Steen og Linda
-- Nødvendigt for at stramme Firestore-regler
 
-### 3. Rediger/slet påmindelser fra zone/plante-visning
-- I dag kan man kun redigere/slette fra kalenderen
-- Ville give bedre UX at kunne gøre det direkte på zonen/planten
+### 4. Rediger/slet påmindelser fra zone/plante-visning
+Kun muligt fra kalenderen i dag.
 
-### 4. Push-notifikationer på iPhone
-- Kræver Firebase Cloud Messaging + opdateret service worker
-- iOS kræver PWA installeret på hjemmeskærmen
+### 5. Push-notifikationer på iPhone
+Kræver Firebase Cloud Messaging + opdateret service worker.
 
-### 5. Søgefunktion
-- Med 27 zoner kan det blive relevant
+### 6. Søgefunktion
+Med mange zoner kan det blive relevant.
 
 ---
 
 ## Ting der skal huskes
 
 - **Firestore test mode udløber ~24. juni 2026** - husk sikkerhedsregler!
-- **Firebase plan:** Blaze (Pay-as-you-go) - betaler kun ved overforbrug
-- **Viden om:** Koster øre pr. opslag via Anthropic API (Claude Haiku er billigst)
-- **PIN-nulstilling:** Kan sættes igen fra S-menuen af enhver logget ind bruger
+- **Firebase plan:** Blaze (Pay-as-you-go)
+- **Viden om + Anbefalinger:** Koster øre pr. opslag via Anthropic API (Claude Haiku)
 - **Dev-miljø:** `kode` → vælg `minhave` → server på `http://localhost:8766`
 - **Deploy:** `git push` → GitHub → Netlify auto-deploy. Spørg ALTID Claude inden push.
 - **Cache:** Bump `sw.js` CACHE-konstant + VERSION i `index.html` ved større ændringer
+- **Anbefalinger gemmes i localStorage** - de forsvinder hvis man rydder browser-data
 
 ---
 
@@ -124,8 +162,8 @@ Firestore kører i "test mode" — alle kan læse/skrive i **30 dage fra oprette
 
 | Bruger | Adgang | PIN |
 |--------|--------|-----|
-| Steen  | Fuld   | Sat |
-| Linda  | Fuld   | Sat |
-| Gæst   | Læse   | Sat |
+| Steen  | Fuld (canEdit) | Sat |
+| Linda  | Log + anbefalinger (canLog) | Sat |
+| Gæst   | Læse kun | Sat |
 
 Linda installerer appen: åbn `voreshave.soenderup.dk` i Safari → del-knap → "Føj til hjemmeskærm"
