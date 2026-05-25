@@ -1270,6 +1270,13 @@ async function uploadPhoto(file) {
     return await ref.getDownloadURL();
 }
 
+async function uploadBase64Photo(base64) {
+    const blob = base64ToBlob(base64);
+    const ref = fsStorage.ref(`photos/${uuid()}.jpg`);
+    await ref.put(blob);
+    return await ref.getDownloadURL();
+}
+
 async function deleteStoragePhoto(url) {
     if (url && url.startsWith('https://')) {
         try { await fsStorage.refFromURL(url).delete(); } catch {}
@@ -1640,6 +1647,7 @@ function submitAddPlantFromIdentify() {
     const zid  = document.getElementById('f-zone').value;
     if (!name || !zid) return;
     const qty = parseInt(document.getElementById('f-qty').value) || 1;
+    const photoBase64 = identifyState.imageDataUrl || null;
     const newPlant = {
         id: uuid(), zoneId: zid, name,
         latinName: document.getElementById('f-latin').value.trim(),
@@ -1648,12 +1656,21 @@ function submitAddPlantFromIdentify() {
         plantedDate: document.getElementById('f-date').value,
         note: document.getElementById('f-note').value.trim(),
         infoLink: document.getElementById('f-link').value.trim(),
+        photo: photoBase64,
     };
     db.plants.push(newPlant);
     saveDB(); closeSheet();
     identifyState = { imageDataUrl: null, result: null, hint: '' };
     goTo('plant', zid, newPlant.id);
     fetchPlantInfo(newPlant.id);
+    // Upload foto til Firebase Storage i baggrunden
+    if (photoBase64) {
+        savePhotoToIDB('plant-' + newPlant.id, photoBase64);
+        uploadBase64Photo(photoBase64).then(url => {
+            const pFresh = plant(newPlant.id);
+            if (pFresh) { pFresh.photo = url; saveDB(); }
+        }).catch(err => console.error('Identify-foto upload fejlede:', err));
+    }
 }
 
 function addSuggestionAsReminder(entityType, entityId, date, text, rowId) {
