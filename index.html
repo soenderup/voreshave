@@ -648,7 +648,9 @@ async function loadDB() {
     }
     DATA_REF.onSnapshot({ includeMetadataChanges: true }, snap => {
         if (snap.exists && !snap.metadata.hasPendingWrites) {
+            const prevRec = db.recommendations;
             db = snap.data();
+            if (!db.recommendations && prevRec) db.recommendations = prevRec;
             mergeLocalPhotos();
             localStorage.setItem('minhave-v3', JSON.stringify(db));
             if (sessionStorage.getItem('minhave-unlocked') === '1') render();
@@ -865,8 +867,10 @@ function render() {
     const editBtn = document.getElementById('edit-btn');
     const isTop = nav.view === 'home' || nav.view === 'calendar';
     backBtn.style.display = isTop ? 'none' : 'block';
-    editBtn.style.display = (nav.view === 'zone' || nav.view === 'plant') && !isGuest() ? 'flex' : 'none';
-    addBtn.style.display = (nav.view === 'calendar' || isGuest()) ? 'none' : 'flex';
+    editBtn.style.display = (nav.view === 'zone' || nav.view === 'plant') && canEdit() ? 'flex' : 'none';
+    const showAdd = nav.view !== 'calendar' && nav.view !== 'recommendations' &&
+        (canEdit() || (canLog() && nav.view === 'plant'));
+    addBtn.style.display = showAdd ? 'flex' : 'none';
 
     // Bottom nav active state
     document.getElementById('nav-home').classList.toggle('active', nav.view !== 'calendar');
@@ -984,7 +988,7 @@ function renderHome() {
                 <span class="area-chevron${collapsed ? ' closed' : ''}">▾</span>
             </div>
             ${collapsed ? '' : `<div class="area-zones">${zones.map(zoneCard).join('')}</div>`}
-            ${!collapsed && !isGuest() ? `<div style="padding:0.2rem 1rem 0.6rem;display:flex;gap:0.5rem">
+            ${!collapsed && canEdit() ? `<div style="padding:0.2rem 1rem 0.6rem;display:flex;gap:0.5rem">
                 <button class="section-add-btn" onclick="openAddDirectPlant('${areaKey}');event.stopPropagation()">+ Tilføj element</button>
             </div>` : ''}
         </div>`;
@@ -994,7 +998,7 @@ function renderHome() {
         ${attentionHTML}
         ${urgentHTML}
         ${areasHTML}
-        ${!isGuest() ? `<div style="padding:0 1rem 0.5rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+        ${canEdit() ? `<div style="padding:0 1rem 0.5rem;display:flex;gap:0.5rem;flex-wrap:wrap">
             <button class="section-add-btn" onclick="openAddZone()">+ Tilføj ny zone</button>
         </div>` : ''}`;
 }
@@ -1050,7 +1054,7 @@ function renderZone(zid) {
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0">
                     ${p.photo
                         ? `<img class="plant-list-thumb" src="${p.photo}" onclick="viewPhoto('${p.photo}');event.stopPropagation()">`
-                        : (!isGuest() ? `<button class="plant-photo-btn" onclick="pickElementPhoto('${p.id}');event.stopPropagation()" title="Tilføj foto">📷</button>` : '')
+                        : (canEdit() ? `<button class="plant-photo-btn" onclick="pickElementPhoto('${p.id}');event.stopPropagation()" title="Tilføj foto">📷</button>` : '')
                     }
                     ${p.infoLink ? `<a href="${p.infoLink}" target="_blank" class="plant-link-btn" onclick="event.stopPropagation()">Info →</a>` : ''}
                 </div>
@@ -1075,8 +1079,8 @@ function renderZone(zid) {
             ${z.description ? `<div class="detail-hero-sub">${z.description}</div>` : ''}
             ${z.photo
                 ? `<div style="position:relative;margin-top:0.7rem"><img class="detail-hero-photo" src="${z.photo}" onclick="viewPhoto('${z.photo}')">
-                   ${!isGuest() ? `<button class="zone-photo-delete" onclick="deleteZonePhoto('${zid}',event)">×</button>` : ''}</div>`
-                : (!isGuest() ? `<div class="detail-hero-photo-placeholder" onclick="pickZonePhoto('${zid}')">📷 Tilføj zonefoto</div>` : '')
+                   ${canEdit() ? `<button class="zone-photo-delete" onclick="deleteZonePhoto('${zid}',event)">×</button>` : ''}</div>`
+                : (canEdit() ? `<div class="detail-hero-photo-placeholder" onclick="pickZonePhoto('${zid}')">📷 Tilføj zonefoto</div>` : '')
             }
         </div>
         <div class="tabs">
@@ -1088,18 +1092,18 @@ function renderZone(zid) {
             ${subZonesHTML}
             ${subs.length > 0 && plants.length > 0 ? '<div class="sub-zone-label" style="margin-top:0.8rem">Elementer</div>' : ''}
             ${plantsHTML}
-            ${!isGuest() ? `<div style="padding:0.8rem 1rem 0;display:flex;gap:0.5rem;flex-wrap:wrap">
+            ${canEdit() ? `<div style="padding:0.8rem 1rem 0;display:flex;gap:0.5rem;flex-wrap:wrap">
                 <button class="section-add-btn" onclick="openAddZone('${zid}')">+ Tilføj zone</button>
                 <button class="section-add-btn" onclick="openAddPlant('${zid}')">+ Tilføj element</button>
             </div>` : ''}` : ''}
         ${tab === 'reminders' ? `
             ${reminderHTML}
-            ${!isGuest() ? `<div style="padding:0.8rem 1rem 0">
+            ${canLog() ? `<div style="padding:0.8rem 1rem 0">
                 <button class="section-add-btn" onclick="openAddReminder('zone','${zid}')">+ Tilføj påmindelse</button>
             </div>` : ''}` : ''}
         ${tab === 'history' ? `
             ${historyHTML}
-            ${!isGuest() ? `<div style="padding:0.8rem 1rem 0">
+            ${canLog() ? `<div style="padding:0.8rem 1rem 0">
                 <button class="section-add-btn" onclick="openAddHistory('zone','${zid}')">+ Tilføj log-note</button>
             </div>` : ''}` : ''}`;
 }
@@ -1134,8 +1138,8 @@ function renderPlant(pid) {
             <div class="info-section">
                 ${p.photo
                     ? `<div class="info-row"><span class="label">Foto</span><span class="val" style="display:flex;align-items:center;gap:0.5rem"><img src="${p.photo}" style="width:110px;height:78px;border-radius:8px;object-fit:cover;cursor:pointer" onclick="viewPhoto('${p.photo}')">
-                       ${!isGuest() ? `<button onclick="deleteElementPhoto('${pid}',event)" style="font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Slet</button>` : ''}</span></div>`
-                    : (!isGuest() ? `<div class="info-row"><span class="label">Foto</span><span class="val"><button class="plant-photo-btn" style="width:60px;height:60px" onclick="pickElementPhoto('${pid}')">📷</button></span></div>` : '')
+                       ${canEdit() ? `<button onclick="deleteElementPhoto('${pid}',event)" style="font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Slet</button>` : ''}</span></div>`
+                    : (canEdit() ? `<div class="info-row"><span class="label">Foto</span><span class="val"><button class="plant-photo-btn" style="width:60px;height:60px" onclick="pickElementPhoto('${pid}')">📷</button></span></div>` : '')
                 }
                 ${p.latinName ? `<div class="info-row"><span class="label">Latinsk navn</span><span class="val"><em>${p.latinName}</em></span></div>` : ''}
                 ${p.type ? `<div class="info-row"><span class="label">Type</span><span class="val">${p.type}</span></div>` : ''}
@@ -1147,19 +1151,19 @@ function renderPlant(pid) {
             <div class="info-note">
                 <div class="info-note-label">Viden om</div>
                 ${p.aiInfo
-                    ? `<span>${p.aiInfo}</span>${!isGuest() ? `<button onclick="refreshPlantInfo('${pid}')" style="margin-top:0.5rem;display:block;font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">↺ Opdater</button>` : ''}`
+                    ? `<span>${p.aiInfo}</span>${canEdit() ? `<button onclick="refreshPlantInfo('${pid}')" style="margin-top:0.5rem;display:block;font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">↺ Opdater</button>` : ''}`
                     : `<span id="ai-status" style="color:var(--muted);font-size:0.85rem">Henter...</span>
-                       ${!isGuest() ? `<button onclick="refreshPlantInfo('${pid}')" style="margin-top:0.4rem;display:none;font-size:0.82rem;color:var(--terra);background:none;border:none;cursor:pointer;padding:0" id="ai-retry">Prøv igen</button>` : ''}`
+                       ${canEdit() ? `<button onclick="refreshPlantInfo('${pid}')" style="margin-top:0.4rem;display:none;font-size:0.82rem;color:var(--terra);background:none;border:none;cursor:pointer;padding:0" id="ai-retry">Prøv igen</button>` : ''}`
                 }
             </div>` : ''}
         ${tab === 'reminders' ? `
             ${reminderHTML}
-            ${!isGuest() ? `<div style="padding:0.8rem 1rem 0">
+            ${canLog() ? `<div style="padding:0.8rem 1rem 0">
                 <button class="section-add-btn" onclick="openAddReminder('plant','${pid}')">+ Tilføj påmindelse</button>
             </div>` : ''}` : ''}
         ${tab === 'history' ? `
             ${historyHTML}
-            ${!isGuest() ? `<div style="padding:0.8rem 1rem 0">
+            ${canLog() ? `<div style="padding:0.8rem 1rem 0">
                 <button class="section-add-btn" onclick="openAddHistory('plant','${pid}')">+ Tilføj log-note</button>
             </div>` : ''}` : ''}`;
 }
@@ -1378,7 +1382,7 @@ function renderRecommendations() {
                 </div>
                 ${covered
                     ? `<span style="font-size:0.7rem;color:var(--green-mid);flex-shrink:0;padding-top:0.2rem">✓ Planlagt</span>`
-                    : `<button onclick="addRecommendationAsReminder('${item.entityType}','${item.entityId}','${date}',${JSON.stringify(item.text).replace(/'/g,"\\'")})" style="background:var(--green-dark);color:white;border:none;border-radius:8px;padding:0.3rem 0.6rem;font-size:0.72rem;cursor:pointer;flex-shrink:0">+ Påmindelse</button>`
+                    : `<button onclick="addRecommendationAsReminder('${item.entityType}','${item.entityId}','${date}','${item.text.replace(/'/g,'&#39;')}')" style="background:var(--green-dark);color:white;border:none;border-radius:8px;padding:0.3rem 0.6rem;font-size:0.72rem;cursor:pointer;flex-shrink:0">+ Påmindelse</button>`
                 }
             </div>`;
         }).join('');
@@ -1507,14 +1511,14 @@ function renderCalendar() {
             : isPast
                 ? `<span class="cal-event-tag overdue">Overskredet</span>`
                 : `<span class="cal-event-tag upcoming">Kommende</span>`;
-        const clickAttr = !isGuest() && e.kind === 'upcoming' && e.rid
+        const clickAttr = canEdit() && e.kind === 'upcoming' && e.rid
             ? `onclick="openEditReminder('${e.rid}')" style="cursor:pointer"`
-            : !isGuest() && e.kind === 'history' && e.hid
+            : canEdit() && e.kind === 'history' && e.hid
             ? `onclick="openEditHistoryItem('${e.hid}')" style="cursor:pointer"`
             : '';
-        const deleteBtn = !isGuest() && e.kind === 'history' && e.hid
+        const deleteBtn = canEdit() && e.kind === 'history' && e.hid
             ? `<button onclick="doDeleteHistory('${e.hid}');event.stopPropagation()" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0;flex-shrink:0" title="Slet">×</button>`
-            : !isGuest() && e.kind === 'upcoming' && e.rid
+            : canEdit() && e.kind === 'upcoming' && e.rid
             ? `<button onclick="if(confirm('Slet påmindelse?')){db.reminders=db.reminders.filter(r=>r.id!=='${e.rid}');saveDB();render();}event.stopPropagation()" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0;flex-shrink:0" title="Slet">×</button>`
             : '';
         return `<div class="cal-event" ${clickAttr} style="display:flex;align-items:flex-start;gap:0.5rem">
@@ -1600,8 +1604,8 @@ function toggleArea(areaKey) {
 }
 
 function handleAdd() {
-    if (nav.view === 'home') openAddZone(null);
-    else if (nav.view === 'zone') {
+    if (nav.view === 'home' && canEdit()) openAddZone(null);
+    else if (nav.view === 'zone' && canEdit()) {
         const zid = nav.zoneId;
         const z = zone(zid);
         openSheet(`Tilføj til ${z?.name || 'zonen'}`, `
@@ -1616,10 +1620,11 @@ function handleAdd() {
                 </button>
             </div>`);
     }
-    else if (nav.view === 'plant') openAddReminder('plant', nav.plantId);
+    else if (nav.view === 'plant' && canLog()) openAddReminder('plant', nav.plantId);
 }
 
 function handleEdit() {
+    if (!canEdit()) return;
     if (nav.view === 'zone') openEditZone(nav.zoneId);
     else if (nav.view === 'plant') openEditPlant(nav.plantId);
 }
@@ -2038,7 +2043,7 @@ function renderReminderItem(r) {
         ? `<span class="assignee-chip ${r.assignedTo.toLowerCase()}">${initials[r.assignedTo] || r.assignedTo[0]}</span>`
         : r.assignedTo === 'alle' ? `<span class="assignee-chip alle">👥</span>` : '';
     return `<div class="reminder-item">
-        ${!isGuest() ? `<div class="reminder-check" data-complete="${r.id}" title="Marker som udført">✓</div>` : '<div style="width:22px;flex-shrink:0"></div>'}
+        ${canLog() ? `<div class="reminder-check" data-complete="${r.id}" title="Marker som udført">✓</div>` : '<div style="width:22px;flex-shrink:0"></div>'}
         <div>
             <div class="reminder-text">${r.text}</div>
             <div class="reminder-date">${formatDate(r.date)} · ${daysUntil(r.date)}
@@ -2055,7 +2060,7 @@ function renderHistoryItem(h) {
             <div class="history-date">${formatDate(h.date)}</div>
             <div class="history-text">${h.text}${h.fromReminder ? '<span class="history-tag">påmindelse</span>' : ''}${h.needsAttention ? '<span class="history-tag attention">⚑ opmærksomhed</span>' : ''}</div>
         </div>
-        ${!isGuest() ? `<button onclick="doDeleteHistory('${h.id}')" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0;flex-shrink:0;line-height:1" title="Slet">×</button>` : ''}
+        ${canEdit() ? `<button onclick="doDeleteHistory('${h.id}')" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0;flex-shrink:0;line-height:1" title="Slet">×</button>` : ''}
     </div>`;
 }
 
@@ -2067,6 +2072,8 @@ let setupName = '';
 
 function currentUser() { return sessionStorage.getItem('minhave-user') || ''; }
 function isGuest() { return currentUser() === 'Gæst'; }
+function canEdit() { return currentUser() === 'Steen'; }
+function canLog()  { return currentUser() === 'Steen' || currentUser() === 'Linda'; }
 
 function checkAccess() {
     if (sessionStorage.getItem('minhave-unlocked') === '1') return true;
@@ -2172,7 +2179,7 @@ function openUserMenu() {
     const otherUser = user === 'Steen' ? 'Linda' : 'Steen';
     openSheet(user || 'Bruger', `
         <div style="padding:0.8rem 1.2rem 0;display:flex;flex-direction:column;gap:0.7rem">
-            ${!isGuest() ? `
+            ${canEdit() ? `
             <button class="btn-primary" style="margin:0" onclick="startChangePinFor('${user}')">Skift min PIN</button>
             <button class="btn-primary" style="margin:0;background:var(--green-mid)" onclick="startChangePinFor('${otherUser}')">Sæt ${otherUser}s PIN</button>
             <button class="btn-primary" style="margin:0;background:var(--green-mid)" onclick="startChangePinFor('Gæst')">${pins.Gæst ? 'Skift gæste-PIN' : 'Opret gæste-PIN'}</button>
