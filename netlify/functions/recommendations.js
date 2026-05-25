@@ -24,7 +24,7 @@ exports.handler = async function (event) {
         return { statusCode: 200, body: JSON.stringify({ items: [] }) };
     }
 
-    const plantLines = (plants || []).map(p =>
+    const plantLines = (plants || []).slice(0, 15).map(p =>
         `- ID:${p.id} | ${p.name}${p.latinName ? ` (${p.latinName})` : ''} | Type: ${p.type || 'ukendt'}`
     ).join('\n');
 
@@ -57,11 +57,11 @@ Returner KUN et JSON-array uden forklaring eller markdown. Hvert objekt skal hav
 - text: kort, konkret handlingsbeskrivelse på naturligt dansk (maks 60 tegn)
 - repeat: altid "yearly"
 
-Medtag KUN handlinger der ikke allerede er dækket af eksisterende påmindelser. Maks 3 anbefalinger pr. element.`;
+Medtag KUN handlinger der ikke allerede er dækket af eksisterende påmindelser. Maks 2 anbefalinger pr. element.`;
 
     const requestBody = JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 8000,
+        max_tokens: 2500,
         messages: [{ role: 'user', content: prompt }],
     });
 
