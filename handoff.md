@@ -1,57 +1,61 @@
 # Handoff — Vores Have
-*Opdateret: 25. maj 2026 (dag 2 - nat)*
+*Opdateret: 25. maj 2026 (dag 2 - aften)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.14 på `https://voreshave.soenderup.dk`
-- **Alt virker** - planteidentifikation via foto fungerer
+- **Live version:** v1.15 på `https://voreshave.soenderup.dk`
+- **Alt virker** - direkte elementer under område, identificér medfører foto
 - **Næste session:** se prioriteringslisten nederst
 
 ---
 
 ## Dagens arbejde
 
-### Planteidentifikation via foto (v1.13 → v1.14)
+### Identifikation og navngivning (v1.14)
+
+- **"Planteidentifikation"** omdøbt til **"Identifikation via foto"** — kan jo være træer, buske, grøntsager osv.
+- Knap **"Opret element i haven"** → **"Opret element"**
+- Identificér-knap **"🔍 Identificer plante"** → **"🔍 Identificer"**
+
+### Foto medfølger fra identificér (v1.14)
+
+- Når man opretter et element fra identificér-resultatet, tages billedet med som elementets foto
+- Foto sættes som base64 med det samme, uploades til Firebase Storage i baggrunden
+- Ny hjælpefunktion: `uploadBase64Photo(base64)` — uploader direkte fra base64 uden File-objekt
+
+### Område/Zone/Element vælger (v1.14)
+
+- Rediger element: tilføjet OMRÅDE-vælger øverst — zone-listen filtreres dynamisk
+- Opret fra identificér: samme OMRÅDE + ZONE vælger
+- Gem flytter elementet til den valgte zone og navigerer korrekt
+
+### Direkte elementer under område (v1.15)
+
+**Baggrund:** Alle elementer skal teknisk have en `zoneId`. "Direkte" elementer oprettes via en usynlig ghost-zone (`isDirect: true`, `type: 'andet'`).
 
 **Hvad vi byggede:**
-- Ny 📸 **Identificer**-knap i bunden mellem Haven og Kalender
-- Vælg foto fra biblioteket ELLER tag nyt billede (begge muligheder på iPhone)
-- Valgfrit tekstfelt: skriv et par ord der kan hjælpe AI'en
-- Billede resizes til maks 800px på klienten inden afsendelse (holder det under Netlify-limit)
-- Ny Netlify function `identify-plant.js` med **claude-sonnet-4-6** (vision)
-- Returnerer: navn, latinsk navn, type, confidence (0-1), beskrivelse
-- Confidence vises som: ✓ Høj / ~ Middel / ⚠ Lav
-- **"+ Opret element i haven"**-knap (kun canEdit) → pre-udfyldt form med zonevælger
-- Prøv igen-knap nulstiller hele flowet
+- `isDirectZone(zid)` — detekterer ghost-zoner via `isDirect` flag ELLER heuristik (type 'andet', ingen beskrivelse, ingen underzoner, 1 element)
+- `directElementCard(z, p)` — renderer element-kort direkte under området (med foto-thumbnail, navn, type, status-badge)
+- Område-tæller viser nu **"X zoner · Y elementer"** separat
+- Ghost-zoner filtreres fra zone-vælgeren i rediger/identificér
+- **"— Direkte i området —"** som første valg i zone-dropdown — virker i både "Rediger element" og "Opret fra identificér"
+- `deletePlant`: auto-sletter tom ghost-zone og navigerer hjem
+- `submitEditPlant`: auto-sletter tom ghost-zone når element flyttes væk
+- `submitAddDirectPlant`: sætter `isDirect: true` på ny ghost-zone
 
-**PLANT_TYPES udvidet:**
-- Tilføjet: Blomst, Hæk, Græs
-- Fuld liste: Stauder, Blomst, Løgplante, Grøntsag, Frugt, Træ, Busk, Hæk, Klatrer, Græs, Etårig, Andet
-
-**Problemer vi løste:**
-- `capture="environment"` tvang kameraet direkte → fjernet, giver nu iOS-valgmenu
-
----
-
-## 💡 Idé noteret: single-user offline-version
-
-Hvis nogen vil have en kopi til sig selv (kun én iPhone, ingen cloud):
-- Erstat Firestore `saveDB`/`loadDB` med localStorage/IndexedDB
-- Fotos i IndexedDB direkte (mønsteret er allerede der)
-- Fjern Firebase SDK, PIN-system og brugerroller
-- Netlify-funktioner (AI) skal stadig hostes med egen Anthropic API-nøgle
-- Hage: data forsvinder ved app-sletning/telefonskift - ingen backup
-- Estimat: ~1 dags arbejde
+**Hierarkier der virker:**
+- Område → Element (direkte, som element-kort)
+- Område → Zone → Element
+- Område → Zone → Zone → Element
 
 ---
 
 ## ⚠ Steen skal tjekke
 
-- Virker identifikation som forventet på iPhone?
-- Er confidence-vurderingen brugbar?
-- Er zonevælgeren i "Opret element"-formularen overskuelig?
+- Virker "flyt element" (zone-skift) korrekt efter lukke/genåbne app?
+- Ser direkte elementer pæne ud under området?
 
 ---
 
@@ -59,14 +63,14 @@ Hvis nogen vil have en kopi til sig selv (kun én iPhone, ingen cloud):
 
 ```
 voreshave/
-├── index.html              ← hele appen (v1.14)
+├── index.html              ← hele appen (v1.15)
 ├── manifest.json           ← PWA-manifest
-├── sw.js                   ← Service worker (cache: vores-have-v7)
+├── sw.js                   ← Service worker (cache: vores-have-v7, network-first for HTML)
 ├── netlify.toml            ← Netlify config (Node 18, secrets-scanner slået fra)
 ├── netlify/functions/
 │   ├── plant-info.js       ← Claude Haiku - genererer "Viden om" tekst
 │   ├── recommendations.js  ← Claude Haiku - per-plante anbefalinger
-│   └── identify-plant.js   ← Claude Sonnet 4.6 - planteidentifikation via foto
+│   └── identify-plant.js   ← Claude Sonnet 4.6 - identifikation via foto
 ├── icons/                  ← App-ikoner
 ├── scripts/                ← Dev-miljø (ikke deployed)
 ├── CLAUDE.md               ← projektinstruktioner til Claude
@@ -87,6 +91,15 @@ Storage:
 - Site: voreshave.netlify.app → voreshave.soenderup.dk
 - Environment variables: ANTHROPIC_API_KEY (secret), NODE_VERSION=18
 - Secrets scanning: slået fra (Firebase API-nøgle false positive)
+
+**Zone-datastruktur:**
+```js
+// Ghost-zone (direkte element under område)
+{ id, name, type: 'andet', area: 'baghave', description: '', parentZoneId: null, isDirect: true }
+
+// Normal zone
+{ id, name, type: 'bed'|'højbed'|..., area: 'baghave', description: '...', parentZoneId: null|zid }
+```
 
 ---
 
@@ -115,6 +128,7 @@ Med mange zoner kan det blive relevant.
 - **Dev-miljø:** `kode` → vælg `minhave` → server på `http://localhost:8766`
 - **Lokal server understøtter IKKE POST** - Netlify-funktioner testes kun på live
 - **Deploy:** `git push` → GitHub → Netlify auto-deploy. Spørg ALTID inden push
+- **PWA cache:** SW bruger network-first for HTML — luk og genåbn app for at få seneste version
 - **Cache-bump:** Kun nødvendigt når `SHELL`-listen i `sw.js` ændres (nye ikoner e.l.)
 - **VERSION:** Kun ved større funktionsændringer
 - **Netlify gratis-plan:** 10 sekunders timeout på functions - hold kald små
