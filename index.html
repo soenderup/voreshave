@@ -535,7 +535,7 @@ let attentionOpen = false;
 let pins = {};
 
 // ── DATA ──
-let db = { zones: [], plants: [], reminders: [], history: [], recommendations: { generatedAt: null, items: [] } };
+let db = { zones: [], plants: [], reminders: [], history: [], recommendations: { generatedAt: null, items: [] }, dismissedRecs: [] };
 
 // ── PHOTO STORAGE (IndexedDB - mere robust end localStorage på iOS Safari) ──
 const PHOTO_DB_NAME = 'minhave-photos';
@@ -1107,7 +1107,7 @@ function renderZone(zid) {
                 <button class="section-add-btn" onclick="openAddReminder('zone','${zid}')">+ Tilføj påmindelse</button>
             </div>` : ''}
             ${(() => {
-                const recs = (db.recommendations?.items || []).filter(item => item.entityId === zid && !isReminderCovered(item.entityId, item.months));
+                const recs = (db.recommendations?.items || []).filter(item => item.entityId === zid && !isReminderCovered(item.entityId, item.months) && !isRecDismissed(item.entityId, item.text));
                 if (!recs.length) return '';
                 return `<div style="padding:0.6rem 1rem 0.2rem;background:var(--cream);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-top:0.5rem">Foreslåede</div>` + recs.map(renderSuggestedRec).join('');
             })()}` : ''}
@@ -1173,7 +1173,7 @@ function renderPlant(pid) {
                 <button class="section-add-btn" onclick="openAddReminder('plant','${pid}')">+ Tilføj påmindelse</button>
             </div>` : ''}
             ${(() => {
-                const recs = (db.recommendations?.items || []).filter(item => item.entityId === pid && !isReminderCovered(item.entityId, item.months));
+                const recs = (db.recommendations?.items || []).filter(item => item.entityId === pid && !isReminderCovered(item.entityId, item.months) && !isRecDismissed(item.entityId, item.text));
                 if (!recs.length) return '';
                 return `<div style="padding:0.6rem 1rem 0.2rem;background:var(--cream);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-top:0.5rem">Foreslåede</div>` + recs.map(renderSuggestedRec).join('');
             })()}` : ''}
@@ -1398,7 +1398,12 @@ function renderRecommendations() {
                 </div>
                 ${covered
                     ? `<span style="font-size:0.7rem;color:var(--green-mid);flex-shrink:0;padding-top:0.2rem">✓ Planlagt</span>`
-                    : `<button onclick="addRecommendationAsReminder('${item.entityType}','${item.entityId}','${date}','${item.text.replace(/'/g,'&#39;')}')" style="background:var(--green-dark);color:white;border:none;border-radius:8px;padding:0.3rem 0.6rem;font-size:0.72rem;cursor:pointer;flex-shrink:0">+ Påmindelse</button>`
+                    : isRecDismissed(item.entityId, item.text)
+                    ? `<span style="font-size:0.7rem;color:var(--muted);flex-shrink:0;padding-top:0.2rem">Afvist</span>`
+                    : `<div style="display:flex;gap:0.4rem;flex-shrink:0">
+                        <button onclick="addRecommendationAsReminder('${item.entityType}','${item.entityId}','${date}','${item.text.replace(/'/g,'&#39;')}')" style="background:var(--green-dark);color:white;border:none;border-radius:8px;padding:0.3rem 0.6rem;font-size:0.72rem;cursor:pointer">+ Påmindelse</button>
+                        <button onclick="dismissRec('${item.entityId}','${item.text.replace(/'/g,'&#39;')}')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:0.3rem 0.5rem;font-size:0.72rem;cursor:pointer">✕</button>
+                       </div>`
                 }
             </div>`;
         }).join('');
@@ -2071,6 +2076,16 @@ function renderReminderItem(r) {
     </div>`;
 }
 
+function dismissRec(entityId, text) {
+    if (!db.dismissedRecs) db.dismissedRecs = [];
+    db.dismissedRecs.push({ entityId, text });
+    saveDB(); render();
+}
+
+function isRecDismissed(entityId, text) {
+    return (db.dismissedRecs || []).some(d => d.entityId === entityId && d.text === text);
+}
+
 function recNextDate(months) {
     const now = new Date().getMonth() + 1;
     const sorted = [...months].sort((a, b) => ((a - now + 12) % 12) - ((b - now + 12) % 12));
@@ -2089,7 +2104,10 @@ function renderSuggestedRec(item) {
             <div class="reminder-text" style="color:var(--text)">${item.text}</div>
             <div class="reminder-date">${monthNames}</div>
         </div>
-        ${canEdit() ? `<button onclick="addRecommendationAsReminder('${item.entityType}','${item.entityId}','${date}','${safeText}')" style="background:var(--green-dark);color:white;border:none;border-radius:8px;padding:0.25rem 0.55rem;font-size:0.75rem;cursor:pointer;flex-shrink:0" title="Tilføj som påmindelse">+ Tilføj</button>` : ''}
+        ${canEdit() ? `
+            <button onclick="addRecommendationAsReminder('${item.entityType}','${item.entityId}','${date}','${safeText}')" style="background:var(--green-dark);color:white;border:none;border-radius:8px;padding:0.25rem 0.55rem;font-size:0.75rem;cursor:pointer;flex-shrink:0" title="Tilføj som påmindelse">+ Tilføj</button>
+            <button onclick="dismissRec('${item.entityId}','${safeText}')" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0 0 0 0.3rem;flex-shrink:0;line-height:1" title="Afvis forslag">✕</button>
+        ` : ''}
     </div>`;
 }
 
