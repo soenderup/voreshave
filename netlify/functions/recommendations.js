@@ -13,55 +13,35 @@ function httpsPost(options, body) {
     });
 }
 
+const REPLACEMENTS = [
+    [/dødblom\w*/gi, 'fjern visne blomster'],
+    [/deadhead\w*/gi, 'fjern visne blomster'],
+    [/pinch\s*out/gi, 'knib skuddene'],
+    [/mulch\w*/gi, 'dæk med kompost'],
+];
+
+function cleanText(text) {
+    return REPLACEMENTS.reduce((t, [p, r]) => t.replace(p, r), text);
+}
+
 exports.handler = async function (event) {
-    if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: 'Method Not Allowed' };
-    }
+    if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
-    const { plants, zones, reminders } = JSON.parse(event.body || '{}');
+    const { plant } = JSON.parse(event.body || '{}');
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-        return { statusCode: 200, body: JSON.stringify({ items: [] }) };
-    }
+    if (!apiKey || !plant) return { statusCode: 200, body: JSON.stringify({ items: [] }) };
 
-    const plantLines = (plants || []).slice(0, 15).map(p =>
-        `- ID:${p.id} | ${p.name}${p.latinName ? ` (${p.latinName})` : ''} | Type: ${p.type || 'ukendt'}`
-    ).join('\n');
+    const prompt = `Du er dansk haveekspert. Giv 3-4 konkrete plejehandlinger for denne plante baseret på dansk klima og årstider.
 
-    const zoneLines = (zones || []).map(z =>
-        `- ID:${z.id} | ${z.name} | Type: ${z.type}`
-    ).join('\n');
+Plante: ${plant.name}${plant.latinName ? ` (${plant.latinName})` : ''}${plant.type ? ` — type: ${plant.type}` : ''}
 
-    const reminderLines = (reminders || []).map(r =>
-        `- EntityID:${r.entityId} | ${r.text} | Dato: ${r.date}`
-    ).join('\n');
+Skriv på naturligt hverdagsdansk i hele sætninger så en almindelig haveejer forstår det. Forklar gerne kort hvorfor. Eksempel: "Klip planterne ned til ca. 10 cm efter første frost — det styrker rødderne til næste år". Undgå engelske fagtermer som "deadhead", "mulch", "pinch out" — brug i stedet "fjern visne blomster", "dæk med kompost", "knib toppen af".
 
-    const prompt = `Du er en dansk haveekspert. Giv konkrete, månedsvise plejehandlinger for planterne og elementerne nedenfor baseret på dansk klima.
-
-Skriv i naturligt, hverdagsdansk som en erfaren dansk haveentusiast ville sige det. Undgå engelske låneord og tekniske termer. Eksempler på GOD tekst: "Fjern visne blomster", "Klip ned til 10 cm", "Gød med have-gødning", "Del planten op". Eksempler på DÅRLIG tekst: "Dødblom", "Deadhead", "Pinch out".
-
-PLANTER:
-${plantLines || '(ingen)'}
-
-HAVEELEMENTER (hæk, græs, træer som zoner):
-${zoneLines || '(ingen)'}
-
-EKSISTERENDE PÅMINDELSER (undgå dubletter):
-${reminderLines || '(ingen)'}
-
-Returner KUN et JSON-array uden forklaring eller markdown. Hvert objekt skal have præcis disse felter:
-- entityType: "plant" eller "zone"
-- entityId: ID fra listen ovenfor
-- entityName: navn på planten/elementet
-- months: array af månedsnumre (1-12) hvor handlingen skal udføres
-- text: kort, konkret handlingsbeskrivelse på naturligt dansk (maks 60 tegn)
-- repeat: altid "yearly"
-
-Medtag KUN handlinger der ikke allerede er dækket af eksisterende påmindelser. Maks 2 anbefalinger pr. element.`;
+Returner KUN et JSON-array uden forklaring. Format: [{"text":"...","months":[månedsnumre 1-12]}]`;
 
     const requestBody = JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2500,
+        max_tokens: 400,
         messages: [{ role: 'user', content: prompt }],
     });
 
@@ -85,30 +65,18 @@ Medtag KUN handlinger der ikke allerede er dækket af eksisterende påmindelser.
 
         const data = JSON.parse(result.body);
         const raw = data.content?.[0]?.text || '';
-
-        // Udtræk JSON selv om Claude tilføjer tekst omkring
         const match = raw.match(/\[[\s\S]*\]/);
         if (!match) return { statusCode: 200, body: JSON.stringify({ items: [] }) };
 
         let items;
         try {
             items = JSON.parse(match[0]);
-        } catch (parseErr) {
-            console.error('JSON parse fejl:', parseErr.message, 'stop_reason:', data.stop_reason);
+        } catch (e) {
+            console.error('JSON parse fejl:', e.message);
             return { statusCode: 200, body: JSON.stringify({ items: [] }) };
         }
 
-        // Erstat kendte uønskede termer med naturligt dansk
-        const replacements = [
-            [/dødblom\w*/gi, 'fjern visne blomster'],
-            [/deadhead\w*/gi, 'fjern visne blomster'],
-            [/pinch\s*out/gi, 'knib skuddene'],
-            [/mulch\w*/gi, 'dæk med kompost'],
-        ];
-        items = items.map(item => ({
-            ...item,
-            text: replacements.reduce((t, [pattern, replacement]) => t.replace(pattern, replacement), item.text),
-        }));
+        items = items.map(item => ({ ...item, text: cleanText(item.text) }));
 
         return {
             statusCode: 200,
@@ -116,7 +84,7 @@ Medtag KUN handlinger der ikke allerede er dækket af eksisterende påmindelser.
             body: JSON.stringify({ items }),
         };
     } catch (e) {
-        console.error('recommendations function fejl:', e);
+        console.error('recommendations fejl:', e);
         return { statusCode: 200, body: JSON.stringify({ items: [] }) };
     }
 };

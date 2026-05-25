@@ -486,9 +486,6 @@
     <button class="nav-btn" id="nav-calendar" onclick="goTo('calendar')">
         <span class="nav-icon">📅</span>Kalender
     </button>
-    <button class="nav-btn" id="nav-recommendations" onclick="goTo('recommendations')">
-        <span class="nav-icon">💡</span>Anbefalinger
-    </button>
 </nav>
 
 <div id="lightbox" onclick="closeLightbox()">
@@ -535,7 +532,7 @@ let attentionOpen = false;
 let pins = {};
 
 // ── DATA ──
-let db = { zones: [], plants: [], reminders: [], history: [], recommendations: { generatedAt: null, items: [] }, dismissedRecs: [] };
+let db = { zones: [], plants: [], reminders: [], history: [] };
 
 // ── PHOTO STORAGE (IndexedDB - mere robust end localStorage på iOS Safari) ──
 const PHOTO_DB_NAME = 'minhave-photos';
@@ -631,7 +628,6 @@ function mergeLocalPhotos() {
 
 async function loadDB() {
     const localRaw = localStorage.getItem('minhave-v3');
-    const localRec = localRaw ? (JSON.parse(localRaw).recommendations || null) : null;
     try {
         const snap = await DATA_REF.get();
         if (snap.exists) {
@@ -640,20 +636,16 @@ async function loadDB() {
             seedDB();
             await DATA_REF.set(db);
         }
-        db.recommendations = localRec || { generatedAt: null, items: [] };
         mergeLocalPhotos();
         localStorage.setItem('minhave-v3', JSON.stringify(db));
     } catch (e) {
         if (localRaw) db = JSON.parse(localRaw);
         else seedDB();
-        if (!db.recommendations) db.recommendations = { generatedAt: null, items: [] };
         mergeLocalPhotos();
     }
     DATA_REF.onSnapshot({ includeMetadataChanges: true }, snap => {
         if (snap.exists && !snap.metadata.hasPendingWrites) {
-            const savedRec = db.recommendations;
             db = snap.data();
-            db.recommendations = savedRec || { generatedAt: null, items: [] };
             mergeLocalPhotos();
             localStorage.setItem('minhave-v3', JSON.stringify(db));
             if (sessionStorage.getItem('minhave-unlocked') === '1') render();
@@ -663,8 +655,7 @@ async function loadDB() {
 
 function saveDB() {
     try { localStorage.setItem('minhave-v3', JSON.stringify(db)); } catch (e) { console.warn('localStorage write failed:', e); }
-    const { recommendations: _rec, ...dbForFirestore } = db;
-    DATA_REF.set(dbForFirestore).catch(console.error);
+    DATA_REF.set(db).catch(console.error);
 }
 
 async function loadPins() {
@@ -872,14 +863,13 @@ function render() {
     const isTop = nav.view === 'home' || nav.view === 'calendar';
     backBtn.style.display = isTop ? 'none' : 'block';
     editBtn.style.display = (nav.view === 'zone' || nav.view === 'plant') && canEdit() ? 'flex' : 'none';
-    const showAdd = nav.view !== 'calendar' && nav.view !== 'recommendations' &&
+    const showAdd = nav.view !== 'calendar' &&
         (canEdit() || (canLog() && nav.view === 'plant'));
     addBtn.style.display = showAdd ? 'flex' : 'none';
 
     // Bottom nav active state
     document.getElementById('nav-home').classList.toggle('active', nav.view !== 'calendar');
     document.getElementById('nav-calendar').classList.toggle('active', nav.view === 'calendar');
-    document.getElementById('nav-recommendations').classList.toggle('active', nav.view === 'recommendations');
 
     // Bruger-knap
     const userBtn = document.getElementById('user-btn');
@@ -894,8 +884,6 @@ function render() {
 
     if (nav.view === 'home') {
         app.innerHTML = renderHome();
-    } else if (nav.view === 'recommendations') {
-        app.innerHTML = renderRecommendations();
     } else if (nav.view === 'calendar') {
         app.innerHTML = renderCalendar();
     } else if (nav.view === 'zone') {
@@ -1101,16 +1089,10 @@ function renderZone(zid) {
                 <button class="section-add-btn" onclick="openAddPlant('${zid}')">+ Tilføj element</button>
             </div>` : ''}` : ''}
         ${tab === 'reminders' ? `
-            ${reminders.length > 0 ? `<div style="padding:0.4rem 1rem 0.2rem;background:var(--white);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted)">Dine påmindelser</div>` : ''}
             ${reminderHTML}
             ${canLog() ? `<div style="padding:0.8rem 1rem 0">
                 <button class="section-add-btn" onclick="openAddReminder('zone','${zid}')">+ Tilføj påmindelse</button>
-            </div>` : ''}
-            ${(() => {
-                const recs = (db.recommendations?.items || []).filter(item => item.entityId === zid && !isReminderCovered(item.entityId, item.months) && !isRecDismissed(item.entityId, item.text));
-                if (!recs.length) return '';
-                return `<div style="padding:0.6rem 1rem 0.2rem;background:var(--cream);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-top:0.5rem">Foreslåede</div>` + recs.map(renderSuggestedRec).join('');
-            })()}` : ''}
+            </div>` : ''}` : ''}
         ${tab === 'history' ? `
             ${historyHTML}
             ${canLog() ? `<div style="padding:0.8rem 1rem 0">
@@ -1167,16 +1149,11 @@ function renderPlant(pid) {
                 }
             </div>` : ''}
         ${tab === 'reminders' ? `
-            ${reminders.length > 0 ? `<div style="padding:0.4rem 1rem 0.2rem;background:var(--white);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted)">Dine påmindelser</div>` : ''}
             ${reminderHTML}
-            ${canLog() ? `<div style="padding:0.8rem 1rem 0">
+            ${canLog() ? `<div style="padding:0.8rem 1rem 0;display:flex;gap:0.5rem;flex-wrap:wrap">
                 <button class="section-add-btn" onclick="openAddReminder('plant','${pid}')">+ Tilføj påmindelse</button>
-            </div>` : ''}
-            ${(() => {
-                const recs = (db.recommendations?.items || []).filter(item => item.entityId === pid && !isReminderCovered(item.entityId, item.months) && !isRecDismissed(item.entityId, item.text));
-                if (!recs.length) return '';
-                return `<div style="padding:0.6rem 1rem 0.2rem;background:var(--cream);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-top:0.5rem">Foreslåede</div>` + recs.map(renderSuggestedRec).join('');
-            })()}` : ''}
+                ${canEdit() ? `<button class="section-add-btn" onclick="openPlantSuggestions('${pid}')">💡 Søg anbefalinger</button>` : ''}
+            </div>` : ''}` : ''}
         ${tab === 'history' ? `
             ${historyHTML}
             ${canLog() ? `<div style="padding:0.8rem 1rem 0">
@@ -1361,108 +1338,67 @@ function entityName(type, id) {
 // ── ANBEFALINGER ──
 const MONTH_NAMES = ['januar','februar','marts','april','maj','juni','juli','august','september','oktober','november','december'];
 
-function isReminderCovered(entityId, months) {
-    return db.reminders.some(r => {
-        if (r.entityId !== entityId) return false;
-        const m = new Date(r.date).getMonth() + 1;
-        return months.some(rm => Math.abs(rm - m) <= 1);
-    });
-}
+async function openPlantSuggestions(pid) {
+    const p = plant(pid);
+    if (!p) return;
 
-function renderRecommendations() {
-    const items = db.recommendations?.items || [];
-    const generatedAt = db.recommendations?.generatedAt;
-
-    const grouped = {};
-    items.forEach(item => {
-        (item.months || []).forEach(m => {
-            if (!grouped[m]) grouped[m] = [];
-            grouped[m].push(item);
-        });
-    });
-
-    const monthsHTML = Object.keys(grouped).sort((a,b) => {
-        const now = new Date().getMonth() + 1;
-        const dist = m => ((m - now + 12) % 12);
-        return dist(+a) - dist(+b);
-    }).map(m => {
-        const monthItems = grouped[m];
-        const rows = monthItems.map(item => {
-            const covered = isReminderCovered(item.entityId, [+m]);
-            const nextYear = new Date().getMonth() + 1 > +m ? new Date().getFullYear() + 1 : new Date().getFullYear();
-            const date = `${nextYear}-${String(m).padStart(2,'0')}-01`;
-            return `<div style="padding:0.7rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:0.7rem">
-                <div style="flex:1">
-                    <div style="font-size:0.88rem;font-weight:600;color:var(--text)">${item.text}</div>
-                    <div style="font-size:0.73rem;color:var(--muted);margin-top:0.1rem">${item.entityName}</div>
-                </div>
-                ${covered
-                    ? `<span style="font-size:0.7rem;color:var(--green-mid);flex-shrink:0;padding-top:0.2rem">✓ Planlagt</span>`
-                    : isRecDismissed(item.entityId, item.text)
-                    ? `<span style="font-size:0.7rem;color:var(--muted);flex-shrink:0;padding-top:0.2rem">Afvist</span>`
-                    : `<div style="display:flex;gap:0.4rem;flex-shrink:0">
-                        <button onclick="addRecommendationAsReminder('${item.entityType}','${item.entityId}','${date}','${item.text.replace(/'/g,'&#39;')}')" style="background:var(--green-dark);color:white;border:none;border-radius:8px;padding:0.3rem 0.6rem;font-size:0.72rem;cursor:pointer">+ Påmindelse</button>
-                        <button onclick="dismissRec('${item.entityId}','${item.text.replace(/'/g,'&#39;')}')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:0.3rem 0.5rem;font-size:0.72rem;cursor:pointer">✕</button>
-                       </div>`
-                }
-            </div>`;
-        }).join('');
-        return `<div>
-            <div style="padding:0.5rem 1rem;background:var(--cream);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted)">${MONTH_NAMES[+m-1]}</div>
-            ${rows}
-        </div>`;
-    }).join('');
-
-    return `
-        <div style="padding:1rem 1rem 0.5rem;display:flex;align-items:center;justify-content:space-between">
-            <div style="font-size:0.72rem;color:var(--muted)">${generatedAt ? 'Opdateret ' + formatDate(generatedAt) : 'Ingen anbefalinger endnu'}</div>
-            <button onclick="fetchRecommendations()" id="rec-btn" style="background:var(--green-dark);color:white;border:none;border-radius:10px;padding:0.45rem 0.9rem;font-size:0.82rem;font-weight:600;cursor:pointer">Tjek for nye</button>
+    openSheet(`💡 Anbefalinger til ${p.name}`, `
+        <div id="suggestions-body" style="padding:0.5rem 0">
+            <div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.88rem">Henter anbefalinger...</div>
         </div>
-        ${recError ? `<div style="padding:1rem;color:#c0392b;font-size:0.85rem">${recError}</div>` : ''}
-        ${items.length === 0 && !recError
-            ? `<div class="empty-state"><span class="empty-icon">💡</span>Tryk "Tjek for nye" for at hente anbefalinger</div>`
-            : monthsHTML
-        }`;
-}
-
-let recError = null;
-
-async function fetchRecommendations() {
-    recError = null;
-    const btn = document.getElementById('rec-btn');
-    if (btn) { btn.textContent = 'Henter...'; btn.disabled = true; }
+        <button class="btn-secondary" onclick="openPlantSuggestions('${pid}')">↺ Søg igen</button>`);
 
     try {
-        const relevantZoneTypes = ['hæk','græsplæne','træ','busk'];
-        const payload = {
-            plants: (db.plants || []).map(p => ({ id: p.id, name: p.name, latinName: p.latinName, type: p.type })),
-            zones: (db.zones || []).filter(z => relevantZoneTypes.includes(z.type)).map(z => ({ id: z.id, name: z.name, type: z.type })),
-            reminders: (db.reminders || []).map(r => ({ entityId: r.entityId, text: r.text, date: r.date })),
-        };
-
         const res = await fetch('/.netlify/functions/recommendations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({ plant: { id: p.id, name: p.name, latinName: p.latinName, type: p.type } }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        db.recommendations = { generatedAt: new Date().toISOString().slice(0,10), items: data.items || [] };
-        saveDB();
+        const items = data.items || [];
+
+        const body = document.getElementById('suggestions-body');
+        if (!body) return;
+
+        if (!items.length) {
+            body.innerHTML = `<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.88rem">Ingen anbefalinger fundet – prøv igen.</div>`;
+            return;
+        }
+
+        body.innerHTML = items.map((item, i) => {
+            const monthNames = (item.months || []).map(m => MONTH_NAMES[m - 1]).join(', ');
+            const now = new Date().getMonth() + 1;
+            const sorted = [...(item.months || [])].sort((a, b) => ((a - now + 12) % 12) - ((b - now + 12) % 12));
+            const m = sorted[0] || (new Date().getMonth() + 1);
+            const year = now > m ? new Date().getFullYear() + 1 : new Date().getFullYear();
+            const date = `${year}-${String(m).padStart(2, '0')}-01`;
+            const safeText = item.text.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+            return `<div id="sugg-${i}" style="padding:0.9rem 1rem;border-bottom:1px solid var(--border)">
+                <div style="font-size:0.9rem;line-height:1.45;color:var(--text);margin-bottom:0.4rem">${item.text}</div>
+                <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.6rem">📅 ${monthNames}</div>
+                <button onclick="addSuggestionAsReminder('plant','${p.id}','${date}','${safeText}','sugg-${i}')"
+                    style="background:var(--green-dark);color:white;border:none;border-radius:8px;padding:0.35rem 0.8rem;font-size:0.8rem;cursor:pointer">
+                    + Tilføj til kalender
+                </button>
+            </div>`;
+        }).join('');
     } catch (e) {
-        console.error('Anbefalinger fejl:', e);
-        recError = 'Kunne ikke hente anbefalinger – prøv igen.';
+        const body = document.getElementById('suggestions-body');
+        if (body) body.innerHTML = `<div style="padding:1rem;color:#c0392b;font-size:0.85rem">Kunne ikke hente anbefalinger – prøv igen.</div>`;
     }
-    render();
 }
 
-function addRecommendationAsReminder(entityType, entityId, date, text) {
+function addSuggestionAsReminder(entityType, entityId, date, text, rowId) {
     db.reminders.push({
         id: uuid(), entityType, entityId, text, date,
         repeat: 'yearly', assignedTo: 'alle', createdBy: currentUser(), completedDates: [],
     });
-    saveDB(); render();
+    saveDB();
+    const row = document.getElementById(rowId);
+    if (row) row.innerHTML = `<div style="padding:0.5rem 0;color:var(--green-mid);font-size:0.85rem">✓ Tilføjet til kalender</div>`;
 }
+
 
 function renderCalendar() {
     const year = nav.calYear, month = nav.calMonth;
@@ -2076,40 +2012,6 @@ function renderReminderItem(r) {
     </div>`;
 }
 
-function dismissRec(entityId, text) {
-    if (!db.dismissedRecs) db.dismissedRecs = [];
-    db.dismissedRecs.push({ entityId, text });
-    saveDB(); render();
-}
-
-function isRecDismissed(entityId, text) {
-    return (db.dismissedRecs || []).some(d => d.entityId === entityId && d.text === text);
-}
-
-function recNextDate(months) {
-    const now = new Date().getMonth() + 1;
-    const sorted = [...months].sort((a, b) => ((a - now + 12) % 12) - ((b - now + 12) % 12));
-    const m = sorted[0];
-    const year = now > m ? new Date().getFullYear() + 1 : new Date().getFullYear();
-    return `${year}-${String(m).padStart(2, '0')}-01`;
-}
-
-function renderSuggestedRec(item) {
-    const monthNames = (item.months || []).map(m => MONTH_NAMES[m - 1]).join(', ');
-    const date = recNextDate(item.months || []);
-    const safeText = item.text.replace(/'/g, '&#39;');
-    return `<div class="reminder-item" style="background:var(--cream)">
-        <div style="width:22px;flex-shrink:0;color:var(--muted);font-size:0.85rem;margin-top:0.1rem">💡</div>
-        <div style="flex:1">
-            <div class="reminder-text" style="color:var(--text)">${item.text}</div>
-            <div class="reminder-date">${monthNames}</div>
-        </div>
-        ${canEdit() ? `
-            <button onclick="addRecommendationAsReminder('${item.entityType}','${item.entityId}','${date}','${safeText}')" style="background:var(--green-dark);color:white;border:none;border-radius:8px;padding:0.25rem 0.55rem;font-size:0.75rem;cursor:pointer;flex-shrink:0" title="Tilføj som påmindelse">+ Tilføj</button>
-            <button onclick="dismissRec('${item.entityId}','${safeText}')" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0 0 0 0.3rem;flex-shrink:0;line-height:1" title="Afvis forslag">✕</button>
-        ` : ''}
-    </div>`;
-}
 
 function renderHistoryItem(h) {
     return `<div class="history-item${h.needsAttention ? ' has-attention' : ''}" style="display:flex;align-items:flex-start;gap:0.5rem">
