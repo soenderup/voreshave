@@ -1,6 +1,39 @@
-# Fejl: dev-miljø virker ikke efter omdøbning fra minhave til VoresHave
+# Fejl: dev-miljø — Terminal "terminate processes"-dialog
 
 *Oprettet: 26. maj 2026 — Opdateret: 26. maj 2026*
+
+---
+
+## 🚨 HVIS DET SKER IGEN — LÆS DETTE FØRST
+
+**Symptom:** macOS viser "Vil du bringe aktive processer til ophør?" gentagne gange UNDER aktiv session.
+
+**Tjek dette med det samme:**
+```bash
+cat /Users/steensonderup/Documents/udvikling/VoresHave/.claude/settings.json | grep -A5 '"Stop"'
+```
+
+Hvis outputtet viser en Stop-hook der peger på `dev-stop.sh` → **det er problemet**.  
+Stop-hook'en fyrer efter HVERT svar (ikke kun ved exit) og dræber serveren + forsøger at lukke Terminal.
+
+**Fix (3 trin):**
+
+1. Åbn `.claude/settings.json` og fjern hele `"Stop"` blokken — kun `SessionStart` og `PostToolUse` må være der.
+
+2. Tjek at `dev-start.sh` bruger process-træ til at finde Claude PID (ikke bare `$PPID`):
+```bash
+grep -A10 "Find den faktiske Claude" scripts/dev-start.sh
+```
+
+3. Genstart server + watcher manuelt (da de er dræbt):
+```bash
+cd /Users/steensonderup/Documents/udvikling/VoresHave
+pkill -f "http.server 8766" 2>/dev/null; sleep 0.3
+python3 -m http.server 8766 &>/dev/null &
+echo $! > /tmp/voreshave_dev/server.pid
+```
+
+**Hvorfor sker det?** Stop-hook'en blev ved et uheld genindsat (f.eks. ved omdøbning af projekt, ændring af settings.json, eller fejlretning). Se "Årsag 3" nedenfor for hele historikken.
 
 ---
 
