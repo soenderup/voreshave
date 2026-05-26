@@ -33,19 +33,27 @@ exports.handler = async function (event) {
     ].filter(Boolean).join('\n');
 
     const missingInfo = !latinName
-        ? '\n\nOBS: Intet latinsk navn er angivet. Nævn at svaret er baseret på det almene navn og kan variere, og angiv hvad der ville gøre svaret mere præcist.'
+        ? '\n\nOBS: Intet latinsk navn angivet. Nævn i info-teksten at svaret er baseret på almennavnet og kan variere.'
         : '';
 
-    const prompt = `Du er en dansk haveekspert. Skriv 3-5 sætninger på dansk om følgende plante til brug i en have-app. Vær konkret og nyttig: pasning, vanding, beskæring, særlige hensyn for dansk klima, typiske problemer eller tips. Brug brugerens egne noter hvis de giver relevant kontekst.${missingInfo}
+    const prompt = `Du er en dansk haveekspert. Returner KUN et JSON-objekt om følgende plante (ingen forklaring, ingen markdown):
+{
+  "info": "3-5 konkrete sætninger på hverdagsdansk om pasning, vanding, beskæring, dansk klima og særlige hensyn${missingInfo}",
+  "water": "dry",
+  "light": "full",
+  "perennial": true
+}
+
+Mulige water-værdier: "dry" (tørketålende), "normal" (normal vanding), "moist" (fugtighedskrævende – hold jord fugtig)
+Mulige light-værdier: "full" (fuld sol, 6+ timer), "full-partial" (sol til halvskygge), "partial" (halvskygge, 3-6 timer), "partial-shade" (halvskygge til skygge), "shade" (skygge, under 3 timer)
+perennial: true hvis flerårig, false hvis etårig/toårig
 
 Plante:
-${plantDesc}
-
-Svar KUN med den faktuelle tekst direkte – ingen indledning som "Her er information om..." eller "Selvfølgelig!".`;
+${plantDesc}`;
 
     const requestBody = JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 500,
+        max_tokens: 600,
         messages: [{ role: 'user', content: prompt }],
     });
 
@@ -64,16 +72,26 @@ Svar KUN med den faktuelle tekst direkte – ingen indledning som "Her er inform
 
         if (result.status !== 200) {
             console.error('Anthropic API fejl:', result.status, result.body);
-            return { statusCode: 200, body: JSON.stringify({ info: `Kunne ikke hente planteinfo (fejl ${result.status}) – prøv igen ved at redigere elementet.` }) };
+            return { statusCode: 200, body: JSON.stringify({ info: `Kunne ikke hente planteinfo (fejl ${result.status}) – prøv igen.` }) };
         }
 
         const data = JSON.parse(result.body);
-        const info = data.content?.[0]?.text || 'Ingen information tilgængelig.';
+        const raw = data.content?.[0]?.text || '';
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (!match) {
+            return { statusCode: 200, body: JSON.stringify({ info: raw || 'Ingen information tilgængelig.' }) };
+        }
+
+        let parsed;
+        try { parsed = JSON.parse(match[0]); }
+        catch (e) {
+            return { statusCode: 200, body: JSON.stringify({ info: raw || 'Ingen information tilgængelig.' }) };
+        }
 
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ info }),
+            body: JSON.stringify(parsed),
         };
     } catch (e) {
         console.error('plant-info function fejl:', e);

@@ -52,11 +52,6 @@
 
 ---
 
-## ⚠ Steen skal tjekke
-
-- Virker "flyt element" (zone-skift) korrekt efter lukke/genåbne app?
-- Ser direkte elementer pæne ud under området?
-
 ---
 
 ## Teknisk overblik

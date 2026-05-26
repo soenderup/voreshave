@@ -176,6 +176,12 @@
         .info-note { margin: 0.8rem 1rem 0; background: var(--cream); border-radius: 10px; padding: 0.7rem 0.9rem; font-size: 0.85rem; color: var(--text); line-height: 1.5; }
         .info-note-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--brown); margin-bottom: 0.3rem; }
 
+        /* Care icons */
+        .care-icons { display: flex; flex-direction: column; gap: 0.28rem; line-height: 1; }
+        .care-icon-row { font-size: 1.05rem; letter-spacing: 0.04rem; }
+        .care-migrate-banner { margin: 0.6rem 1rem 0; padding: 0.55rem 0.9rem; background: var(--green-light); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; }
+        .care-migrate-btn { font-size: 0.78rem; color: var(--green-dark); background: none; border: 1px solid var(--green-mid); border-radius: 6px; padding: 0.25rem 0.6rem; cursor: pointer; white-space: nowrap; }
+
         /* Reminders */
         .reminder-item {
             display: flex; align-items: flex-start; gap: 0.6rem;
@@ -568,7 +574,7 @@ firebase.initializeApp({
 });
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
-const VERSION = '1.14';
+const VERSION = '1.16';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
@@ -1087,9 +1093,18 @@ function renderHome() {
         </div>`;
     }).join('');
 
+    const plantsNeedingCare = db.plants.filter(p => p.water == null && p.light == null);
+    const migrateBanner = canEdit() && plantsNeedingCare.length > 0 && !migrating
+        ? `<div class="care-migrate-banner" id="migrate-banner">
+               <span>🌿 ${plantsNeedingCare.length} element${plantsNeedingCare.length !== 1 ? 'er' : ''} mangler trivseldata</span>
+               <button class="care-migrate-btn" onclick="migrateAllCareData()">Udfyld automatisk</button>
+           </div>`
+        : (migrating ? `<div class="care-migrate-banner" id="migrate-banner"><span>🌿 Udfylder trivseldata...</span></div>` : '');
+
     return `
         ${attentionHTML}
         ${urgentHTML}
+        ${migrateBanner}
         ${areasHTML}
         ${canEdit() ? `<div style="padding:0 1rem 0.5rem;display:flex;gap:0.5rem;flex-wrap:wrap">
             <button class="section-add-btn" onclick="openAddZone()">+ Tilføj ny zone</button>
@@ -1201,6 +1216,15 @@ function renderZone(zid) {
             </div>` : ''}` : ''}`;
 }
 
+function careIconsHTML(p) {
+    const w = { dry: '💧', normal: '💧💧', moist: '💧💧💧' }[p.water] || '';
+    const l = { full: '☀️', 'full-partial': '☀️🌤️', partial: '🌤️', 'partial-shade': '🌤️☁️', shade: '☁️' }[p.light] || '';
+    const per = p.perennial === true ? '♾️' : p.perennial === false ? '🌱' : '';
+    const parts = [w, l, per].filter(Boolean);
+    if (!parts.length) return '';
+    return `<span class="care-icons">${parts.map(icon => `<span class="care-icon-row">${icon}</span>`).join('')}</span>`;
+}
+
 function renderPlant(pid) {
     const p = plant(pid);
     if (!p) return '<div class="empty-state">Plante ikke fundet</div>';
@@ -1229,16 +1253,34 @@ function renderPlant(pid) {
         </div>
         ${tab === 'main' ? `
             <div class="info-section">
-                ${p.photo
-                    ? `<div class="info-row"><span class="label">Foto</span><span class="val" style="display:flex;align-items:center;gap:0.5rem"><img src="${p.photo}" style="width:110px;height:78px;border-radius:8px;object-fit:cover;cursor:pointer" onclick="viewPhoto('${p.photo}')">
-                       ${canEdit() ? `<button onclick="deleteElementPhoto('${pid}',event)" style="font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Slet</button>` : ''}</span></div>`
-                    : (canEdit() ? `<div class="info-row"><span class="label">Foto</span><span class="val"><button class="plant-photo-btn" style="width:60px;height:60px" onclick="pickElementPhoto('${pid}')">📷</button></span></div>` : '')
-                }
+                ${(()=>{
+                    const cl = careIconsHTML(p);
+                    if (p.photo) {
+                        return `<div class="info-row" style="align-items:center">
+                            <span class="label">${cl}</span>
+                            <span class="val" style="display:flex;align-items:center;gap:0.5rem">
+                                <img src="${p.photo}" style="width:110px;height:78px;border-radius:8px;object-fit:cover;cursor:pointer" onclick="viewPhoto('${p.photo}')">
+                                ${canEdit() ? `<button onclick="deleteElementPhoto('${pid}',event)" style="font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Slet</button>` : ''}
+                            </span>
+                        </div>`;
+                    } else if (canEdit()) {
+                        return `<div class="info-row" style="align-items:center">
+                            <span class="label">${cl}</span>
+                            <span class="val"><button class="plant-photo-btn" style="width:60px;height:60px" onclick="pickElementPhoto('${pid}')">📷</button></span>
+                        </div>`;
+                    } else if (cl) {
+                        return `<div class="info-row" style="align-items:center"><span class="label">${cl}</span><span class="val"></span></div>`;
+                    }
+                    return '';
+                })()}
                 ${p.latinName ? `<div class="info-row"><span class="label">Latinsk navn</span><span class="val"><em>${p.latinName}</em></span></div>` : ''}
                 ${p.type ? `<div class="info-row"><span class="label">Type</span><span class="val">${p.type}</span></div>` : ''}
                 ${p.quantity > 1 ? `<div class="info-row"><span class="label">Antal</span><span class="val">${p.quantity} stk.</span></div>` : ''}
                 ${p.plantedDate ? `<div class="info-row"><span class="label">Plantet</span><span class="val">${formatDate(p.plantedDate)}</span></div>` : ''}
                 ${p.infoLink ? `<div class="info-row"><span class="label">Info-link</span><span class="val"><a href="${p.infoLink}" target="_blank" style="color:var(--green-mid)">Åbn →</a></span></div>` : ''}
+                ${p.water == null && p.light == null && p.perennial == null && canEdit()
+                    ? `<div class="info-row"><span class="label"></span><span class="val"><button onclick="fetchCareData('${pid}')" id="care-fetch-btn" style="font-size:0.78rem;color:var(--green-mid);background:none;border:none;cursor:pointer;padding:0.2rem 0">🌿 Hent trivseldata automatisk</button></span></div>`
+                    : ''}
             </div>
             ${p.note ? `<div class="info-note"><div class="info-note-label">Egne noter</div>${p.note}</div>` : ''}
             <div class="info-note">
@@ -1700,6 +1742,7 @@ function submitAddPlantFromIdentify() {
     if (!zid) return;
     const qty = parseInt(document.getElementById('f-qty').value) || 1;
     const photoBase64 = identifyState.imageDataUrl || null;
+    const r = identifyState.result || {};
     const newPlant = {
         id: uuid(), zoneId: zid, name,
         latinName: document.getElementById('f-latin').value.trim(),
@@ -1709,6 +1752,9 @@ function submitAddPlantFromIdentify() {
         note: document.getElementById('f-note').value.trim(),
         infoLink: document.getElementById('f-link').value.trim(),
         photo: photoBase64,
+        water: r.water || null,
+        light: r.light || null,
+        perennial: r.perennial != null ? r.perennial : null,
     };
     db.plants.push(newPlant);
     saveDB(); closeSheet();
@@ -2226,8 +2272,11 @@ async function fetchPlantInfo(pid) {
         }
         const data = await res.json();
         const fresh = plant(pid);
-        if (fresh && data.info) {
-            fresh.aiInfo = data.info;
+        if (fresh) {
+            if (data.info) fresh.aiInfo = data.info;
+            if (data.water) fresh.water = data.water;
+            if (data.light) fresh.light = data.light;
+            if (data.perennial != null) fresh.perennial = data.perennial;
             saveDB();
         }
     } catch (e) {
@@ -2240,6 +2289,69 @@ async function fetchPlantInfo(pid) {
 function refreshPlantInfo(pid) {
     const p = plant(pid);
     if (p) { p.aiInfo = null; render(); fetchPlantInfo(pid); }
+}
+
+async function fetchCareData(pid) {
+    const p = plant(pid);
+    if (!p) return;
+    const btn = document.getElementById('care-fetch-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Henter...'; }
+    try {
+        const res = await fetch('/.netlify/functions/plant-info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: p.name, latinName: p.latinName, plantType: p.type, note: p.note }),
+        });
+        if (!res.ok) { if (btn) { btn.disabled = false; btn.textContent = '🌿 Prøv igen'; } return; }
+        const data = await res.json();
+        const fresh = plant(pid);
+        if (fresh) {
+            if (data.water) fresh.water = data.water;
+            if (data.light) fresh.light = data.light;
+            if (data.perennial != null) fresh.perennial = data.perennial;
+            saveDB(); render();
+        }
+    } catch (e) {
+        console.warn('fetchCareData fejlede:', e);
+        if (btn) { btn.disabled = false; btn.textContent = '🌿 Prøv igen'; }
+    }
+}
+
+let migrating = false;
+async function migrateAllCareData() {
+    if (migrating) return;
+    migrating = true;
+    const targets = db.plants.filter(p => p.water == null && p.light == null);
+    let done = 0;
+    const updateBanner = () => {
+        const el = document.getElementById('migrate-banner');
+        if (el) el.innerHTML = `<span>🌿 Udfylder trivseldata... (${done}/${targets.length})</span>`;
+    };
+    updateBanner();
+    for (const p of targets) {
+        try {
+            const res = await fetch('/.netlify/functions/plant-info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: p.name, latinName: p.latinName, plantType: p.type, note: p.note }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const fresh = plant(p.id);
+                if (fresh) {
+                    if (data.water) fresh.water = data.water;
+                    if (data.light) fresh.light = data.light;
+                    if (data.perennial != null) fresh.perennial = data.perennial;
+                }
+            }
+        } catch (e) { /* fortsæt */ }
+        done++;
+        updateBanner();
+        saveDB();
+        await new Promise(r => setTimeout(r, 300)); // lille pause
+    }
+    migrating = false;
+    render();
 }
 
 function deletePlant(pid) {

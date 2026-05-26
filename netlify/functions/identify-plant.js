@@ -35,14 +35,21 @@ Returner KUN et JSON-objekt uden forklaring:
   "latinName": "latinsk navn eller null",
   "type": "én af: Stauder, Blomst, Løgplante, Grøntsag, Frugt, Træ, Busk, Hæk, Klatrer, Græs, Etårig, Andet",
   "confidence": 0.0-1.0,
-  "description": "2-3 sætninger om planten på naturligt hverdagsdansk"
+  "description": "2-3 sætninger om planten på naturligt hverdagsdansk",
+  "water": "dry",
+  "light": "full",
+  "perennial": true
 }
+
+water-værdier: "dry" (tørketålende), "normal" (normal vanding), "moist" (fugtighedskrævende)
+light-værdier: "full" (fuld sol), "full-partial" (sol til halvskygge), "partial" (halvskygge), "partial-shade" (halvskygge til skygge), "shade" (skygge)
+perennial: true hvis flerårig, false hvis etårig/toårig
 
 Hvis billedet ikke viser en plante eller er for utydeligt til at identificere: { "notRecognized": true }`;
 
     const requestBody = JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 300,
+        max_tokens: 400,
         messages: [{
             role: 'user',
             content: [
