@@ -28,6 +28,16 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/steensonderup/Documents/udvikling/VoresHave/scripts/dev-stop.sh"
+          }
+        ]
+      }
     ]
   }
 }
