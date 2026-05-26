@@ -1465,11 +1465,11 @@ function renderPlant(pid) {
 
     return `
         <div class="detail-hero" style="padding-bottom:0.8rem">
-            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.15rem">
+            <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:0.15rem">
                 <button onclick="goBack()" style="background:none;border:none;color:var(--green-dark);font-size:1.6rem;line-height:1;padding:0;cursor:pointer;flex-shrink:0;margin-left:-0.2rem">‹</button>
                 <div style="font-size:1.25rem;font-weight:700;color:var(--green-dark)">${p.name}</div>
             </div>
-            ${p.latinName ? `<div class="detail-hero-sub" style="padding-left:1.6rem">${p.latinName}</div>` : ''}
+            ${p.latinName ? `<div class="detail-hero-sub" style="padding-left:2.6rem">${p.latinName}</div>` : ''}
         </div>
         ${plantAttentionFlag(pid) ? `<div class="attention-badge">⚑ Kræver opmærksomhed</div>` : ''}
         <div class="tabs">
