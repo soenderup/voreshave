@@ -521,6 +521,42 @@
         .cal-event-tag.upcoming { background: var(--terra-light); color: var(--terra); }
         .cal-event-tag.history { background: var(--green-light); color: var(--green-mid); }
         .cal-event-tag.overdue { background: #fde8e8; color: #c0392b; }
+
+        /* ── VEJR-WIDGET ── */
+        .weather-widget {
+            background: linear-gradient(160deg, #1a6694 0%, #2d8fc4 55%, #5aacd8 100%);
+            overflow: hidden;
+        }
+        .weather-collapsed {
+            padding: 0.5rem 1rem;
+            display: flex; align-items: center; gap: 0.5rem;
+            cursor: pointer; user-select: none;
+        }
+        .ww-icon    { font-size: 1.05rem; line-height: 1; flex-shrink: 0; }
+        .ww-hi      { font-size: 0.88rem; font-weight: 700; color: white; white-space: nowrap; }
+        .ww-lo      { font-size: 0.82rem; color: rgba(255,255,255,0.6); white-space: nowrap; }
+        .ww-dot     { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,0.25); flex-shrink: 0; }
+        .ww-rain    { font-size: 0.82rem; color: rgba(170,220,255,0.95); white-space: nowrap; }
+        .ww-wind    { font-size: 0.82rem; color: rgba(255,255,255,0.65); white-space: nowrap; }
+        .ww-chevron { margin-left: auto; font-size: 0.65rem; color: rgba(255,255,255,0.5); transition: transform 0.25s; flex-shrink: 0; }
+        .weather-widget.open .ww-chevron { transform: rotate(180deg); }
+        .ww-expanded { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .weather-widget.open .ww-expanded { max-height: 230px; }
+        .ww-expanded-inner { padding: 0 0.9rem 0.75rem; }
+        .ww-divider { height: 1px; background: rgba(255,255,255,0.18); margin-bottom: 0.6rem; }
+        .ww-now { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.6rem; }
+        .ww-big-icon { font-size: 2.4rem; line-height: 1; flex-shrink: 0; }
+        .ww-big-temp { font-size: 2rem; font-weight: 300; color: white; line-height: 1; }
+        .ww-desc     { font-size: 0.73rem; color: rgba(255,255,255,0.8); margin-top: 0.15rem; }
+        .ww-meta     { display: flex; gap: 0.75rem; margin-top: 0.2rem; }
+        .ww-meta span{ font-size: 0.63rem; color: rgba(255,255,255,0.6); }
+        .ww-days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.3rem; }
+        .ww-day  { background: rgba(255,255,255,0.13); border-radius: 9px; padding: 0.35rem 0.2rem; display: flex; flex-direction: column; align-items: center; gap: 0.1rem; }
+        .wwd-lbl  { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,0.6); }
+        .wwd-icon { font-size: 1.1rem; }
+        .wwd-hi   { font-size: 0.78rem; font-weight: 600; color: white; }
+        .wwd-lo   { font-size: 0.63rem; color: rgba(255,255,255,0.5); }
+        .wwd-rain { font-size: 0.6rem; color: rgba(170,220,255,0.9); min-height: 0.75rem; }
     </style>
 </head>
 <body>
@@ -593,12 +629,13 @@ firebase.initializeApp({
 });
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
-const VERSION = '1.20';
+const VERSION = '1.22';
 
-const DATA_REF = fsDB.collection('voreshave').doc('data');
-const PINS_REF = fsDB.collection('voreshave').doc('pins');
-const USERS_REF = fsDB.collection('voreshave').doc('users');
+const DATA_REF     = fsDB.collection('voreshave').doc('data');
+const PINS_REF     = fsDB.collection('voreshave').doc('pins');
+const USERS_REF    = fsDB.collection('voreshave').doc('users');
 const LOGINLOG_REF = fsDB.collection('voreshave').doc('loginlog');
+const SETTINGS_REF = fsDB.collection('voreshave').doc('settings');
 
 // ── UUID ──
 const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -609,8 +646,10 @@ let nav = { view: 'home', zoneId: null, plantId: null, tab: 'main', calYear: tod
 let collapsedAreas = new Set(Object.keys({ forhave:1, baghave:1, terrasse:1, indgang:1, indendørs:1 }));
 let urgentOpen = false;
 let attentionOpen = false;
+let weatherOpen = false;
 let pins = {};
 let users = [];
+let appSettings = {};
 let identifyState = { imageDataUrl: null, result: null };
 
 // ── DATA ──
@@ -777,6 +816,199 @@ async function loadUsers() {
 function saveUsers() {
     localStorage.setItem('minhave-users', JSON.stringify(users));
     USERS_REF.set({ list: users }).catch(console.error);
+}
+
+// ── SETTINGS (inkl. vejr-lokation) ──
+async function loadSettings() {
+    try {
+        const snap = await SETTINGS_REF.get();
+        if (snap.exists) {
+            appSettings = snap.data();
+            localStorage.setItem('minhave-settings', JSON.stringify(appSettings));
+        } else {
+            const cached = localStorage.getItem('minhave-settings');
+            if (cached) appSettings = JSON.parse(cached);
+        }
+    } catch (e) {
+        const cached = localStorage.getItem('minhave-settings');
+        if (cached) try { appSettings = JSON.parse(cached); } catch {}
+    }
+}
+
+function saveSettings() {
+    localStorage.setItem('minhave-settings', JSON.stringify(appSettings));
+    SETTINGS_REF.set(appSettings).catch(console.error);
+}
+
+// ── VEJRUDSIGT ──
+const WMO_EMOJI = {
+    0:'☀️', 1:'🌤️', 2:'⛅', 3:'☁️',
+    45:'🌫️', 48:'🌫️',
+    51:'🌦️', 53:'🌦️', 55:'🌧️',
+    61:'🌦️', 63:'🌧️', 65:'🌧️',
+    71:'🌨️', 73:'🌨️', 75:'❄️',
+    80:'🌦️', 81:'🌧️', 82:'⛈️',
+    95:'⛈️', 96:'⛈️', 99:'⛈️',
+};
+const DAY_NAMES = ['Søn','Man','Tir','Ons','Tor','Fre','Lør'];
+
+function wmoEmoji(code) { return WMO_EMOJI[code] || '🌡️'; }
+
+function windDir(deg) {
+    const dirs = ['N','NØ','Ø','SØ','S','SV','V','NV'];
+    return dirs[Math.round(deg / 45) % 8];
+}
+
+async function fetchWeatherIfNeeded() {
+    const loc = appSettings.location;
+    if (!loc?.lat || !loc?.lon) return;
+    const cached = localStorage.getItem('minhave-weather');
+    if (cached) {
+        try {
+            const obj = JSON.parse(cached);
+            if (Date.now() - obj.timestamp < 3600000 && obj.lat === loc.lat && obj.lon === loc.lon) return;
+        } catch {}
+    }
+    try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max,winddirection_10m_dominant&current_weather=true&timezone=Europe%2FCopenhagen&forecast_days=5`;
+        const res = await fetch(url);
+        const json = await res.json();
+        localStorage.setItem('minhave-weather', JSON.stringify({ timestamp: Date.now(), lat: loc.lat, lon: loc.lon, data: json }));
+        if (sessionStorage.getItem('minhave-unlocked') === '1') render();
+    } catch (e) { console.warn('Vejr fetch fejlede:', e); }
+}
+
+function getWeatherData() {
+    const cached = localStorage.getItem('minhave-weather');
+    if (!cached) return null;
+    try {
+        const obj = JSON.parse(cached);
+        const loc = appSettings.location;
+        if (!loc || obj.lat !== loc.lat || obj.lon !== loc.lon) return null;
+        return obj.data;
+    } catch { return null; }
+}
+
+function renderWeatherWidget() {
+    const loc = appSettings.location;
+    if (!loc?.lat) return '';
+    const data = getWeatherData();
+    if (!data) return `<div class="weather-widget" style="cursor:default">
+        <div class="weather-collapsed" style="opacity:0.7">
+            <span class="ww-icon">🌡️</span>
+            <span class="ww-hi" style="font-weight:400;font-size:0.8rem">${loc.displayName || loc.name} — henter vejr...</span>
+        </div>
+    </div>`;
+
+    const d = data.daily;
+    const todayIcon = wmoEmoji(d.weathercode[0]);
+    const todayHi   = Math.round(d.temperature_2m_max[0]);
+    const todayLo   = Math.round(d.temperature_2m_min[0]);
+    const todayRain = d.precipitation_probability_max[0];
+    const todayWind = Math.round(d.windspeed_10m_max[0] / 3.6);
+    const todayDir  = windDir(d.winddirection_10m_dominant[0]);
+
+    const forecastHTML = [1,2,3,4].map(i => {
+        const date = new Date(d.time[i] + 'T12:00:00');
+        const rain = d.precipitation_probability_max[i];
+        return `<div class="ww-day">
+            <div class="wwd-lbl">${DAY_NAMES[date.getDay()]}</div>
+            <div class="wwd-icon">${wmoEmoji(d.weathercode[i])}</div>
+            <div class="wwd-hi">${Math.round(d.temperature_2m_max[i])}°</div>
+            <div class="wwd-lo">${Math.round(d.temperature_2m_min[i])}°</div>
+            <div class="wwd-rain">${rain > 10 ? '💧 ' + rain + '%' : ''}</div>
+        </div>`;
+    }).join('');
+
+    const rainBit = todayRain > 10 ? `<span class="ww-dot"></span><span class="ww-rain">💧 ${todayRain}%</span>` : '';
+
+    return `<div class="weather-widget${weatherOpen ? ' open' : ''}" onclick="weatherOpen=!weatherOpen;render()">
+        <div class="weather-collapsed">
+            <span class="ww-icon">${todayIcon}</span>
+            <span class="ww-hi">${todayHi}°</span>
+            <span class="ww-lo">(${todayLo}°)</span>
+            ${rainBit}
+            <span class="ww-dot"></span>
+            <span class="ww-wind">💨 ${todayWind} m/s ${todayDir}</span>
+            <span class="ww-chevron">▼</span>
+        </div>
+        <div class="ww-expanded">
+            <div class="ww-expanded-inner">
+                <div class="ww-divider"></div>
+                <div class="ww-now">
+                    <div class="ww-big-icon">${todayIcon}</div>
+                    <div>
+                        <div class="ww-big-temp">${todayHi}°</div>
+                        <div class="ww-desc">Nat ${todayLo}° · ${loc.displayName || loc.name}</div>
+                        <div class="ww-meta">
+                            ${todayRain > 10 ? `<span>💧 ${todayRain}%</span>` : ''}
+                            <span>💨 ${todayWind} m/s ${todayDir}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="ww-days">${forecastHTML}</div>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ── ADMIN: LOKATIONSINDSTILLING ──
+function openLocationSettings() {
+    const current = appSettings.location;
+    const hint = current
+        ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem">Nuværende: ${current.displayName || current.name}</div>`
+        : '';
+    openSheet('Vejr & lokation', `
+        <div style="padding:0 1.2rem 1.5rem;display:flex;flex-direction:column;gap:1rem">
+            <div style="font-size:0.83rem;color:var(--muted);line-height:1.5">Vejrudsigten bruger Open-Meteo (gratis, ingen API-nøgle). Angiv bynavnet for havens placering.</div>
+            <div class="field">
+                <label>By / sted</label>
+                <div style="display:flex;gap:0.5rem">
+                    <input id="loc-input" placeholder="F.eks. Viborg" value="${current?.name || ''}" style="flex:1">
+                    <button onclick="geocodeLocation()" style="background:var(--green-dark);color:white;border:none;border-radius:10px;padding:0.65rem 1rem;cursor:pointer;font-size:0.9rem;white-space:nowrap;flex-shrink:0">Søg</button>
+                </div>
+                ${hint}
+            </div>
+            <div id="loc-result"></div>
+        </div>`);
+}
+
+async function geocodeLocation() {
+    const q = document.getElementById('loc-input')?.value.trim();
+    if (!q) return;
+    const resEl = document.getElementById('loc-result');
+    if (!resEl) return;
+    resEl.innerHTML = '<div style="color:var(--muted);font-size:0.85rem">Søger...</div>';
+    try {
+        const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=da&format=json`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const results = json.results || [];
+        if (results.length === 0) {
+            resEl.innerHTML = '<div style="color:var(--terra);font-size:0.85rem">Ingen resultater. Prøv et andet stednavn.</div>';
+            return;
+        }
+        resEl.innerHTML = results.map(r => {
+            const name = [r.name, r.admin1, r.country].filter(Boolean).join(', ');
+            const safeDisplay = name.replace(/'/g,"\\'");
+            const safeName = r.name.replace(/'/g,"\\'");
+            return `<button onclick="selectLocation(${r.latitude},${r.longitude},'${safeName}','${safeDisplay}')"
+                style="display:block;width:100%;text-align:left;padding:0.65rem 0.75rem;background:var(--white);border:1px solid var(--border);border-radius:8px;margin-bottom:0.4rem;cursor:pointer;font-size:0.88rem;color:var(--text)">
+                📍 ${name}
+            </button>`;
+        }).join('');
+    } catch (e) {
+        document.getElementById('loc-result').innerHTML = '<div style="color:var(--terra);font-size:0.85rem">Søgning fejlede. Tjek internetforbindelsen.</div>';
+    }
+}
+
+function selectLocation(lat, lon, name, displayName) {
+    appSettings.location = { lat, lon, name, displayName };
+    saveSettings();
+    localStorage.removeItem('minhave-weather');
+    fetchWeatherIfNeeded();
+    closeSheet();
+    render();
 }
 
 function seedDB() {
@@ -1129,6 +1361,7 @@ function renderHome() {
     return `
         ${attentionHTML}
         ${urgentHTML}
+        ${renderWeatherWidget()}
         ${migrateBanner}
         ${areasHTML}
 `;
@@ -2017,6 +2250,9 @@ function openMainMenu() {
         ${canManageUsers() ? `
         <button class="choice-btn" onclick="closeSheet();openUserManagement()">
             <span class="choice-icon">👥</span><div><div class="choice-label">Administrer brugere</div></div>
+        </button>
+        <button class="choice-btn" onclick="closeSheet();openLocationSettings()">
+            <span class="choice-icon">📍</span><div><div class="choice-label">Vejr & lokation</div><div class="choice-desc">${appSettings.location ? (appSettings.location.displayName || appSettings.location.name) : 'Ikke sat endnu'}</div></div>
         </button>
         <button class="choice-btn" onclick="openLoginLog()">
             <span class="choice-icon">📋</span><div><div class="choice-label">Login-log</div></div>
@@ -2983,7 +3219,10 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── BOOT ──
-loadPhotoCache().then(() => Promise.all([loadDB(), loadUsers()])).then(() => { if (checkAccess()) render(); });
+loadPhotoCache().then(() => Promise.all([loadDB(), loadUsers(), loadSettings()])).then(() => {
+    if (checkAccess()) render();
+    fetchWeatherIfNeeded();
+});
 </script>
 </body>
 </html>
