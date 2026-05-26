@@ -1,16 +1,23 @@
 # Handoff — Vores Have
-*Opdateret: 26. maj 2026 - nat*
+*Opdateret: 26. maj 2026*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.19 på `https://voreshave.soenderup.dk`
-- **Næste:** kør migrations-banner på live-appen (tryk "Udfyld automatisk" på forsiden)
+- **Live version:** v1.19 på `https://voreshave.soenderup.dk` (v1.20 klar til push)
+- **Næste:** push til GitHub → live deploy
 
 ---
 
 ## Seneste arbejde (26. maj)
+
+### Samlet oprettelsesflow via hamburgermenu (v1.20)
+- Hamburgermenu (☰) viser altid "Ny zone" og "Nyt element" - uanset hvilken side man er på
+- "Ny zone"-dialog: område-vælger + valgfri forælderzone-vælger. Pre-selecter automatisk baseret på aktuel visning
+- "Nyt element"-dialog: område-vælger + zone-vælger. Pre-selecter automatisk baseret på aktuel visning
+- Fjernet alle inline "Tilføj zone"/"Tilføj element"-knapper fra forsiden og zone-visningen
+- Kontekst-sektionen i menu viser stadig "Rediger zone"/"Rediger element" + "Tilføj påmindelse"/"Tilføj log-note"
 
 ### Hamburger-menu (v1.19)
 - Én rund `☰`-knap erstatter bruger-avatar + rediger + tilføj-knapper
@@ -158,7 +165,9 @@ Firestore kører i "test mode" - alle kan læse/skrive. Kræver Firebase Authent
 - Erstatter PIN-systemet på sigt
 - Email/password for Steen og Linda
 
-### 3. Samlet oprettelsesflow via hamburgermenuen
+### ~~3. Samlet oprettelsesflow via hamburgermenuen~~ ✅ FÆRDIG (v1.20)
+
+### 3. (næste) Noget nyt
 **Baggrund:** I dag er "Tilføj zone" og "Tilføj element" spredt rundt i UI'et som inline-knapper i zone-visninger og på forsiden. Da kun Steen kan oprette (canEdit), og hamburgermenuen altid er tilgængelig for ham, giver det mere mening at samle alt oprettelse ét sted.
 
 **Hvad der skal bygges:**
