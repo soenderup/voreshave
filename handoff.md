@@ -1,16 +1,21 @@
 # Handoff — Vores Have
-*Opdateret: 26. maj 2026 - sen aften*
+*Opdateret: 26. maj 2026 - nat*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.18 på `https://voreshave.soenderup.dk`
+- **Live version:** v1.19 på `https://voreshave.soenderup.dk`
 - **Næste:** kør migrations-banner på live-appen (tryk "Udfyld automatisk" på forsiden)
 
 ---
 
 ## Seneste arbejde (26. maj)
+
+### Hamburger-menu (v1.19)
+- Én rund `☰`-knap erstatter bruger-avatar + rediger + tilføj-knapper
+- Kontekst-sektion øverst (viser/skjuler afhængigt af aktuel side)
+- Bruger-sektion nederst: PIN, login-log, lås
 
 ### Zone-header og app-header redesign + login-log (v1.18)
 
