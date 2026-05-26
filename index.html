@@ -590,7 +590,7 @@ firebase.initializeApp({
 });
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
-const VERSION = '1.19';
+const VERSION = '1.20';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
@@ -1092,9 +1092,6 @@ function renderHome() {
                 <span class="area-chevron${collapsed ? ' closed' : ''}">▾</span>
             </div>
             ${collapsed ? '' : `<div class="area-zones">${zonesHTML}</div>`}
-            ${!collapsed && canEdit() ? `<div style="padding:0.2rem 1rem 0.6rem;display:flex;gap:0.5rem">
-                <button class="section-add-btn" onclick="openAddDirectPlant('${areaKey}');event.stopPropagation()">+ Tilføj element</button>
-            </div>` : ''}
         </div>`;
     }).join('');
 
@@ -1111,9 +1108,7 @@ function renderHome() {
         ${urgentHTML}
         ${migrateBanner}
         ${areasHTML}
-        ${canEdit() ? `<div style="padding:0 1rem 0.5rem;display:flex;gap:0.5rem;flex-wrap:wrap">
-            <button class="section-add-btn" onclick="openAddZone()">+ Tilføj ny zone</button>
-        </div>` : ''}`;
+`;
 }
 
 function renderZone(zid) {
@@ -1205,11 +1200,7 @@ function renderZone(zid) {
         ${tab === 'main' ? `
             ${subZonesHTML}
             ${subs.length > 0 && plants.length > 0 ? '<div class="sub-zone-label" style="margin-top:0.8rem">Elementer</div>' : ''}
-            ${plantsHTML}
-            ${canEdit() ? `<div style="padding:0.8rem 1rem 0;display:flex;gap:0.5rem;flex-wrap:wrap">
-                <button class="section-add-btn" onclick="openAddZone('${zid}')">+ Tilføj zone</button>
-                <button class="section-add-btn" onclick="openAddPlant('${zid}')">+ Tilføj element</button>
-            </div>` : ''}` : ''}
+            ${plantsHTML}` : ''}
         ${tab === 'reminders' ? `
             ${reminderHTML}
             ${canLog() ? `<div style="padding:0.8rem 1rem 0">
@@ -1960,32 +1951,19 @@ function openMainMenu() {
 
     // Kontekst-handlinger afhænger af aktuel visning
     let contextSection = '';
-    if (nav.view === 'home' && canEdit()) {
-        contextSection = `
-            <div class="menu-section-label">Haven</div>
-            <button class="choice-btn" onclick="closeSheet();openAddZone(null)">
-                <span class="choice-icon">🌿</span>
-                <div><div class="choice-label">Ny zone</div></div>
-            </button>`;
-    } else if (nav.view === 'zone') {
+    if (nav.view === 'zone') {
         const zid = nav.zoneId;
         const z = zone(zid);
-        contextSection = `<div class="menu-section-label">${z?.name || 'Zone'}</div>`;
-        if (canEdit()) contextSection += `
+        if (canEdit()) contextSection = `
+            <div class="menu-section-label">${z?.name || 'Zone'}</div>
             <button class="choice-btn" onclick="closeSheet();openEditZone('${zid}')">
                 <span class="choice-icon">✏️</span><div><div class="choice-label">Rediger zone</div></div>
-            </button>
-            <button class="choice-btn" onclick="closeSheet();openAddZone('${zid}')">
-                <span class="choice-icon">🌿</span><div><div class="choice-label">Ny zone</div></div>
-            </button>
-            <button class="choice-btn" onclick="closeSheet();openAddPlant('${zid}')">
-                <span class="choice-icon">🌱</span><div><div class="choice-label">Nyt element</div></div>
             </button>`;
     } else if (nav.view === 'plant') {
         const pid = nav.plantId;
         const p = plant(pid);
-        contextSection = `<div class="menu-section-label">${p?.name || 'Element'}</div>`;
-        if (canEdit()) contextSection += `
+        if (canEdit()) contextSection = `
+            <div class="menu-section-label">${p?.name || 'Element'}</div>
             <button class="choice-btn" onclick="closeSheet();openEditPlant('${pid}')">
                 <span class="choice-icon">✏️</span><div><div class="choice-label">Rediger element</div></div>
             </button>`;
@@ -1997,6 +1975,16 @@ function openMainMenu() {
                 <span class="choice-icon">📝</span><div><div class="choice-label">Tilføj log-note</div></div>
             </button>`;
     }
+    if (canEdit()) contextSection += `
+        <div class="menu-section-label">Opret</div>
+        <button class="choice-btn" onclick="closeSheet();openAddZone()">
+            <span class="choice-icon">🌿</span>
+            <div><div class="choice-label">Ny zone</div></div>
+        </button>
+        <button class="choice-btn" onclick="closeSheet();openAddPlantFromMenu()">
+            <span class="choice-icon">🌱</span>
+            <div><div class="choice-label">Nyt element</div></div>
+        </button>`;
 
     // Bruger-sektion (altid)
     const userSection = `
@@ -2059,28 +2047,127 @@ function closeSheet() {
     document.getElementById('sheet').classList.remove('open');
 }
 
-function openAddZone(parentZoneId = null) {
+function openAddZone() {
+    // Pre-select baseret på aktuel visning
+    let preArea = null, preParentZoneId = null;
+    if (nav.view === 'zone') {
+        const z = zone(nav.zoneId);
+        preArea = z?.area || null;
+        preParentZoneId = nav.zoneId;
+    }
+    const defaultArea = preArea || Object.keys(AREAS)[0];
     const types = Object.entries(ZONE_TYPES).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
-    const areas = Object.entries(AREAS).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
-    const parentName = parentZoneId ? zone(parentZoneId)?.name : null;
+    const areas = Object.entries(AREAS).map(([k,v]) =>
+        `<option value="${k}"${k===defaultArea?' selected':''}>${v.icon} ${v.label}</option>`
+    ).join('');
+    const initialParentZones = db.zones.filter(z => (z.area||'baghave') === defaultArea && !z.isDirect);
+    const parentOptions = `<option value="">— Ingen (top-niveau) —</option>` +
+        initialParentZones.map(z => `<option value="${z.id}"${z.id===preParentZoneId?' selected':''}>${z.name}</option>`).join('');
     openSheet('Ny zone', `
         <div class="form-body">
-            <div class="field"><label>Navn</label><input id="f-name" placeholder="${parentName ? 'F.eks. Højbed 1' : 'F.eks. Blomsterbed nord'}" autofocus></div>
+            <div class="field">
+                <label>Område</label>
+                <select id="f-area" onchange="updateNewZoneParents(this.value)">${areas}</select>
+            </div>
+            <div class="field">
+                <label>Overordnet zone (valgfrit)</label>
+                <select id="f-parent">${parentOptions}</select>
+            </div>
+            <div class="field"><label>Navn</label><input id="f-name" placeholder="F.eks. Blomsterbed nord" autofocus></div>
             <div class="field-row">
                 <div class="field"><label>Type</label><select id="f-type">${types}</select></div>
-                ${!parentZoneId ? `<div class="field"><label>Område</label><select id="f-area">${areas}</select></div>` : ''}
             </div>
-            <div class="field"><label>Beskrivelse</label><input id="f-desc" placeholder="${parentName ? `Zone i ${parentName}` : 'F.eks. Mod hækken'}"></div>
+            <div class="field"><label>Beskrivelse</label><input id="f-desc" placeholder="F.eks. Mod hækken"></div>
         </div>
-        <button class="btn-primary" onclick="submitAddZone('${parentZoneId || ''}')">Opret zone</button>`);
+        <button class="btn-primary" onclick="submitAddZone()">Opret zone</button>`);
 }
 
-function submitAddZone(parentZoneId = '') {
+function updateNewZoneParents(areaKey) {
+    const zones = db.zones.filter(z => (z.area||'baghave') === areaKey && !z.isDirect);
+    document.getElementById('f-parent').innerHTML =
+        `<option value="">— Ingen (top-niveau) —</option>` +
+        zones.map(z => `<option value="${z.id}">${z.name}</option>`).join('');
+}
+
+function submitAddZone() {
     const name = document.getElementById('f-name').value.trim();
     if (!name) return;
-    const area = parentZoneId ? (zone(parentZoneId)?.area || 'baghave') : document.getElementById('f-area').value;
-    db.zones.push({ id: uuid(), name, type: document.getElementById('f-type').value, area, description: document.getElementById('f-desc').value.trim(), parentZoneId: parentZoneId || null });
+    const parentId = document.getElementById('f-parent').value || null;
+    const areaKey = document.getElementById('f-area').value;
+    const area = parentId ? (zone(parentId)?.area || areaKey) : areaKey;
+    db.zones.push({ id: uuid(), name, type: document.getElementById('f-type').value, area, description: document.getElementById('f-desc').value.trim(), parentZoneId: parentId });
     saveDB(); closeSheet(); render();
+}
+
+function openAddPlantFromMenu() {
+    // Pre-select baseret på aktuel visning
+    let preArea = null, preZoneId = null;
+    if (nav.view === 'zone') {
+        const z = zone(nav.zoneId);
+        preArea = z?.area || null;
+        if (!isDirectZone(nav.zoneId)) preZoneId = nav.zoneId;
+    } else if (nav.view === 'plant') {
+        const p = plant(nav.plantId);
+        if (p) {
+            const z = zone(p.zoneId);
+            preArea = z?.area || null;
+            if (!isDirectZone(p.zoneId)) preZoneId = p.zoneId;
+        }
+    }
+    const defaultArea = preArea || Object.keys(AREAS)[0];
+    const areas = Object.entries(AREAS).map(([k,v]) =>
+        `<option value="${k}"${k===defaultArea?' selected':''}>${v.icon} ${v.label}</option>`
+    ).join('');
+    const zonesInArea = db.zones.filter(z => (z.area||'baghave') === defaultArea && !z.isDirect);
+    const directOpt = '<option value="__direct__">— Direkte i området —</option>';
+    const zoneOptions = directOpt + zonesInArea.map(z =>
+        `<option value="${z.id}"${z.id===preZoneId?' selected':''}>${z.name}</option>`
+    ).join('');
+    const zonePicker = `
+        <div class="field">
+            <label>Område</label>
+            <select id="f-area" onchange="updateAddPlantZones(this.value)">${areas}</select>
+        </div>
+        <div class="field">
+            <label>Zone</label>
+            <select id="f-zone">${zoneOptions}</select>
+        </div>`;
+    openSheet('Nyt element', plantFormHTML({}, zonePicker) +
+        `<button class="btn-primary" onclick="submitAddPlantFromMenu()">Tilføj element</button>`);
+}
+
+function updateAddPlantZones(areaKey) {
+    const zones = db.zones.filter(z => (z.area||'baghave') === areaKey && !z.isDirect);
+    const directOpt = '<option value="__direct__">— Direkte i området —</option>';
+    document.getElementById('f-zone').innerHTML = directOpt +
+        zones.map(z => `<option value="${z.id}">${z.name}</option>`).join('');
+}
+
+function submitAddPlantFromMenu() {
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) return;
+    let zid = document.getElementById('f-zone').value;
+    const areaKey = document.getElementById('f-area').value;
+    if (zid === '__direct__') {
+        const dz = { id: uuid(), name, type: 'andet', area: areaKey, description: '', parentZoneId: null, isDirect: true };
+        db.zones.push(dz);
+        zid = dz.id;
+    }
+    if (!zid) return;
+    const qty = parseInt(document.getElementById('f-qty').value) || 1;
+    const newPlant = {
+        id: uuid(), zoneId: zid, name,
+        latinName: document.getElementById('f-latin').value.trim(),
+        type: document.getElementById('f-type').value,
+        quantity: qty > 1 ? qty : null,
+        plantedDate: document.getElementById('f-date').value,
+        note: document.getElementById('f-note').value.trim(),
+        infoLink: document.getElementById('f-link').value.trim(),
+    };
+    db.plants.push(newPlant);
+    saveDB(); closeSheet();
+    goTo('plant', zid, newPlant.id);
+    fetchPlantInfo(newPlant.id);
 }
 
 function openEditZone(zid) {
