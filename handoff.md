@@ -48,7 +48,7 @@
 **Datakilde:** [Open-Meteo](https://open-meteo.com) — gratis, ingen API-nøgle, direkte browser-fetch
 - Geocoding: `https://geocoding-api.open-meteo.com/v1/search`
 - Vejr: `https://api.open-meteo.com/v1/forecast` — daily weathercode, max/min temp, nedbørsprocent, vindstyrke/-retning
-- Cache: `localStorage['minhave-weather']` — max 1 time, invalideres ved lokationsskift
+- Cache: `localStorage['voreshave-weather']` — max 1 time, invalideres ved lokationsskift
 
 **Admin-opsætning:** ☰ → "📍 Vejr & lokation" (kun admin)
 - Søg på bynavn → geocoder → vælg fra liste → gemmes i `voreshave/settings` i Firestore
@@ -57,10 +57,10 @@
 **Ny Firestore-reference:** `voreshave/settings`
 - Struktur: `{ location: { lat, lon, name, displayName } }`
 
-**Ny localStorage-nøgle:** `minhave-weather`
+**Ny localStorage-nøgle:** `voreshave-weather`
 - Struktur: `{ timestamp, lat, lon, data: {current_weather, daily: {...}} }`
 
-**Ny localStorage-nøgle:** `minhave-settings`
+**Ny localStorage-nøgle:** `voreshave-settings`
 - Backup-cache af Firestore settings
 
 ---
@@ -201,7 +201,7 @@ Med mange zoner kan det blive relevant.
 - **Firestore test mode udløber ~24. juni 2026** - husk sikkerhedsregler!
 - **Firebase plan:** Blaze (Pay-as-you-go)
 - **Viden om + Anbefalinger + Identificer:** Koster øre pr. opslag via Anthropic API
-- **Dev-miljø:** `kode` → vælg `minhave` → server på `http://localhost:8766`
+- **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8766`
 - **Lokal server understøtter IKKE POST** - Netlify-funktioner testes kun på live
 - **Deploy:** `git push` → GitHub → Netlify auto-deploy. Spørg ALTID inden push
 - **PWA cache:** SW bruger network-first for HTML — luk og genåbn app for at få seneste version
