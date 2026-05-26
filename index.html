@@ -1379,10 +1379,7 @@ function renderHome() {
         const urgentInArea = zones.some(z => zoneStatus(z.id) === 'urgent');
         const regularZones = zones.filter(z => !isDirectZone(z.id));
         const directZones  = zones.filter(z => isDirectZone(z.id));
-        const countParts = [];
-        if (regularZones.length > 0) countParts.push(`${regularZones.length} zone${regularZones.length !== 1 ? 'r' : ''}`);
-        if (directZones.length  > 0) countParts.push(`${directZones.length} element${directZones.length !== 1 ? 'er' : ''}`);
-        const countStr = (countParts.join(' · ') || '0') + (urgentInArea ? ' · ⚠️' : '');
+        const countStr = urgentInArea ? '⚠️' : '';
         const zonesHTML = zones.map(z => {
             if (isDirectZone(z.id)) {
                 const p = zonePlants(z.id)[0];
