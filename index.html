@@ -415,6 +415,14 @@
             cursor: pointer; letter-spacing: 0.02em;
         }
         .ls-user-btn:active { background: rgba(255,255,255,0.26); }
+        .ls-remember {
+            display: flex; align-items: center; gap: 0.55rem;
+            margin-top: 1.3rem; color: rgba(255,255,255,0.65); font-size: 0.85rem;
+            cursor: pointer; user-select: none;
+        }
+        .ls-remember input[type="checkbox"] {
+            width: 18px; height: 18px; accent-color: white; cursor: pointer;
+        }
 
         /* ── BRUGER ── */
         .user-tag {
@@ -2707,6 +2715,10 @@ function openMainMenu() {
         <button class="choice-btn" onclick="openLoginLog()">
             <span class="choice-icon">📋</span><div><div class="choice-label">Login-log</div></div>
         </button>` : ''}
+        ${localStorage.getItem('voreshave-remember') === user ? `
+        <button class="choice-btn" onclick="forgetDevice()">
+            <span class="choice-icon">🗑️</span><div><div class="choice-label">Glem denne enhed</div><div class="choice-desc">Fjern automatisk login</div></div>
+        </button>` : ''}
         <button class="choice-btn" onclick="closeSheet();lockApp()">
             <span class="choice-icon">🔒</span><div><div class="choice-label">Lås appen</div></div>
         </button>`;
@@ -3387,6 +3399,13 @@ function canManageUsers() { return currentUserObj()?.role === 'admin'; }
 
 function checkAccess() {
     if (sessionStorage.getItem('voreshave-unlocked') === '1') return true;
+    // Husk mig: auto-login hvis brugeren er husket på denne enhed
+    const remembered = localStorage.getItem('voreshave-remember');
+    if (remembered && users.find(u => u.name === remembered)) {
+        unlockAs(remembered);
+        return true;
+    }
+    if (remembered) localStorage.removeItem('voreshave-remember'); // bruger findes ikke længere
     const hasPins = users.some(u => u.pin);
     showLockscreen(hasPins ? 'enter' : 'nameselect');
     return false;
@@ -3420,12 +3439,17 @@ function showLockscreen(mode) {
             ${guestUser ? `<button class="ls-user-btn ls-guest-btn" onclick="unlockAs('${guestUser.name}')">👤 Fortsæt som gæst</button>` : ''}
         </div>`;
     } else {
+        const showRemember = mode === 'enter';
         content.innerHTML = `<div class="ls-pad">
             ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k =>
                 k === '' ? '<div class="ls-key empty"></div>'
                          : `<button class="ls-key" onclick="pinKey('${k}')">${k}</button>`
             ).join('')}
-        </div>`;
+        </div>
+        ${showRemember ? `<label class="ls-remember">
+            <input type="checkbox" id="ls-remember-cb">
+            Husk mig på denne enhed
+        </label>` : ''}`;
     }
 }
 
@@ -3463,6 +3487,10 @@ function submitPin() {
     } else if (pinMode === 'enter') {
         const match = users.find(u => u.pin === pinBuffer);
         if (match) {
+            const rememberCb = document.getElementById('ls-remember-cb');
+            if (rememberCb?.checked) {
+                localStorage.setItem('voreshave-remember', match.name);
+            }
             unlockAs(match.name);
         } else {
             document.getElementById('ls-error').textContent = 'Forkert kode — prøv igen';
@@ -3530,6 +3558,11 @@ function lockApp() {
     sessionStorage.removeItem('voreshave-user');
     closeSheet();
     showLockscreen('enter');
+}
+
+function forgetDevice() {
+    localStorage.removeItem('voreshave-remember');
+    closeSheet();
 }
 
 // ── BRUGERSTYRING UI ──
