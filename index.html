@@ -378,9 +378,12 @@
             font-size: 0.68rem; font-weight: 600; padding: 0.15rem 0.5rem;
             border-radius: 999px; margin-top: 0.2rem;
         }
-        .assignee-chip.alle { background: var(--green-light); color: var(--green-mid); }
-        .assignee-chip.steen { background: var(--green-light); color: var(--green-mid); }
-        .assignee-chip.linda { background: #f0e8f8; color: #7b4fa6; }
+        .assignee-chip.alle    { background: var(--green-light); color: var(--green-mid); }
+        .assignee-chip.color-0 { background: var(--green-light); color: var(--green-mid); }
+        .assignee-chip.color-1 { background: #f0e8f8; color: #7b4fa6; }
+        .assignee-chip.color-2 { background: #fef3e2; color: #b06e00; }
+        .assignee-chip.color-3 { background: #e2f0fe; color: #1a6abf; }
+        .assignee-chip.color-4 { background: #fde8e8; color: #c0392b; }
 
         /* ── IDENTIFY VIEW ── */
         .identify-wrap { padding: 1.2rem 1rem 2rem; }
@@ -594,6 +597,7 @@ const VERSION = '1.20';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
+const USERS_REF = fsDB.collection('voreshave').doc('users');
 const LOGINLOG_REF = fsDB.collection('voreshave').doc('loginlog');
 
 // ── UUID ──
@@ -606,6 +610,7 @@ let collapsedAreas = new Set(Object.keys({ forhave:1, baghave:1, terrasse:1, ind
 let urgentOpen = false;
 let attentionOpen = false;
 let pins = {};
+let users = [];
 let identifyState = { imageDataUrl: null, result: null };
 
 // ── DATA ──
@@ -735,25 +740,43 @@ function saveDB() {
     DATA_REF.set(db).catch(console.error);
 }
 
-async function loadPins() {
+function migratePinsToUsers(oldPins) {
+    const roleMap = { 'Steen': 'admin', 'Linda': 'member', 'Gæst': 'guest' };
+    return Object.entries(oldPins).map(([name, pin]) => ({
+        id: uuid(), name, pin,
+        role: roleMap[name] || 'member',
+        initials: name[0]
+    }));
+}
+
+async function loadUsers() {
     try {
-        const snap = await PINS_REF.get();
+        const snap = await USERS_REF.get();
         if (snap.exists) {
-            pins = snap.data();
-            localStorage.setItem('minhave-pins', JSON.stringify(pins));
+            users = snap.data().list || [];
+            localStorage.setItem('minhave-users', JSON.stringify(users));
         } else {
-            const cached = localStorage.getItem('minhave-pins');
-            if (cached) pins = JSON.parse(cached);
+            // Ingen users-dokument endnu — migrer fra pins
+            const cached = localStorage.getItem('minhave-users');
+            if (cached) {
+                users = JSON.parse(cached);
+            } else {
+                const pinsSnap = await PINS_REF.get().catch(() => null);
+                const oldPins = pinsSnap?.exists ? pinsSnap.data() : {};
+                users = migratePinsToUsers(oldPins);
+                saveUsers();
+            }
         }
     } catch (e) {
-        const cached = localStorage.getItem('minhave-pins');
-        if (cached) pins = JSON.parse(cached);
+        const cached = localStorage.getItem('minhave-users');
+        if (cached) { users = JSON.parse(cached); }
+        else { users = []; }
     }
 }
 
-function savePins() {
-    localStorage.setItem('minhave-pins', JSON.stringify(pins));
-    PINS_REF.set(pins).catch(console.error);
+function saveUsers() {
+    localStorage.setItem('minhave-users', JSON.stringify(users));
+    USERS_REF.set({ list: users }).catch(console.error);
 }
 
 function seedDB() {
@@ -1947,7 +1970,6 @@ function toggleArea(areaKey) {
 
 function openMainMenu() {
     const user = currentUser();
-    const otherUser = user === 'Steen' ? 'Linda' : 'Steen';
 
     // Kontekst-handlinger afhænger af aktuel visning
     let contextSection = '';
@@ -1989,15 +2011,12 @@ function openMainMenu() {
     // Bruger-sektion (altid)
     const userSection = `
         <div class="menu-section-label" style="margin-top:${contextSection ? '1rem' : '0'}">${user || 'Bruger'}</div>
-        ${canEdit() ? `
         <button class="choice-btn" onclick="closeSheet();startChangePinFor('${user}')">
             <span class="choice-icon">🔑</span><div><div class="choice-label">Skift min PIN</div></div>
         </button>
-        <button class="choice-btn" onclick="closeSheet();startChangePinFor('${otherUser}')">
-            <span class="choice-icon">🔑</span><div><div class="choice-label">Sæt ${otherUser}s PIN</div></div>
-        </button>
-        <button class="choice-btn" onclick="closeSheet();startChangePinFor('Gæst')">
-            <span class="choice-icon">🔑</span><div><div class="choice-label">${pins.Gæst ? 'Skift gæste-PIN' : 'Opret gæste-PIN'}</div></div>
+        ${canManageUsers() ? `
+        <button class="choice-btn" onclick="closeSheet();openUserManagement()">
+            <span class="choice-icon">👥</span><div><div class="choice-label">Administrer brugere</div></div>
         </button>
         <button class="choice-btn" onclick="openLoginLog()">
             <span class="choice-icon">📋</span><div><div class="choice-label">Login-log</div></div>
@@ -2532,8 +2551,7 @@ function openAddReminder(entityType, entityId) {
             <div class="field"><label>Ansvarlig</label>
                 <select id="f-assign">
                     <option value="alle">👥 Alle</option>
-                    <option value="Steen">Steen</option>
-                    <option value="Linda">Linda</option>
+                    ${users.filter(u => u.role !== 'guest').map(u => `<option value="${u.name}">${u.name}</option>`).join('')}
                 </select>
             </div>
         </div>
@@ -2586,8 +2604,7 @@ function openEditReminder(rid) {
             <div class="field"><label>Ansvarlig</label>
                 <select id="f-assign">
                     <option value="alle"${r.assignedTo==='alle'?' selected':''}>👥 Alle</option>
-                    <option value="Steen"${r.assignedTo==='Steen'?' selected':''}>Steen</option>
-                    <option value="Linda"${r.assignedTo==='Linda'?' selected':''}>Linda</option>
+                    ${users.filter(u => u.role !== 'guest').map(u => `<option value="${u.name}"${r.assignedTo===u.name?' selected':''}>${u.name}</option>`).join('')}
                 </select>
             </div>
         </div>
@@ -2641,9 +2658,10 @@ function doDeleteHistory(hid) {
 
 // ── RENDER HELPERS ──
 function renderReminderItem(r) {
-    const initials = { 'Steen': 'S', 'Linda': 'L' };
+    const assigneeIdx = users.findIndex(u => u.name === r.assignedTo);
+    const assigneeInitials = users.find(u => u.name === r.assignedTo)?.initials || r.assignedTo?.[0] || '?';
     const assign = r.assignedTo && r.assignedTo !== 'alle'
-        ? `<span class="assignee-chip ${r.assignedTo.toLowerCase()}">${initials[r.assignedTo] || r.assignedTo[0]}</span>`
+        ? `<span class="assignee-chip color-${Math.max(0, assigneeIdx) % 5}">${assigneeInitials}</span>`
         : r.assignedTo === 'alle' ? `<span class="assignee-chip alle">👥</span>` : '';
     return `<div class="reminder-item">
         ${canLog() ? `<div class="reminder-check" data-complete="${r.id}" title="Marker som udført">✓</div>` : '<div style="width:22px;flex-shrink:0"></div>'}
@@ -2675,14 +2693,16 @@ let pinTemp = '';
 let pinMode = '';
 let setupName = '';
 
-function currentUser() { return sessionStorage.getItem('minhave-user') || ''; }
-function isGuest() { return currentUser() === 'Gæst'; }
-function canEdit() { return currentUser() === 'Steen'; }
-function canLog()  { return currentUser() === 'Steen' || currentUser() === 'Linda'; }
+function currentUser()    { return sessionStorage.getItem('minhave-user') || ''; }
+function currentUserObj() { return users.find(u => u.name === currentUser()) || null; }
+function isGuest()        { return currentUserObj()?.role === 'guest'; }
+function canEdit()        { return currentUserObj()?.role === 'admin'; }
+function canLog()         { return ['admin','member'].includes(currentUserObj()?.role); }
+function canManageUsers() { return currentUserObj()?.role === 'admin'; }
 
 function checkAccess() {
     if (sessionStorage.getItem('minhave-unlocked') === '1') return true;
-    const hasPins = pins.Steen || pins.Linda;
+    const hasPins = users.some(u => u.pin);
     showLockscreen(hasPins ? 'enter' : 'nameselect');
     return false;
 }
@@ -2708,9 +2728,11 @@ function showLockscreen(mode) {
 
     const content = document.getElementById('ls-content');
     if (mode === 'nameselect') {
+        const nonGuestUsers = users.filter(u => u.role !== 'guest');
+        const guestUser = users.find(u => u.role === 'guest');
         content.innerHTML = `<div class="ls-users">
-            <button class="ls-user-btn" onclick="selectSetupName('Steen')">Steen</button>
-            <button class="ls-user-btn" onclick="selectSetupName('Linda')">Linda</button>
+            ${nonGuestUsers.map(u => `<button class="ls-user-btn" onclick="selectSetupName('${u.name}')">${u.name}</button>`).join('')}
+            ${guestUser ? `<button class="ls-user-btn ls-guest-btn" onclick="unlockAs('${guestUser.name}')">👤 Fortsæt som gæst</button>` : ''}
         </div>`;
     } else {
         content.innerHTML = `<div class="ls-pad">
@@ -2741,8 +2763,11 @@ function submitPin() {
         pinTemp = pinBuffer; pinBuffer = ''; showLockscreen('setup2');
     } else if (pinMode === 'setup2') {
         if (pinBuffer === pinTemp) {
-            pins[setupName] = pinBuffer;
-            savePins();
+            const u = users.find(u => u.name === setupName);
+            if (u) { u.pin = pinBuffer; } else {
+                users.push({ id: uuid(), name: setupName, pin: pinBuffer, role: 'member', initials: setupName[0] });
+            }
+            saveUsers();
             pinTemp = '';
             unlockAs(setupName);
         } else {
@@ -2751,9 +2776,9 @@ function submitPin() {
             setTimeout(() => showLockscreen('setup'), 1200);
         }
     } else if (pinMode === 'enter') {
-        const match = Object.entries(pins).find(([, p]) => p === pinBuffer);
+        const match = users.find(u => u.pin === pinBuffer);
         if (match) {
-            unlockAs(match[0]);
+            unlockAs(match.name);
         } else {
             document.getElementById('ls-error').textContent = 'Forkert kode — prøv igen';
             pinBuffer = ''; updateDots();
@@ -2822,13 +2847,143 @@ function lockApp() {
     showLockscreen('enter');
 }
 
+// ── BRUGERSTYRING UI ──
+const ROLE_LABELS = { admin: 'Admin', member: 'Medlem', guest: 'Gæst' };
+const ROLE_COLORS = { admin: 'var(--terra)', member: 'var(--green-mid)', guest: 'var(--muted)' };
+
+function openUserManagement() {
+    renderUserManagement();
+}
+
+function renderUserManagement(editId = null, createMode = false) {
+    const canCreate = users.length < 5;
+    const adminCount = users.filter(u => u.role === 'admin').length;
+
+    const listHTML = users.map(u => {
+        const isSelf = u.name === currentUser();
+        const isLastAdmin = u.role === 'admin' && adminCount === 1;
+        const canDelete = !isSelf && !isLastAdmin;
+        return `<div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 0;border-bottom:1px solid var(--border)">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--green-light);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--green-dark);font-size:0.9rem;flex-shrink:0">${u.initials || u.name[0]}</div>
+            <div style="flex:1">
+                <div style="font-weight:600;color:var(--text)">${u.name}${isSelf ? ' <span style="font-size:0.72rem;color:var(--muted)">(dig)</span>' : ''}</div>
+                <div style="font-size:0.78rem;color:${ROLE_COLORS[u.role]};font-weight:600">${ROLE_LABELS[u.role]}</div>
+            </div>
+            <button onclick="renderUserManagement('${u.id}')" style="background:none;border:1px solid var(--border);border-radius:8px;padding:0.3rem 0.7rem;font-size:0.82rem;cursor:pointer;color:var(--text)">Rediger</button>
+        </div>`;
+    }).join('');
+
+    if (editId) {
+        const u = users.find(x => x.id === editId);
+        if (!u) { renderUserManagement(); return; }
+        const isSelf = u.name === currentUser();
+        const isLastAdmin = u.role === 'admin' && adminCount === 1;
+        const canDelete = !isSelf && !isLastAdmin;
+        openSheet('Rediger bruger', `
+            <div style="padding:0 1.2rem 1.5rem;display:flex;flex-direction:column;gap:1rem">
+                <div class="field"><label>Navn</label><input id="um-name" value="${u.name.replace(/"/g,'&quot;')}" placeholder="Navn"></div>
+                <div class="field"><label>Initialer (maks 2 tegn)</label><input id="um-initials" value="${u.initials || ''}" maxlength="2" placeholder="F.eks. S" style="width:60px"></div>
+                <div class="field"><label>Rolle</label>
+                    <select id="um-role" ${isSelf && isLastAdmin ? 'disabled title="Du kan ikke fjerne din egen admin-rolle"' : ''}>
+                        <option value="admin"${u.role==='admin'?' selected':''}>Admin</option>
+                        <option value="member"${u.role==='member'?' selected':''}>Medlem</option>
+                        <option value="guest"${u.role==='guest'?' selected':''}>Gæst</option>
+                    </select>
+                </div>
+                <div class="field"><label>Skift PIN</label>
+                    <button onclick="closeSheet();startChangePinFor('${u.name}')" style="background:none;border:1px solid var(--border);border-radius:8px;padding:0.4rem 0.8rem;font-size:0.85rem;cursor:pointer;color:var(--text);width:fit-content">🔑 Sæt ny PIN</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
+                    <button class="btn-primary" onclick="saveUserEdit('${u.id}')">Gem ændringer</button>
+                    <button onclick="renderUserManagement()" style="background:none;border:1px solid var(--border);border-radius:10px;padding:0.7rem;font-size:0.9rem;cursor:pointer;color:var(--muted)">Annuller</button>
+                    ${canDelete ? `<button class="btn-danger" onclick="confirmDeleteUser('${u.id}','${u.name}')">Slet bruger</button>` : `<div style="font-size:0.78rem;color:var(--muted);text-align:center;padding:0.3rem 0">${isSelf ? 'Du kan ikke slette dig selv' : 'Der skal altid være én admin'}</div>`}
+                </div>
+            </div>`);
+        return;
+    }
+
+    if (createMode) {
+        openSheet('Tilføj bruger', `
+            <div style="padding:0 1.2rem 1.5rem;display:flex;flex-direction:column;gap:1rem">
+                <div class="field"><label>Navn</label><input id="um-name" placeholder="Navn" autofocus></div>
+                <div class="field"><label>Initialer (maks 2 tegn)</label><input id="um-initials" maxlength="2" placeholder="F.eks. L" style="width:60px"></div>
+                <div class="field"><label>Rolle</label>
+                    <select id="um-role">
+                        <option value="admin">Admin</option>
+                        <option value="member" selected>Medlem</option>
+                        <option value="guest">Gæst</option>
+                    </select>
+                </div>
+                <div class="field"><label>PIN (4-6 cifre)</label><input id="um-pin" type="tel" inputmode="numeric" maxlength="6" placeholder="F.eks. 1234"></div>
+                <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
+                    <button class="btn-primary" onclick="saveNewUser()">Opret bruger</button>
+                    <button onclick="renderUserManagement()" style="background:none;border:1px solid var(--border);border-radius:10px;padding:0.7rem;font-size:0.9rem;cursor:pointer;color:var(--muted)">Annuller</button>
+                </div>
+            </div>`);
+        return;
+    }
+
+    openSheet('Brugere', `
+        <div style="padding:0 1.2rem 1.5rem">
+            ${listHTML}
+            <div style="margin-top:1rem">
+                <button onclick="renderUserManagement(null, true)" ${canCreate ? '' : 'disabled title="Maks 5 brugere"'}
+                    style="width:100%;padding:0.75rem;border:2px dashed var(--border);border-radius:10px;background:none;cursor:${canCreate?'pointer':'not-allowed'};color:${canCreate?'var(--green-mid)':'var(--muted)'};font-size:0.9rem">
+                    + Tilføj bruger${canCreate ? '' : ' (maks 5 nået)'}
+                </button>
+            </div>
+        </div>`);
+}
+
+function saveUserEdit(id) {
+    const u = users.find(x => x.id === id);
+    if (!u) return;
+    const name = document.getElementById('um-name')?.value.trim();
+    const initials = document.getElementById('um-initials')?.value.trim();
+    const role = document.getElementById('um-role')?.value;
+    if (!name) { alert('Navn må ikke være tomt'); return; }
+    if (users.some(x => x.id !== id && x.name === name)) { alert('Brugernavnet er allerede i brug'); return; }
+    const isSelf = u.name === currentUser();
+    const wasAdmin = u.role === 'admin';
+    const adminCount = users.filter(x => x.role === 'admin').length;
+    if (isSelf && wasAdmin && role !== 'admin' && adminCount === 1) { alert('Der skal altid være mindst én admin'); return; }
+    // Opdater sessionStorage hvis man ændrer sit eget navn
+    if (isSelf && name !== u.name) { sessionStorage.setItem('minhave-user', name); }
+    u.name = name;
+    u.initials = initials || name[0];
+    u.role = role;
+    saveUsers();
+    renderUserManagement();
+}
+
+function saveNewUser() {
+    const name = document.getElementById('um-name')?.value.trim();
+    const initials = document.getElementById('um-initials')?.value.trim();
+    const role = document.getElementById('um-role')?.value;
+    const pin = document.getElementById('um-pin')?.value.trim();
+    if (!name) { alert('Navn må ikke være tomt'); return; }
+    if (users.some(x => x.name === name)) { alert('Brugernavnet er allerede i brug'); return; }
+    if (pin && (!/^\d{4,6}$/.test(pin))) { alert('PIN skal være 4-6 cifre'); return; }
+    if (users.length >= 5) { alert('Maks 5 brugere'); return; }
+    users.push({ id: uuid(), name, pin: pin || '', role, initials: initials || name[0] });
+    saveUsers();
+    renderUserManagement();
+}
+
+function confirmDeleteUser(id, name) {
+    if (!confirm(`Slet brugeren "${name}"? Dette kan ikke fortrydes.`)) return;
+    users = users.filter(u => u.id !== id);
+    saveUsers();
+    renderUserManagement();
+}
+
 // ── SERVICE WORKER ──
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 
 // ── BOOT ──
-loadPhotoCache().then(() => Promise.all([loadDB(), loadPins()])).then(() => { if (checkAccess()) render(); });
+loadPhotoCache().then(() => Promise.all([loadDB(), loadUsers()])).then(() => { if (checkAccess()) render(); });
 </script>
 </body>
 </html>
