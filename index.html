@@ -2615,11 +2615,13 @@ function calNext() {
 
 function toggleArea(areaKey) {
     if (collapsedAreas.has(areaKey)) {
-        // Åbn denne, luk alle andre
+        // Åbn denne, luk alle andre — og kollaps alle zoner i det nye område
         collapsedAreas = new Set(Object.keys(AREAS));
         collapsedAreas.delete(areaKey);
+        db.zones.filter(z => (z.area || 'baghave') === areaKey)
+                .forEach(z => collapsedZones.add(z.id));
     } else {
-        // Luk denne
+        // Luk dette område
         collapsedAreas.add(areaKey);
     }
     render();
