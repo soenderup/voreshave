@@ -12,30 +12,7 @@ if [ -f "$TMP_DIR/watcher.pid" ]; then
     kill "$(cat "$TMP_DIR/watcher.pid")" 2>/dev/null || true
 fi
 
-# Nulstil Safari: resize localhost-vindue til normal størrelse og naviger væk
-osascript << 'APPLESCRIPT'
-tell application "Finder"
-    set screenBounds to bounds of window of desktop
-    set screenW to item 3 of screenBounds
-    set screenH to item 4 of screenBounds
-end tell
-
-set winW to round (screenW * 0.8)
-set winH to round (screenH * 0.8)
-set winX to round ((screenW - winW) / 2)
-set winY to round ((screenH - winH) / 2)
-
-tell application "Safari"
-    repeat with w in every window
-        try
-            if URL of current tab of w contains "localhost:" then
-                set bounds of w to {winX, winY, winX + winW, winY + winH}
-                set URL of current tab of w to "about:blank"
-            end if
-        end try
-    end repeat
-end tell
-APPLESCRIPT
+# Safari røres ikke — AppleScript på Safari crasher på denne Mac
 
 # Luk Terminal-vinduet med en kort forsinkelse.
 # Forsinkelsen er vigtig: Stop-hook'en kører mens Claude Code stadig lukker ned.

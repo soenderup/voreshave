@@ -40,20 +40,11 @@ tell application \"Terminal\"
 end tell")
 echo "$TERM_WIN_ID" > "$TMP_DIR/terminal_win_id.txt"
 
-# Åbn Safari (højre 33%) med localhost
-osascript << APPLESCRIPT
-tell application "Safari"
-    -- Luk alle eksisterende vinduer
-    close every window
-    -- Åbn nyt vindue og placér det til højre
-    make new document with properties {URL:"http://localhost:$PORT"}
-    delay 0.3
-    set bounds of front window to {$SAFARI_X, 0, $SCREEN_W, $SCREEN_H}
-    activate
-end tell
-APPLESCRIPT
+# Åbn Safari med localhost (ingen AppleScript — crasher Safari)
+open -a Safari "http://localhost:$PORT"
+sleep 0.5
 
-# Giv fokus tilbage til Terminal (Safari er stadig synlig til højre)
+# Giv fokus tilbage til Terminal
 osascript -e 'tell application "Terminal" to activate'
 
 # Gem Claude-processens PID (= PPID for dette script = direkte forælder)
