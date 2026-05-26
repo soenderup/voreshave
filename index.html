@@ -350,18 +350,39 @@
         }
         .photo-add:hover { background: rgba(255,255,255,0.14); }
 
+        /* ── VÆKST-TIDSLINJE ── */
+        .timeline-strip { display: flex; gap: 0.7rem; overflow-x: auto; padding: 0.4rem 0 0.6rem; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .timeline-strip::-webkit-scrollbar { display: none; }
+        .timeline-item { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; cursor: pointer; }
+        .tl-thumb { position: relative; width: 84px; height: 84px; border-radius: 10px; overflow: hidden; border: 2px solid var(--border); transition: border-color 0.15s; }
+        .tl-thumb.is-primary { border-color: var(--green-mid); }
+        .tl-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .tl-primary-badge { position: absolute; bottom: 3px; left: 3px; background: var(--green-mid); color: white; font-size: 0.58rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; letter-spacing: 0.02em; }
+        .tl-date { font-size: 0.62rem; color: var(--muted); text-align: center; white-space: nowrap; }
+        .tl-add { flex-shrink: 0; align-self: flex-start; width: 84px; height: 84px; border-radius: 10px; background: var(--green-light); border: 1.5px dashed var(--green-mid); color: var(--green-mid); font-size: 1.7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
         /* ── LIGHTBOX ── */
         #lightbox {
             display: none; position: fixed; inset: 0; z-index: 300;
             background: rgba(0,0,0,0.92); align-items: center; justify-content: center;
+            flex-direction: column; gap: 0.6rem;
         }
         #lightbox.open { display: flex; }
-        #lightbox img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+        #lightbox-img-wrap { display: flex; align-items: center; gap: 0.8rem; width: 100%; justify-content: center; padding: 0 0.5rem; }
+        #lightbox img { max-width: calc(100vw - 6rem); max-height: 75vh; object-fit: contain; border-radius: 6px; }
         #lightbox-close {
             position: absolute; top: 1rem; right: 1rem;
             background: rgba(255,255,255,0.15); border: none; color: white;
-            font-size: 1.2rem; width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
+            font-size: 1.2rem; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; z-index: 2;
         }
+        #lightbox-prev, #lightbox-next {
+            flex-shrink: 0; background: rgba(255,255,255,0.15); border: none; color: white;
+            font-size: 1.6rem; width: 40px; height: 40px; border-radius: 50%;
+            cursor: pointer; display: none; align-items: center; justify-content: center;
+        }
+        #lightbox-meta { color: rgba(255,255,255,0.7); font-size: 0.8rem; text-align: center; min-height: 1.1rem; }
+        #lightbox-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; padding: 0 1rem; }
+        #lightbox-backdrop { position: absolute; inset: 0; z-index: -1; cursor: pointer; }
 
         /* ── LOCKSCREEN ── */
         #lockscreen {
@@ -686,9 +707,16 @@
     </button>
 </nav>
 
-<div id="lightbox" onclick="closeLightbox()">
+<div id="lightbox">
+    <div id="lightbox-backdrop" onclick="closeLightbox()"></div>
     <button id="lightbox-close" onclick="closeLightbox()">×</button>
-    <img id="lightbox-img" src="" alt="">
+    <div id="lightbox-img-wrap">
+        <button id="lightbox-prev" onclick="lightboxNav(-1)">‹</button>
+        <img id="lightbox-img" src="" alt="">
+        <button id="lightbox-next" onclick="lightboxNav(1)">›</button>
+    </div>
+    <div id="lightbox-meta"></div>
+    <div id="lightbox-actions"></div>
 </div>
 
 <div class="overlay" id="overlay" onclick="closeSheet()"></div>
@@ -831,9 +859,15 @@ function mergeLocalPhotos() {
         if (!zonesInitialized) collapsedZones.add(z.id);
     });
     zonesInitialized = true;
+    let needsPhotoMigration = false;
     (db.plants || []).forEach(p => {
         if (!p.photo && photoCache.has('plant-' + p.id)) p.photo = photoCache.get('plant-' + p.id);
+        if (!p.photos) {
+            p.photos = p.photo ? [{ id: uuid(), url: p.photo, date: p.plantedDate || new Date().toISOString().slice(0,10), primary: true }] : [];
+            needsPhotoMigration = true;
+        }
     });
+    if (needsPhotoMigration) saveDB();
 }
 
 async function loadDB() {
@@ -1242,6 +1276,12 @@ function formatDate(iso) {
     return d.toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+function formatDateShort(iso) {
+    if (!iso) return '';
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' });
+}
+
 function daysUntil(iso) {
     const diff = Math.ceil((new Date(iso) - new Date()) / 86400000);
     if (diff < 0) return 'Overskredet';
@@ -1541,11 +1581,7 @@ function renderPlant(pid) {
                 ${p.water == null && p.light == null && p.perennial == null && canEdit()
                     ? `<div class="info-row"><span class="label"></span><span class="val"><button onclick="fetchCareData('${pid}')" id="care-fetch-btn" style="font-size:0.78rem;color:var(--green-mid);background:none;border:none;cursor:pointer;padding:0.2rem 0">🌿 Hent trivseldata automatisk</button></span></div>`
                     : ''}
-                ${p.photo
-                    ? `<div class="info-row"><span class="label"></span><span class="val" style="display:flex;align-items:center;gap:0.5rem"><img src="${p.photo}" style="width:110px;height:78px;border-radius:8px;object-fit:cover;cursor:pointer" onclick="viewPhoto('${p.photo}')">
-                       ${canEdit() ? `<button onclick="deleteElementPhoto('${pid}',event)" style="font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Slet</button>` : ''}</span></div>`
-                    : (canEdit() ? `<div class="info-row"><span class="label"></span><span class="val"><button class="plant-photo-btn" style="width:60px;height:60px" onclick="pickElementPhoto('${pid}')">📷</button></span></div>` : '')
-                }
+                ${plantPhotosHTML(pid)}
                 ${p.latinName ? `<div class="info-row"><span class="label">Latinsk navn</span><span class="val"><em>${p.latinName}</em></span></div>` : ''}
                 ${p.type ? `<div class="info-row"><span class="label">Type</span><span class="val">${p.type}</span></div>` : ''}
                 ${p.quantity > 1 ? `<div class="info-row"><span class="label">Antal</span><span class="val">${p.quantity} stk.</span></div>` : ''}
@@ -1730,13 +1766,184 @@ async function deleteElementPhoto(pid, e) {
 }
 
 function viewPhoto(src) {
+    lightboxPid = null; lightboxPhotoId = null;
     document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox-meta').textContent = '';
+    document.getElementById('lightbox-actions').innerHTML = '';
+    document.getElementById('lightbox-prev').style.display = 'none';
+    document.getElementById('lightbox-next').style.display = 'none';
     document.getElementById('lightbox').classList.add('open');
 }
 
 function closeLightbox() {
     document.getElementById('lightbox').classList.remove('open');
     document.getElementById('lightbox-img').src = '';
+    lightboxPid = null; lightboxPhotoId = null;
+}
+
+// ── VÆKST-TIDSLINJE ──
+let lightboxPid = null;
+let lightboxPhotoId = null;
+
+function plantPhotosHTML(pid) {
+    const p = plant(pid);
+    if (!p) return '';
+    const photos = (p.photos || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+    const canAdd = canEdit() && photos.length < 15;
+    if (photos.length === 0 && !canEdit()) return '';
+    return `
+    <div class="info-row" style="flex-direction:column;align-items:stretch;gap:0.3rem">
+        <span class="label" style="display:flex;align-items:center;gap:0.4rem">
+            📸 Fotos
+            <span style="color:var(--muted);font-weight:400;font-size:0.75rem">${photos.length}/15</span>
+        </span>
+        <div class="timeline-strip">
+            ${photos.map(ph => `
+                <div class="timeline-item" onclick="openTimelinePhotoSheet('${pid}','${ph.id}')">
+                    <div class="tl-thumb${ph.primary ? ' is-primary' : ''}">
+                        <img src="${ph.url}" alt="" loading="lazy">
+                        ${ph.primary ? '<div class="tl-primary-badge">✓ primær</div>' : ''}
+                    </div>
+                    <div class="tl-date">${formatDateShort(ph.date)}</div>
+                </div>`).join('')}
+            ${canAdd ? `<button class="tl-add" onclick="pickTimelinePhoto('${pid}');event.stopPropagation()">+</button>` : ''}
+        </div>
+    </div>`;
+}
+
+function pickTimelinePhoto(pid) {
+    openPickPhotoSheet('Tilføj foto til tidslinje',
+        `doPickTimelinePhoto('${pid}','camera')`,
+        `doPickTimelinePhoto('${pid}','library')`);
+}
+
+async function doPickTimelinePhoto(pid, source) {
+    closeSheet();
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    if (source === 'camera') input.capture = 'environment';
+    input.onchange = async e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const p = plant(pid);
+        if (!p) return;
+        const today = new Date().toISOString().slice(0, 10);
+        const photoId = uuid();
+        const base64 = await compressImage(file, 1200, 0.78);
+        const isFirst = (p.photos || []).length === 0;
+        const newPhoto = { id: photoId, url: base64, date: today, primary: isFirst };
+        if (!p.photos) p.photos = [];
+        p.photos.push(newPhoto);
+        if (isFirst) p.photo = base64;
+        render();
+        try {
+            const url = await uploadPhoto(file);
+            const pFresh = plant(pid);
+            if (pFresh) {
+                const ph = (pFresh.photos || []).find(x => x.id === photoId);
+                if (ph) {
+                    ph.url = url;
+                    if (ph.primary) pFresh.photo = url;
+                    saveDB();
+                }
+            }
+        } catch (err) { console.error('Foto-upload fejlede:', err); }
+    };
+    input.click();
+}
+
+function openTimelinePhotoSheet(pid, photoId) {
+    const p = plant(pid);
+    if (!p) return;
+    const ph = (p.photos || []).find(x => x.id === photoId);
+    if (!ph) return;
+    openSheet('Foto — ' + formatDate(ph.date), `
+        <div style="padding:0.8rem 1.2rem; display:flex; flex-direction:column; gap:0.7rem;">
+            <img src="${ph.url}" style="width:100%;max-height:240px;object-fit:contain;border-radius:10px;background:#111;cursor:pointer"
+                onclick="viewTimelineLightbox('${pid}','${photoId}');closeSheet()">
+            <button class="btn-primary" style="margin:0;font-size:0.95rem"
+                onclick="viewTimelineLightbox('${pid}','${photoId}');closeSheet()">🔍 Vis i fuld størrelse</button>
+            ${!ph.primary && canEdit() ? `<button class="btn-primary" style="margin:0;background:var(--green-mid);font-size:0.95rem"
+                onclick="setPrimaryTimelinePhoto('${pid}','${photoId}');closeSheet()">⭐ Sæt som primær</button>` : ''}
+            ${ph.primary ? `<div style="text-align:center;font-size:0.8rem;color:var(--muted)">✓ Dette er det primære foto</div>` : ''}
+            ${canEdit() ? `<button class="btn-primary" style="margin:0;background:#c0392b;font-size:0.95rem"
+                onclick="deleteTimelinePhoto('${pid}','${photoId}')">🗑 Slet foto</button>` : ''}
+        </div>
+        <div style="height:1rem"></div>`);
+}
+
+function setPrimaryTimelinePhoto(pid, photoId) {
+    const p = plant(pid);
+    if (!p) return;
+    (p.photos || []).forEach(ph => { ph.primary = (ph.id === photoId); });
+    const primary = (p.photos || []).find(ph => ph.id === photoId);
+    if (primary) p.photo = primary.url;
+    saveDB(); render();
+}
+
+async function deleteTimelinePhoto(pid, photoId) {
+    closeSheet();
+    const p = plant(pid);
+    if (!p) return;
+    const ph = (p.photos || []).find(x => x.id === photoId);
+    if (!ph) return;
+    if (!confirm('Slet dette foto?')) return;
+    const wasPrimary = ph.primary;
+    await deleteStoragePhoto(ph.url);
+    p.photos = (p.photos || []).filter(x => x.id !== photoId);
+    if (wasPrimary && p.photos.length > 0) {
+        const newest = [...p.photos].sort((a, b) => b.date.localeCompare(a.date))[0];
+        newest.primary = true;
+        p.photo = newest.url;
+    } else if (p.photos.length === 0) {
+        p.photo = null;
+    }
+    saveDB(); render();
+}
+
+function viewTimelineLightbox(pid, photoId) {
+    lightboxPid = pid;
+    lightboxPhotoId = photoId;
+    updateTimelineLightbox();
+    document.getElementById('lightbox').classList.add('open');
+}
+
+function updateTimelineLightbox() {
+    const p = plant(lightboxPid);
+    if (!p) return;
+    const photos = (p.photos || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+    const idx = photos.findIndex(ph => ph.id === lightboxPhotoId);
+    if (idx < 0) return;
+    const ph = photos[idx];
+    document.getElementById('lightbox-img').src = ph.url;
+    document.getElementById('lightbox-meta').textContent =
+        formatDate(ph.date) + (ph.primary ? ' · ✓ primær' : '') +
+        (photos.length > 1 ? ` (${idx + 1}/${photos.length})` : '');
+    const prevBtn = document.getElementById('lightbox-prev');
+    const nextBtn = document.getElementById('lightbox-next');
+    prevBtn.style.display = idx > 0 ? 'flex' : 'none';
+    nextBtn.style.display = idx < photos.length - 1 ? 'flex' : 'none';
+    const actionsEl = document.getElementById('lightbox-actions');
+    if (actionsEl && canEdit()) {
+        actionsEl.innerHTML =
+            (!ph.primary ? `<button onclick="setPrimaryTimelinePhoto('${lightboxPid}','${ph.id}');updateTimelineLightbox()"
+                style="background:rgba(255,255,255,0.15);border:none;color:white;padding:0.45rem 0.9rem;border-radius:8px;font-size:0.8rem;cursor:pointer">⭐ Sæt som primær</button>` : '') +
+            `<button onclick="deleteTimelinePhoto('${lightboxPid}','${ph.id}')"
+                style="background:rgba(180,0,0,0.5);border:none;color:white;padding:0.45rem 0.9rem;border-radius:8px;font-size:0.8rem;cursor:pointer">🗑 Slet</button>`;
+    }
+}
+
+function lightboxNav(dir) {
+    if (!lightboxPid) return;
+    const p = plant(lightboxPid);
+    if (!p) return;
+    const photos = (p.photos || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+    const idx = photos.findIndex(ph => ph.id === lightboxPhotoId);
+    const newIdx = idx + dir;
+    if (newIdx >= 0 && newIdx < photos.length) {
+        lightboxPhotoId = photos[newIdx].id;
+        updateTimelineLightbox();
+    }
 }
 
 // ── KALENDER ──
