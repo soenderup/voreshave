@@ -3550,7 +3550,21 @@ async function openLoginLog() {
             <span style="font-size:0.78rem;color:var(--muted);text-align:right">${dato} ${tid}</span>
         </div>`;
     }).join('') || '<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0">Ingen logins registreret endnu</div>';
-    openSheet('Login-log', `<div style="padding:0 1.2rem 1rem">${rows}</div>`);
+    openSheet('Login-log', `
+        <div style="padding:0 1.2rem 1rem">${rows}</div>
+        ${entries.length > 0 ? `
+        <div style="padding:0 1.2rem 1.2rem">
+            <button onclick="clearLoginLog()" style="width:100%;padding:0.75rem;border:1px solid var(--border);border-radius:12px;background:var(--white);color:var(--muted);font-size:0.85rem;cursor:pointer">
+                🗑️ Tøm log
+            </button>
+        </div>` : ''}
+    `);
+}
+
+async function clearLoginLog() {
+    if (!confirm('Vil du slette hele login-loggen?')) return;
+    await LOGINLOG_REF.set({ entries: [] });
+    openLoginLog();
 }
 
 function lockApp() {
