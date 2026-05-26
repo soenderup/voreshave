@@ -30,7 +30,6 @@ end tell')
 SCREEN_W=$(echo "$SCREEN_INFO" | cut -d, -f1)
 SCREEN_H=$(echo "$SCREEN_INFO" | cut -d, -f2)
 TERM_W=$(python3 -c "print(int($SCREEN_W * 0.67))")
-SAFARI_X=$TERM_W
 
 # Gem vindues-ID og placér Terminal (venstre 67%)
 TERM_WIN_ID=$(osascript -e "
@@ -47,23 +46,51 @@ sleep 0.5
 # Giv fokus tilbage til Terminal
 osascript -e 'tell application "Terminal" to activate'
 
-# Gem Claude-processens PID (= PPID for dette script = direkte forælder)
-CLAUDE_PID=$PPID
+# Find den faktiske Claude-proces ved at gå op ad process-træet
+# (PPID er ikke altid direkte Claude — der kan være et mellemliggende shell)
+CLAUDE_PID=""
+CURRENT_PID=$$
+for i in $(seq 1 10); do
+    PARENT=$(ps -p "$CURRENT_PID" -o ppid= 2>/dev/null | tr -d ' ')
+    [ -z "$PARENT" ] || [ "$PARENT" = "1" ] && break
+    PNAME=$(ps -p "$PARENT" -o comm= 2>/dev/null | tr -d ' ')
+    if [[ "$PNAME" == *"claude"* ]] || [[ "$PNAME" == *"node"* ]]; then
+        CLAUDE_PID=$PARENT
+        break
+    fi
+    CURRENT_PID=$PARENT
+done
+
+# Fallback: brug PPID hvis træ-søgningen fejlede
+if [ -z "$CLAUDE_PID" ]; then
+    CLAUDE_PID=$PPID
+fi
+
 echo "$CLAUDE_PID" > "$TMP_DIR/claude.pid"
 
-# Start baggrundsvagt: lukker vinduer når Claude Code afsluttes (ikke ved /clear)
-# Bemærk: setsid bruges IKKE — det er Linux-only og findes ikke på macOS
+# Skriv session-token for at undgå race conditions
+SESSION_TOKEN="$$-$(date +%s)"
+echo "$SESSION_TOKEN" > "$TMP_DIR/session.token"
+
+# Start baggrundsvagt: lukker vinduer når Claude Code afsluttes
+# Stop-hooken er FJERNET — kun watcher'en håndterer oprydning ved exit
+# Årsag: Stop-hooken fyrer efter HVERT svar (ikke kun ved exit),
+#         hvilket dræbte serveren og viste Terminal-dialog under aktiv session
 nohup bash -c '
 TMP_DIR="/tmp/voreshave_dev"
 PROJECT_DIR="/Users/steensonderup/Documents/udvikling/VoresHave"
 CLAUDE_PID='"$CLAUDE_PID"'
+SESSION_TOKEN='"$SESSION_TOKEN"'
 
 if [ -n "$CLAUDE_PID" ] && [ "$CLAUDE_PID" -gt 1 ]; then
     while kill -0 "$CLAUDE_PID" 2>/dev/null; do
         sleep 2
     done
-    # Claude Code er lukket — kør oprydning
-    "$PROJECT_DIR/scripts/dev-stop.sh"
+    # Claude Code er lukket — tjek at det er vores session (ikke en nyere)
+    STORED_TOKEN=$(cat "$TMP_DIR/session.token" 2>/dev/null)
+    if [ "$STORED_TOKEN" = "$SESSION_TOKEN" ]; then
+        "$PROJECT_DIR/scripts/dev-stop.sh" "$SESSION_TOKEN"
+    fi
 fi
 ' &>/dev/null &
 echo $! > "$TMP_DIR/watcher.pid"
