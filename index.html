@@ -135,6 +135,46 @@
         .sub-zone-list { padding: 0.8rem 1rem 0; }
         .sub-zone-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.5rem; padding: 0 1rem; }
         .sub-zone-card { margin-bottom: 0.5rem; }
+
+        /* ── ZONE FOLD-UD ── */
+        .zone-foldout {
+            background: var(--white);
+            border-radius: 14px;
+            margin-bottom: 0.7rem;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
+        }
+        .zone-foldout-sub {
+            margin: 0 0 0.5rem 0;
+            border-radius: 10px;
+            box-shadow: none;
+            border: 1px solid var(--border);
+            background: var(--cream);
+        }
+        .zone-foldout-header {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.85rem 1rem;
+            cursor: pointer; user-select: none;
+        }
+        .zone-foldout-header:active { opacity: 0.8; }
+        .zone-foldout-info { flex: 1; min-width: 0; }
+        .zone-chevron { color: var(--muted); font-size: 0.75rem; transition: transform 0.2s; }
+        .zone-chevron.closed { transform: rotate(-90deg); }
+        .zone-content { border-top: 1px solid var(--border); }
+        .zone-sub-list { padding: 0.6rem 0.7rem 0; }
+        .zone-element-row {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer; user-select: none;
+        }
+        .zone-element-row:last-child { border-bottom: none; }
+        .zone-element-row:active { background: var(--cream); }
+        .zone-element-info { flex: 1; min-width: 0; }
+        .zone-element-name { font-size: 0.93rem; font-weight: 600; color: var(--green-dark); }
+        .zone-element-meta { font-size: 0.73rem; color: var(--muted); margin-top: 0.05rem; }
+        .zone-element-empty { padding: 0.8rem 1rem; font-size: 0.82rem; color: var(--muted); font-style: italic; }
         .menu-section-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 0 0.2rem; }
         .choice-btn { display: flex; align-items: center; gap: 0.9rem; width: 100%; background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 1rem 1.1rem; cursor: pointer; text-align: left; }
         .choice-btn:active { opacity: 0.8; }
@@ -644,6 +684,8 @@ const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2)
 const today = new Date();
 let nav = { view: 'home', zoneId: null, plantId: null, tab: 'main', calYear: today.getFullYear(), calMonth: today.getMonth(), calSelected: null };
 let collapsedAreas = new Set(Object.keys({ forhave:1, baghave:1, terrasse:1, indgang:1, indendørs:1 }));
+let collapsedZones = new Set();
+let zonesInitialized = false;
 let urgentOpen = false;
 let attentionOpen = false;
 let weatherOpen = false;
@@ -741,7 +783,9 @@ const REPEAT_LABELS = { none: 'Ingen', yearly: 'Hvert år', monthly: 'Hver måne
 function mergeLocalPhotos() {
     (db.zones || []).forEach(z => {
         if (!z.photo && photoCache.has('zone-' + z.id)) z.photo = photoCache.get('zone-' + z.id);
+        if (!zonesInitialized) collapsedZones.add(z.id);
     });
+    zonesInitialized = true;
     (db.plants || []).forEach(p => {
         if (!p.photo && photoCache.has('plant-' + p.id)) p.photo = photoCache.get('plant-' + p.id);
     });
@@ -1183,15 +1227,7 @@ function goTo(view, zoneId = null, plantId = null, tab = 'main') {
     }
 }
 function goBack() {
-    if (nav.view === 'plant') {
-        if (isDirectZone(nav.zoneId)) goTo('home');
-        else goTo('zone', nav.zoneId);
-    }
-    else if (nav.view === 'zone') {
-        const z = zone(nav.zoneId);
-        if (z?.parentZoneId) goTo('zone', z.parentZoneId);
-        else goTo('home');
-    } else goTo('home');
+    goTo('home');
 }
 
 // ── RENDER ──
@@ -1219,8 +1255,6 @@ function render() {
         app.innerHTML = renderCalendar();
     } else if (nav.view === 'identify') {
         app.innerHTML = renderIdentify();
-    } else if (nav.view === 'zone') {
-        app.innerHTML = renderZone(nav.zoneId);
     } else if (nav.view === 'plant') {
         app.innerHTML = renderPlant(nav.plantId);
     }
@@ -1263,7 +1297,7 @@ function renderHome() {
                 else { const z = zone(r.entityId); who = z ? z.name + ' · ' : ''; }
                 const navTarget = r.entityType === 'plant'
                     ? `goTo('plant','${r.entityId ? plant(r.entityId)?.zoneId : ''}','${r.entityId}','reminders')`
-                    : `goTo('zone','${r.entityId}',null,'reminders')`;
+                    : `goTo('home')`;
                 return `<div class="urgent-item" onclick="${navTarget}">
                     <div class="urgent-dot${hot ? ' hot' : ''}"></div>
                     <div>${r.text}<span class="urgent-meta">${who}${days}</span></div>
@@ -1271,30 +1305,62 @@ function renderHome() {
             }).join('')}</div>` : ''}
         </div>`;
 
-    function zoneCard(z) {
+    function zoneCard(z, depth = 0) {
         const plants = zonePlants(z.id);
         const subs = subZones(z.id);
         const status = zoneStatus(z.id);
         const icon = ZONE_TYPES[z.type]?.icon || '🏡';
-        const badge = status === 'urgent'
-            ? `<span class="zone-badge">Handling krævet</span>`
-            : `<span class="zone-badge ok">OK</span>`;
+        const badge = status === 'urgent' ? `<span class="zone-badge" style="margin-right:0.2rem">⚠️</span>` : '';
+        const collapsed = collapsedZones.has(z.id);
         const parts = [];
-        if (z.description) parts.push(z.description);
         if (subs.length > 0) parts.push(`${subs.length} zone${subs.length !== 1 ? 'r' : ''}`);
         parts.push(`${plants.length} element${plants.length !== 1 ? 'er' : ''}`);
         const meta = parts.join(' · ');
-        return `<div class="zone-card" data-zone="${z.id}">
-            <div class="zone-card-header">
-                <div class="zone-card-left">
-                    <span class="zone-icon">${icon}</span>
-                    <div>
-                        <div class="zone-name">${z.name}</div>
-                        <div class="zone-meta">${meta}</div>
-                    </div>
+
+        const plantsHTML = plants.map(p => {
+            const thumb = p.photo
+                ? `<img src="${p.photo}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0">`
+                : `<span style="font-size:1.1rem;flex-shrink:0">🌱</span>`;
+            const latin = p.latinName ? `<div class="zone-element-meta">${p.latinName}</div>` : '';
+            const qty = p.quantity > 1 ? ` <span style="color:var(--muted);font-weight:400;font-size:0.85em">× ${p.quantity}</span>` : '';
+            return `<div class="zone-element-row" onclick="goTo('plant','${z.id}','${p.id}')">
+                ${thumb}
+                <div class="zone-element-info">
+                    <div class="zone-element-name">${p.name}${qty}</div>
+                    ${latin}
                 </div>
-                <div style="display:flex;align-items:center;gap:0.4rem">${badge}<span class="zone-arrow">›</span></div>
+                <span class="zone-arrow">›</span>
+            </div>`;
+        }).join('');
+
+        const subsHTML = subs.length > 0
+            ? `<div class="zone-sub-list">${subs.map(sz => zoneCard(sz, depth + 1)).join('')}</div>`
+            : '';
+
+        const emptyHTML = plants.length === 0 && subs.length === 0
+            ? `<div class="zone-element-empty">Ingen elementer endnu</div>`
+            : '';
+
+        const contentHTML = collapsed ? '' : `
+            <div class="zone-content">
+                ${subsHTML}
+                ${plantsHTML}
+                ${emptyHTML}
+            </div>`;
+
+        return `<div class="${depth > 0 ? 'zone-foldout zone-foldout-sub' : 'zone-foldout'}">
+            <div class="zone-foldout-header" onclick="toggleZone('${z.id}')">
+                <span class="zone-icon">${icon}</span>
+                <div class="zone-foldout-info">
+                    <div class="zone-name">${z.name}</div>
+                    <div class="zone-meta">${meta}</div>
+                </div>
+                <div style="display:flex;align-items:center">
+                    ${badge}
+                    <span class="zone-chevron${collapsed ? ' closed' : ''}">▾</span>
+                </div>
             </div>
+            ${contentHTML}
         </div>`;
     }
 
@@ -1367,107 +1433,6 @@ function renderHome() {
 `;
 }
 
-function renderZone(zid) {
-    const z = zone(zid);
-    if (!z) return '<div class="empty-state">Zone ikke fundet</div>';
-    const plants = zonePlants(zid);
-    const subs = subZones(zid);
-    const reminders = entityReminders('zone', zid);
-    const history = entityHistory('zone', zid);
-    const icon = ZONE_TYPES[z.type]?.icon || '🏡';
-    const tab = nav.tab;
-
-    const subZonesHTML = subs.length === 0 ? '' : `
-        <div class="sub-zone-list">
-            <div class="sub-zone-label">Zoner</div>
-            ${subs.map(sz => {
-                const szIcon = ZONE_TYPES[sz.type]?.icon || '🏡';
-                const szPlants = zonePlants(sz.id).length;
-                const szSubs = subZones(sz.id).length;
-                const szMeta = [szSubs > 0 ? `${szSubs} zone${szSubs !== 1 ? 'r' : ''}` : null, `${szPlants} element${szPlants !== 1 ? 'er' : ''}`].filter(Boolean).join(' · ');
-                return `<div class="zone-card sub-zone-card" data-zone="${sz.id}">
-                    <div class="zone-card-header">
-                        <div class="zone-card-left">
-                            <span class="zone-icon">${szIcon}</span>
-                            <div>
-                                <div class="zone-name">${sz.name}</div>
-                                <div class="zone-meta">${sz.description ? sz.description + ' · ' : ''}${szMeta}</div>
-                            </div>
-                        </div>
-                        <span class="zone-arrow">›</span>
-                    </div>
-                </div>`;
-            }).join('')}
-        </div>`;
-
-    const plantsHTML = plants.length === 0 && subs.length === 0
-        ? `<div class="empty-state"><span class="empty-icon">🌱</span>Ingen elementer endnu</div>`
-        : plants.length === 0 ? ''
-        : `<div class="plant-list">${plants.map(p => {
-            const attn = plantAttentionFlag(p.id);
-            const remSt = plantReminderStatus(p.id);
-            return `
-            <div class="plant-row" data-plant="${p.id}">
-                <div class="plant-name-wrap">
-                    <div class="pname">${p.name}${p.quantity > 1 ? ` <span style="color:var(--muted);font-weight:400">× ${p.quantity}</span>` : ''}</div>
-                    ${p.latinName ? `<div class="platinname">${p.latinName}</div>` : ''}
-                    ${p.type ? `<div><span class="ptype">${p.type}</span></div>` : ''}
-                    ${attn ? `<div><span class="status-tag attention">⚑ Kræver opmærksomhed</span></div>` : ''}
-                    ${remSt === 'overdue' ? `<div><span class="status-tag overdue">⚠ Forfalden påmindelse</span></div>` : remSt === 'upcoming' ? `<div><span class="status-tag upcoming">🔔 Påmindelse snart</span></div>` : ''}
-                </div>
-                <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0">
-                    ${p.photo
-                        ? `<img class="plant-list-thumb" src="${p.photo}" onclick="viewPhoto('${p.photo}');event.stopPropagation()">`
-                        : (canEdit() ? `<button class="plant-photo-btn" onclick="pickElementPhoto('${p.id}');event.stopPropagation()" title="Tilføj foto">📷</button>` : '')
-                    }
-                    ${p.infoLink ? `<a href="${p.infoLink}" target="_blank" class="plant-link-btn" onclick="event.stopPropagation()">Info →</a>` : ''}
-                </div>
-            </div>`;
-        }).join('')}</div>`;
-
-    const reminderHTML = reminders.length === 0
-        ? `<div class="empty-state"><span class="empty-icon">⏰</span>Ingen påmindelser</div>`
-        : reminders.map(renderReminderItem).join('');
-
-    const historyHTML = history.length === 0
-        ? `<div class="empty-state"><span class="empty-icon">📖</span>Ingen historik endnu</div>`
-        : history.map(renderHistoryItem).join('');
-
-    const mainCount = subs.length + plants.length;
-
-    return `
-        <div class="detail-hero" style="${z.photo ? 'padding:1rem 0 1rem 0' : ''}">
-            ${z.photo
-                ? `<div class="zone-hero-wrap">
-                       <img src="${z.photo}" onclick="viewPhoto('${z.photo}')">
-                       <div class="zone-hero-grad"></div>
-                       <div class="zone-hero-name">${z.name}</div>
-                       ${canEdit() ? `<button class="zone-photo-delete" onclick="deleteZonePhoto('${zid}',event)">×</button>` : ''}
-                   </div>`
-                : `<div style="font-size:1.25rem;font-weight:700;color:var(--green-dark)">${z.name}</div>
-                   ${canEdit() ? `<div class="detail-hero-photo-placeholder" onclick="pickZonePhoto('${zid}')">📷 Tilføj zonefoto</div>` : ''}`
-            }
-        </div>
-        <div class="tabs">
-            <button class="tab-btn${tab==='main'?' active':''}" onclick="setTab('main')">Oversigt (${mainCount})</button>
-            <button class="tab-btn${tab==='reminders'?' active':''}" onclick="setTab('reminders')">Påmindelser (${reminders.length})</button>
-            <button class="tab-btn${tab==='history'?' active':''}" onclick="setTab('history')">Historik (${history.length})</button>
-        </div>
-        ${tab === 'main' ? `
-            ${subZonesHTML}
-            ${subs.length > 0 && plants.length > 0 ? '<div class="sub-zone-label" style="margin-top:0.8rem">Elementer</div>' : ''}
-            ${plantsHTML}` : ''}
-        ${tab === 'reminders' ? `
-            ${reminderHTML}
-            ${canLog() ? `<div style="padding:0.8rem 1rem 0">
-                <button class="section-add-btn" onclick="openAddReminder('zone','${zid}')">+ Tilføj påmindelse</button>
-            </div>` : ''}` : ''}
-        ${tab === 'history' ? `
-            ${historyHTML}
-            ${canLog() ? `<div style="padding:0.8rem 1rem 0">
-                <button class="section-add-btn" onclick="openAddHistory('zone','${zid}')">+ Tilføj log-note</button>
-            </div>` : ''}` : ''}`;
-}
 
 function careIconsHTML(p) {
     const wVal = { dry: 1, normal: 2, moist: 3 }[p.water] || 0;
@@ -1565,8 +1530,6 @@ function renderPlant(pid) {
 
 // ── EVENTS ──
 function bindEvents() {
-    document.querySelectorAll('[data-zone]').forEach(el =>
-        el.addEventListener('click', () => goTo('zone', el.dataset.zone)));
     document.querySelectorAll('[data-plant]').forEach(el =>
         el.addEventListener('click', () => goTo('plant', nav.zoneId, el.dataset.plant)));
     document.querySelectorAll('[data-complete]').forEach(el =>
@@ -2201,20 +2164,21 @@ function toggleArea(areaKey) {
     render();
 }
 
+function toggleZone(zid) {
+    if (collapsedZones.has(zid)) {
+        collapsedZones.delete(zid);
+    } else {
+        collapsedZones.add(zid);
+    }
+    render();
+}
+
 function openMainMenu() {
     const user = currentUser();
 
     // Kontekst-handlinger afhænger af aktuel visning
     let contextSection = '';
-    if (nav.view === 'zone') {
-        const zid = nav.zoneId;
-        const z = zone(zid);
-        if (canEdit()) contextSection = `
-            <div class="menu-section-label">${z?.name || 'Zone'}</div>
-            <button class="choice-btn" onclick="closeSheet();openEditZone('${zid}')">
-                <span class="choice-icon">✏️</span><div><div class="choice-label">Rediger zone</div></div>
-            </button>`;
-    } else if (nav.view === 'plant') {
+    if (nav.view === 'plant') {
         const pid = nav.plantId;
         const p = plant(pid);
         if (canEdit()) contextSection = `
@@ -2481,8 +2445,7 @@ function deleteZone(zid) {
     subs.forEach(sz => deleteZoneData(sz.id));
     deleteZoneData(zid);
     saveDB(); closeSheet();
-    if (parentId) goTo('zone', parentId);
-    else goTo('home');
+    goTo('home');
 }
 
 function plantFormHTML(p = {}, prefixHTML = '') {
@@ -2766,7 +2729,7 @@ function deletePlant(pid) {
         db.zones = db.zones.filter(z => z.id !== zid);
         saveDB(); closeSheet(); goTo('home');
     } else {
-        saveDB(); closeSheet(); goTo('zone', nav.zoneId);
+        saveDB(); closeSheet(); goTo('home');
     }
 }
 
