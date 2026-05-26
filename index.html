@@ -176,9 +176,20 @@
         .info-note { margin: 0.8rem 1rem 0; background: var(--cream); border-radius: 10px; padding: 0.7rem 0.9rem; font-size: 0.85rem; color: var(--text); line-height: 1.5; }
         .info-note-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--brown); margin-bottom: 0.3rem; }
 
-        /* Care icons */
-        .care-icons { display: flex; flex-direction: column; gap: 0.28rem; line-height: 1; }
-        .care-icon-row { font-size: 1.05rem; letter-spacing: 0.04rem; }
+        /* Trivseldata */
+        .care-block { padding: 0.4rem 0 0.2rem; border-bottom: 1px solid var(--border); }
+        .care-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; }
+        .care-lbl { color: var(--muted); width: 52px; flex-shrink: 0; font-size: 0.8rem; }
+        .care-track { display: flex; align-items: center; flex: 1; }
+        .care-end { font-size: 0.88rem; flex-shrink: 0; }
+        .care-end.l { margin-right: 0.35rem; }
+        .care-end.r { margin-left: 0.35rem; }
+        .care-segs { display: flex; gap: 3px; flex: 1; }
+        .care-seg { height: 7px; border-radius: 4px; flex: 1; background: var(--border); }
+        .care-seg.on { background: var(--green-mid); }
+        .care-pills { display: flex; gap: 0.35rem; }
+        .cpill { font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: 999px; border: 1.5px solid var(--border); color: var(--muted); }
+        .cpill.on { background: var(--green-light); color: var(--green-dark); border-color: var(--green-mid); font-weight: 600; }
         .care-migrate-banner { margin: 0.6rem 1rem 0; padding: 0.55rem 0.9rem; background: var(--green-light); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; }
         .care-migrate-btn { font-size: 0.78rem; color: var(--green-dark); background: none; border: 1px solid var(--green-mid); border-radius: 6px; padding: 0.25rem 0.6rem; cursor: pointer; white-space: nowrap; }
 
@@ -574,7 +585,7 @@ firebase.initializeApp({
 });
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
-const VERSION = '1.16';
+const VERSION = '1.17';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
@@ -1217,12 +1228,32 @@ function renderZone(zid) {
 }
 
 function careIconsHTML(p) {
-    const w = { dry: '💧', normal: '💧💧', moist: '💧💧💧' }[p.water] || '';
-    const l = { full: '☀️', 'full-partial': '☀️🌤️', partial: '🌤️', 'partial-shade': '🌤️☁️', shade: '☁️' }[p.light] || '';
-    const per = p.perennial === true ? '♾️' : p.perennial === false ? '🌱' : '';
-    const parts = [w, l, per].filter(Boolean);
-    if (!parts.length) return '';
-    return `<span class="care-icons">${parts.map(icon => `<span class="care-icon-row">${icon}</span>`).join('')}</span>`;
+    const wVal = { dry: 1, normal: 2, moist: 3 }[p.water] || 0;
+    const lVal = { shade: 1, 'partial-shade': 2, partial: 3, 'full-partial': 4, full: 5 }[p.light] || 0;
+    if (!wVal && !lVal && p.perennial == null) return '';
+    const segs = (n, total) => Array.from({length: total}, (_, i) =>
+        `<div class="care-seg${i < n ? ' on' : ''}"></div>`).join('');
+    const waterRow = wVal ? `<div class="care-row">
+        <span class="care-lbl">Væske</span>
+        <div class="care-track">
+            <span class="care-end l">💧</span>
+            <div class="care-segs">${segs(wVal, 3)}</div>
+            <span class="care-end r">🌧️</span>
+        </div></div>` : '';
+    const lightRow = lVal ? `<div class="care-row">
+        <span class="care-lbl">Lys</span>
+        <div class="care-track">
+            <span class="care-end l">☁️</span>
+            <div class="care-segs">${segs(lVal, 5)}</div>
+            <span class="care-end r">☀️</span>
+        </div></div>` : '';
+    const perRow = p.perennial != null ? `<div class="care-row">
+        <span class="care-lbl">Levetid</span>
+        <div class="care-pills">
+            <span class="cpill${p.perennial === false ? ' on' : ''}">🌱 Etårig</span>
+            <span class="cpill${p.perennial === true ? ' on' : ''}">♾️ Flerårig</span>
+        </div></div>` : '';
+    return `<div class="care-block">${waterRow}${lightRow}${perRow}</div>`;
 }
 
 function renderPlant(pid) {
@@ -1253,34 +1284,20 @@ function renderPlant(pid) {
         </div>
         ${tab === 'main' ? `
             <div class="info-section">
-                ${(()=>{
-                    const cl = careIconsHTML(p);
-                    if (p.photo) {
-                        return `<div class="info-row" style="align-items:center">
-                            <span class="label">${cl}</span>
-                            <span class="val" style="display:flex;align-items:center;gap:0.5rem">
-                                <img src="${p.photo}" style="width:110px;height:78px;border-radius:8px;object-fit:cover;cursor:pointer" onclick="viewPhoto('${p.photo}')">
-                                ${canEdit() ? `<button onclick="deleteElementPhoto('${pid}',event)" style="font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Slet</button>` : ''}
-                            </span>
-                        </div>`;
-                    } else if (canEdit()) {
-                        return `<div class="info-row" style="align-items:center">
-                            <span class="label">${cl}</span>
-                            <span class="val"><button class="plant-photo-btn" style="width:60px;height:60px" onclick="pickElementPhoto('${pid}')">📷</button></span>
-                        </div>`;
-                    } else if (cl) {
-                        return `<div class="info-row" style="align-items:center"><span class="label">${cl}</span><span class="val"></span></div>`;
-                    }
-                    return '';
-                })()}
+                ${careIconsHTML(p)}
+                ${p.water == null && p.light == null && p.perennial == null && canEdit()
+                    ? `<div class="info-row"><span class="label"></span><span class="val"><button onclick="fetchCareData('${pid}')" id="care-fetch-btn" style="font-size:0.78rem;color:var(--green-mid);background:none;border:none;cursor:pointer;padding:0.2rem 0">🌿 Hent trivseldata automatisk</button></span></div>`
+                    : ''}
+                ${p.photo
+                    ? `<div class="info-row"><span class="label"></span><span class="val" style="display:flex;align-items:center;gap:0.5rem"><img src="${p.photo}" style="width:110px;height:78px;border-radius:8px;object-fit:cover;cursor:pointer" onclick="viewPhoto('${p.photo}')">
+                       ${canEdit() ? `<button onclick="deleteElementPhoto('${pid}',event)" style="font-size:0.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Slet</button>` : ''}</span></div>`
+                    : (canEdit() ? `<div class="info-row"><span class="label"></span><span class="val"><button class="plant-photo-btn" style="width:60px;height:60px" onclick="pickElementPhoto('${pid}')">📷</button></span></div>` : '')
+                }
                 ${p.latinName ? `<div class="info-row"><span class="label">Latinsk navn</span><span class="val"><em>${p.latinName}</em></span></div>` : ''}
                 ${p.type ? `<div class="info-row"><span class="label">Type</span><span class="val">${p.type}</span></div>` : ''}
                 ${p.quantity > 1 ? `<div class="info-row"><span class="label">Antal</span><span class="val">${p.quantity} stk.</span></div>` : ''}
                 ${p.plantedDate ? `<div class="info-row"><span class="label">Plantet</span><span class="val">${formatDate(p.plantedDate)}</span></div>` : ''}
                 ${p.infoLink ? `<div class="info-row"><span class="label">Info-link</span><span class="val"><a href="${p.infoLink}" target="_blank" style="color:var(--green-mid)">Åbn →</a></span></div>` : ''}
-                ${p.water == null && p.light == null && p.perennial == null && canEdit()
-                    ? `<div class="info-row"><span class="label"></span><span class="val"><button onclick="fetchCareData('${pid}')" id="care-fetch-btn" style="font-size:0.78rem;color:var(--green-mid);background:none;border:none;cursor:pointer;padding:0.2rem 0">🌿 Hent trivseldata automatisk</button></span></div>`
-                    : ''}
             </div>
             ${p.note ? `<div class="info-note"><div class="info-note-label">Egne noter</div>${p.note}</div>` : ''}
             <div class="info-note">
