@@ -54,11 +54,14 @@ tell application \"Safari\"
 end tell" 2>/dev/null || true
 
 # Slå Responsivt design-visning til (kun hvis den ikke allerede er aktiv)
+sleep 0.5
 osascript -e '
+tell application "Safari" to activate
+delay 0.3
 tell application "System Events"
     tell process "Safari"
         try
-            click menu item "Enter Responsive Design View" of menu "Develop" of menu bar 1
+            click menu item "Start responsiv designfunktion" of menu "Udvikler" of menu bar 1
         end try
     end tell
 end tell' 2>/dev/null || true
