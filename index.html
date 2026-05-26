@@ -2628,6 +2628,17 @@ function toggleZone(zid) {
     } else {
         collapsedZones.add(zid);
     }
+    // Accordion: luk søskende-zoner når en zone åbnes
+    if (!collapsedZones.has(zid)) {
+        const z = zone(zid);
+        if (z) {
+            db.zones
+                .filter(s => s.id !== zid &&
+                    (s.area || 'baghave') === (z.area || 'baghave') &&
+                    (s.parentZoneId || null) === (z.parentZoneId || null))
+                .forEach(s => collapsedZones.add(s.id));
+        }
+    }
     render();
 }
 
