@@ -70,24 +70,6 @@ tell application "Safari"
     end repeat
 end tell
 
-delay 0.3
-
--- Tøm buffere (Cmd+Option+E)
-tell application "System Events"
-    tell process "Safari"
-        keystroke "e" using {command down, option down}
-    end tell
-end tell
-
-delay 0.2
-
--- Hård genindlæsning fra oprindelse (Cmd+Option+R)
-tell application "System Events"
-    tell process "Safari"
-        keystroke "r" using {command down, option down}
-    end tell
-end tell
-
 delay 0.5
 
 -- Giv fokus tilbage til Terminal
