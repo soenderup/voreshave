@@ -482,6 +482,57 @@
 
         .nav-btn.active { color: var(--green-dark); }
 
+        /* ── SØGNING ── */
+        .search-wrap {
+            padding: 0.9rem 1rem 0.5rem;
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+            position: sticky; top: 0; z-index: 10;
+        }
+        .search-input-row {
+            display: flex; align-items: center; gap: 0.6rem;
+            background: var(--cream); border: 1.5px solid var(--border);
+            border-radius: 12px; padding: 0.55rem 0.8rem;
+        }
+        .search-input-row span { font-size: 1rem; color: var(--muted); }
+        .search-input-row input {
+            flex: 1; border: none; background: none; outline: none;
+            font-size: 0.95rem; color: var(--text);
+        }
+        .search-clear {
+            background: none; border: none; cursor: pointer;
+            font-size: 1rem; color: var(--muted); padding: 0; line-height: 1;
+        }
+        .search-empty {
+            padding: 3rem 1.5rem; text-align: center;
+            color: var(--muted); font-size: 0.9rem; line-height: 1.6;
+        }
+        .search-empty-icon { font-size: 2.5rem; margin-bottom: 0.7rem; }
+        .search-section-label {
+            font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--muted);
+            padding: 0.9rem 1rem 0.4rem;
+        }
+        .search-result-row {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.75rem 1rem; background: var(--white);
+            border-bottom: 1px solid var(--border); cursor: pointer;
+        }
+        .search-result-row:active { background: var(--green-light); }
+        .search-result-thumb {
+            width: 38px; height: 38px; border-radius: 9px;
+            object-fit: cover; flex-shrink: 0;
+        }
+        .search-result-icon {
+            width: 38px; height: 38px; border-radius: 9px;
+            background: var(--green-light); display: flex;
+            align-items: center; justify-content: center;
+            font-size: 1.1rem; flex-shrink: 0;
+        }
+        .search-result-name { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+        .search-result-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
+        .search-result-arrow { margin-left: auto; color: var(--muted); font-size: 1rem; }
+
         /* ── KALENDER ── */
         .cal-month-nav {
             display: flex; align-items: center; justify-content: space-between;
@@ -628,6 +679,10 @@
 
     <button class="nav-btn" id="nav-calendar" onclick="goTo('calendar')">
         <span class="nav-icon">📅</span>Kalender
+    </button>
+
+    <button class="nav-btn" id="nav-search" onclick="goTo('search')">
+        <span class="nav-icon">🔍</span>Søg
     </button>
 </nav>
 
@@ -1227,9 +1282,10 @@ function render() {
     const sub = document.getElementById('header-sub');
 
     // Bottom nav active state
-    document.getElementById('nav-home').classList.toggle('active', nav.view !== 'calendar' && nav.view !== 'identify');
+    document.getElementById('nav-home').classList.toggle('active', nav.view !== 'calendar' && nav.view !== 'identify' && nav.view !== 'search');
     document.getElementById('nav-identify').classList.toggle('active', nav.view === 'identify');
     document.getElementById('nav-calendar').classList.toggle('active', nav.view === 'calendar');
+    document.getElementById('nav-search').classList.toggle('active', nav.view === 'search');
 
     // Header viser altid det samme
     title.innerHTML = 'Vores Have';
@@ -1243,6 +1299,10 @@ function render() {
         app.innerHTML = renderIdentify();
     } else if (nav.view === 'plant') {
         app.innerHTML = renderPlant(nav.plantId);
+    } else if (nav.view === 'search') {
+        app.innerHTML = renderSearch();
+        const inp = document.getElementById('search-input');
+        if (inp) { inp.focus(); inp.addEventListener('input', updateSearch); }
     }
 
     bindEvents();
@@ -2066,6 +2126,134 @@ function addSuggestionAsReminder(entityType, entityId, date, text, rowId) {
     if (row) row.innerHTML = `<div style="padding:0.5rem 0;color:var(--green-mid);font-size:0.85rem">✓ Tilføjet til kalender</div>`;
 }
 
+
+// ── SØGNING ──
+function renderSearch() {
+    return `
+        <div class="search-wrap">
+            <div class="search-input-row">
+                <span>🔍</span>
+                <input id="search-input" type="search" placeholder="Søg i planter og zoner…"
+                    autocomplete="off" autocorrect="off" spellcheck="false"
+                    value="${searchQuery || ''}">
+                ${searchQuery ? `<button class="search-clear" onclick="clearSearch()">✕</button>` : ''}
+            </div>
+        </div>
+        <div id="search-results">${renderSearchResults(searchQuery)}</div>`;
+}
+
+function renderSearchResults(q) {
+    if (!q || q.trim().length < 1) {
+        return `<div class="search-empty">
+            <div class="search-empty-icon">🌿</div>
+            <div>Skriv et plantenavn, et latinsk navn<br>eller en zone for at søge</div>
+        </div>`;
+    }
+    const term = q.trim().toLowerCase();
+
+    const matchedPlants = db.plants.filter(p =>
+        (p.name || '').toLowerCase().includes(term) ||
+        (p.latinName || '').toLowerCase().includes(term) ||
+        (p.description || '').toLowerCase().includes(term)
+    );
+
+    const matchedZones = db.zones.filter(z =>
+        (z.name || '').toLowerCase().includes(term) ||
+        (z.description || '').toLowerCase().includes(term)
+    );
+
+    if (matchedPlants.length === 0 && matchedZones.length === 0) {
+        return `<div class="search-empty">
+            <div class="search-empty-icon">🤷</div>
+            <div>Ingen resultater for<br><strong>${q}</strong></div>
+        </div>`;
+    }
+
+    let html = '';
+
+    if (matchedPlants.length > 0) {
+        html += `<div class="search-section-label">Planter (${matchedPlants.length})</div>`;
+        html += matchedPlants.map(p => {
+            const z = zone(p.zoneId);
+            const thumb = p.photo
+                ? `<img class="search-result-thumb" src="${p.photo}" alt="">`
+                : `<div class="search-result-icon">🌱</div>`;
+            const meta = [p.latinName, z ? z.name : null].filter(Boolean).join(' · ');
+            return `<div class="search-result-row" onclick="goTo('plant','${p.zoneId}','${p.id}')">
+                ${thumb}
+                <div>
+                    <div class="search-result-name">${p.name}</div>
+                    ${meta ? `<div class="search-result-meta">${meta}</div>` : ''}
+                </div>
+                <span class="search-result-arrow">›</span>
+            </div>`;
+        }).join('');
+    }
+
+    if (matchedZones.length > 0) {
+        html += `<div class="search-section-label">Zoner (${matchedZones.length})</div>`;
+        html += matchedZones.map(z => {
+            const plantsInZone = db.plants.filter(p => p.zoneId === z.id).length;
+            const areaName = z.area ? (z.area.charAt(0).toUpperCase() + z.area.slice(1)) : '';
+            const meta = [areaName, plantsInZone > 0 ? `${plantsInZone} element${plantsInZone !== 1 ? 'er' : ''}` : null].filter(Boolean).join(' · ');
+            const thumb = z.photo
+                ? `<img class="search-result-thumb" src="${z.photo}" alt="">`
+                : `<div class="search-result-icon">🌿</div>`;
+            return `<div class="search-result-row" onclick="goTo('home');setTimeout(()=>{expandZone('${z.id}')},150)">
+                ${thumb}
+                <div>
+                    <div class="search-result-name">${z.name}</div>
+                    ${meta ? `<div class="search-result-meta">${meta}</div>` : ''}
+                </div>
+                <span class="search-result-arrow">›</span>
+            </div>`;
+        }).join('');
+    }
+
+    return html;
+}
+
+let searchQuery = '';
+function updateSearch() {
+    const inp = document.getElementById('search-input');
+    if (!inp) return;
+    searchQuery = inp.value;
+    const results = document.getElementById('search-results');
+    if (results) results.innerHTML = renderSearchResults(searchQuery);
+    // Opdater clear-knap
+    const wrap = document.querySelector('.search-input-row');
+    if (wrap) {
+        const existing = wrap.querySelector('.search-clear');
+        if (searchQuery && !existing) {
+            const btn = document.createElement('button');
+            btn.className = 'search-clear';
+            btn.textContent = '✕';
+            btn.onclick = clearSearch;
+            wrap.appendChild(btn);
+        } else if (!searchQuery && existing) {
+            existing.remove();
+        }
+    }
+}
+function clearSearch() {
+    searchQuery = '';
+    const inp = document.getElementById('search-input');
+    if (inp) { inp.value = ''; inp.focus(); }
+    const results = document.getElementById('search-results');
+    if (results) results.innerHTML = renderSearchResults('');
+    const btn = document.querySelector('.search-clear');
+    if (btn) btn.remove();
+}
+function expandZone(zid) {
+    collapsedZones.delete(zid);
+    // Fold alle parent-zoner op
+    let z = zone(zid);
+    while (z && z.parentZoneId) {
+        collapsedZones.delete(z.parentZoneId);
+        z = zone(z.parentZoneId);
+    }
+    render();
+}
 
 function renderCalendar() {
     const year = nav.calYear, month = nav.calMonth;
