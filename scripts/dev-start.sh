@@ -11,8 +11,8 @@ if [ -f "$TMP_DIR/watcher.pid" ]; then
     kill "$(cat "$TMP_DIR/watcher.pid")" 2>/dev/null || true
 fi
 
-# Stop eksisterende server
-pkill -f "python3 -m http.server $PORT" 2>/dev/null || true
+# Stop eksisterende server (matcher både "python3" og "Python" med fuld sti)
+pkill -f "http.server $PORT" 2>/dev/null || true
 sleep 0.3
 
 # Start HTTP server
@@ -56,33 +56,19 @@ APPLESCRIPT
 # Giv fokus tilbage til Terminal (Safari er stadig synlig til højre)
 osascript -e 'tell application "Terminal" to activate'
 
-# Start baggrundsvagter: lukker vinduer når Claude Code afsluttes (ikke ved /clear)
+# Gem Claude-processens PID (= PPID for dette script = direkte forælder)
+CLAUDE_PID=$PPID
+echo "$CLAUDE_PID" > "$TMP_DIR/claude.pid"
+
+# Start baggrundsvagt: lukker vinduer når Claude Code afsluttes (ikke ved /clear)
+# Bemærk: setsid bruges IKKE — det er Linux-only og findes ikke på macOS
 nohup bash -c '
 TMP_DIR="/tmp/voreshave_dev"
 PROJECT_DIR="/Users/steensonderup/Documents/udvikling/VoresHave"
+CLAUDE_PID='"$CLAUDE_PID"'
 
-# Find Claude Code processen ved at gå op ad procestræet
-TARGET_PID=""
-pid='"$PPID"'
-for i in $(seq 1 20); do
-    [ -z "$pid" ] || [ "$pid" -le 1 ] && break
-    cmd=$(ps -p "$pid" -o args= 2>/dev/null | head -1)
-    if echo "$cmd" | grep -qi "claude"; then
-        TARGET_PID=$pid
-        break
-    fi
-    pid=$(ps -p "$pid" -o ppid= 2>/dev/null | tr -d " ")
-done
-
-# Fallback: find nyeste node-proces med claude
-if [ -z "$TARGET_PID" ]; then
-    TARGET_PID=$(pgrep -n -f "node.*claude" 2>/dev/null || true)
-fi
-
-echo "${TARGET_PID:-0}" > "$TMP_DIR/claude.pid"
-
-if [ -n "$TARGET_PID" ] && [ "$TARGET_PID" -gt 1 ]; then
-    while kill -0 "$TARGET_PID" 2>/dev/null; do
+if [ -n "$CLAUDE_PID" ] && [ "$CLAUDE_PID" -gt 1 ]; then
+    while kill -0 "$CLAUDE_PID" 2>/dev/null; do
         sleep 2
     done
     # Claude Code er lukket — kør oprydning
