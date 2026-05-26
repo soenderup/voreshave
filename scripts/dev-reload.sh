@@ -1,8 +1,8 @@
 #!/bin/bash
-# Genindlæs ændret side i Safari med tom cache
+# Skriv besked til terminal når index.html ændres
+# Safari-auto-reload er deaktiveret — tryk Cmd+R manuelt
 
 PROJECT_ROOT="/Users/steensonderup/Documents/udvikling/VoresHave"
-PORT=8766
 
 # Læs tool-info fra stdin
 TOOL_INFO=$(cat)
@@ -31,51 +31,11 @@ except:
     print('')
 " 2>/dev/null)
 
-# Kun for projektfiler
-if [[ "$FILE_PATH" != "$PROJECT_ROOT"* ]]; then
+# Kun for index.html
+if [[ "$FILE_PATH" != "$PROJECT_ROOT/index.html" ]]; then
     exit 0
 fi
 
-# Map filsti til URL
-REL_PATH="${FILE_PATH#$PROJECT_ROOT}"
-if [[ "$REL_PATH" == */index.html ]]; then
-    URL_PATH="${REL_PATH%index.html}"
-elif [[ "$REL_PATH" == *.html ]]; then
-    URL_PATH="$REL_PATH"
-else
-    # CSS, JS o.l.: genindlæs forældremappe
-    URL_PATH="$(dirname "$REL_PATH")/"
-fi
-TARGET_URL="http://localhost:${PORT}${URL_PATH}"
-
-# Aktivér Safari, tøm caches og genindlæs
-osascript << APPLESCRIPT
--- Aktivér Safari
-tell application "Safari"
-    activate
-    -- Find localhost-fane og naviger til ændret side
-    set found to false
-    repeat with w in every window
-        repeat with t in every tab of w
-            try
-                if URL of t contains "localhost:$PORT" then
-                    set URL of t to "$TARGET_URL"
-                    set current tab of w to t
-                    set found to true
-                    exit repeat
-                end if
-            end try
-        end repeat
-        if found then exit repeat
-    end repeat
-end tell
-
-delay 0.5
-
--- Giv fokus tilbage til Terminal
-tell application "Terminal"
-    activate
-end tell
-APPLESCRIPT
+echo "↻  index.html ændret — tryk Cmd+R i Safari"
 
 exit 0
