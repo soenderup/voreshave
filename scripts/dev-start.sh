@@ -42,15 +42,15 @@ echo "$TERM_WIN_ID" > "$TMP_DIR/terminal_win_id.txt"
 
 # Åbn Safari med localhost
 open -a Safari "http://localhost:$PORT"
-sleep 1.5
+sleep 2.0
 
-# Placér Safari (højre 33%) via System Events — ingen direkte Safari AppleScript
+# Placér Safari (højre 33%) — brug Safari's eget AppleScript med bounds (én operation)
+SAFARI_RIGHT=$(python3 -c "print(int($TERM_W + $SAFARI_W))")
 osascript -e "
-tell application \"System Events\"
-    tell process \"Safari\"
-        set position of window 1 to {$TERM_W, 0}
-        set size of window 1 to {$SAFARI_W, $SCREEN_H}
-    end tell
+tell application \"Safari\"
+    activate
+    delay 0.3
+    set bounds of window 1 to {$TERM_W, 0, $SAFARI_RIGHT, $SCREEN_H}
 end tell" 2>/dev/null || true
 
 # Giv fokus tilbage til Terminal
