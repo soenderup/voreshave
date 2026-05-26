@@ -1,16 +1,34 @@
 # Handoff — Vores Have
-*Opdateret: 26. maj 2026 - aften*
+*Opdateret: 26. maj 2026 - sen aften*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.17 på `https://voreshave.soenderup.dk`
+- **Live version:** v1.18 på `https://voreshave.soenderup.dk`
 - **Næste:** kør migrations-banner på live-appen (tryk "Udfyld automatisk" på forsiden)
 
 ---
 
 ## Seneste arbejde (26. maj)
+
+### Zone-header og app-header redesign + login-log (v1.18)
+
+**Zone-header:**
+- Foto som hero-billede (140px, afrundede hjørner, 1rem margin alle sider)
+- Gradient-overlay i bunden, zone-navn som hvid tekst i hjørnet
+- Fjernet ikon, type og beskrivelse fra zone-headeren
+- Bugfix: tilbage fra element direkte i område går til hjem, ikke ghost-zone
+
+**App-header:**
+- Logo altid centreret via `position: relative` + absolut positionerede knapper
+- Tilbageknap ændret til smal `‹` pil (ingen tekstforskydning af logo)
+- Emoji og titel i CSS grid-layout - ugedag flugter præcist med "V"et
+
+**Login-log (kun Steen):**
+- Logger bruger, tidspunkt og enhed ved hvert PIN-login
+- Gemmes i `voreshave/loginlog` i Firestore (`arrayUnion`)
+- Knap i Steens brugermenu: "📋 Login-log" - viser 60 seneste, nyeste øverst
 
 ### Trivseldata - segmenteret bar (v1.16 → v1.17)
 
