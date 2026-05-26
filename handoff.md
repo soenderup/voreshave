@@ -1,13 +1,36 @@
 # Handoff — Vores Have
-*Opdateret: 26. maj 2026 (session 4)*
+*Opdateret: 26. maj 2026 (session 5)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.23 på `https://voreshave.soenderup.dk`
-- **Seneste branch:** `feature/diagnose-plant` (merget til main)
+- **Live version:** v1.25 på `https://voreshave.soenderup.dk`
+- **Seneste branch:** `feature/photo-timeline` (merget til main)
 - **Næste:** Se prioriteringslisten nedenfor
+
+---
+
+## Seneste arbejde (26. maj — session 5)
+
+### Vækst-tidslinje (v1.25)
+
+**Ny funktion:**
+- 📸 Foto-strip på element-detalje (info-tab) med vandret scroll
+- Op til 15 fotos pr. plante - tæller vises (1/15)
+- Thumbnails sorteres ældst-til-nyest (vækst læses venstre → højre)
+- Dato vises under hvert thumbnail
+- Primær-foto markeres med grøn kant + "✓ primær"-badge
+- Tryk på thumbnail → sheet med preview, "Vis i fuld størrelse", "Sæt som primær", "Slet"
+- Lightbox med ‹ › pil-navigation, dato + tæller (1/2), knapper til primær/slet
+- `+` knap tilføjer nyt foto (skjules automatisk ved 15 fotos)
+- **Bagudkompatibel migration:** eksisterende `plant.photo` → `photos[0]` automatisk ved første load
+- `plant.photo` synkes altid til det aktuelle primære foto (bruges stadig i kortvisning)
+
+**Teknisk:**
+- Ny datastruktur: `plant.photos = [{id, url, date, primary}]`
+- Migration kører i `mergeLocalPhotos()` — sker automatisk ved første åbning
+- Lightbox understøtter nu både enkelt-foto (zoner/andet) og tidslinje-navigation
 
 ---
 
@@ -194,7 +217,7 @@ Migration kører automatisk første gang appen åbnes. `voreshave/pins` røres i
 
 ```
 voreshave/
-├── index.html              ← hele appen (v1.24)
+├── index.html              ← hele appen (v1.25)
 ├── manifest.json           ← PWA-manifest
 ├── sw.js                   ← Service worker (cache: vores-have-v7, network-first for HTML)
 ├── netlify.toml            ← Netlify config (Node 18, secrets-scanner slået fra)
@@ -247,6 +270,7 @@ Firestore kører i "test mode" - alle kan læse/skrive uden login. Kræver Fireb
 Kræver Firebase Cloud Messaging + opdateret service worker.
 
 ### 3. ~~Søgefunktion~~ ✓ Bygget (v1.24)
+### 4. ~~Vækst-tidslinje~~ ✓ Bygget (v1.25)
 
 ---
 
