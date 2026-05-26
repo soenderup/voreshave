@@ -1,36 +1,41 @@
 # Handoff — Vores Have
-*Opdateret: 26. maj 2026*
+*Opdateret: 26. maj 2026 - aften*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.15 på `https://voreshave.soenderup.dk`
-- **Branch:** `feature/plant-care-icons` (v1.16 - IKKE pushet/merget endnu)
-- **Næste:** merge branch + push → Netlify deploy + kør migrations-banner
+- **Live version:** v1.17 på `https://voreshave.soenderup.dk`
+- **Næste:** kør migrations-banner på live-appen (tryk "Udfyld automatisk" på forsiden)
 
 ---
 
-## Seneste arbejde (26. maj - feature/plant-care-icons)
+## Seneste arbejde (26. maj)
 
-### Trivseldata-ikoner for vand, lys og levetid (v1.16)
+### Trivseldata - segmenteret bar (v1.16 → v1.17)
 
 **Tre nye felter på alle planter:**
-- `water`: `'dry'` (💧) / `'normal'` (💧💧) / `'moist'` (💧💧💧)
-- `light`: `'full'` (☀️) / `'full-partial'` (☀️🌤️) / `'partial'` (🌤️) / `'partial-shade'` (🌤️☁️) / `'shade'` (☁️)
-- `perennial`: `true` (♾️) / `false` (🌱)
+- `water`: `'dry'` / `'normal'` / `'moist'`
+- `light`: `'full'` / `'full-partial'` / `'partial'` / `'partial-shade'` / `'shade'`
+- `perennial`: `true` / `false`
 
-**Visning:** Ikonerne erstatter den overflødige "Foto"-label på plantedetalje-siden - care icons til venstre, foto til højre.
+**Visning (variant A - segmenteret bar):**
+- Væske: 💧 ──[bar]── 🌧️ (3 segmenter)
+- Lys: ☁️ ──[bar]── ☀️ (5 segmenter)
+- Levetid: pills (🌱 Etårig / ♾️ Flerårig)
+- Blok vises øverst i info-sektionen med fuld bredde
 
 **Auto-udfyldning:**
-- Ved identificér-foto: `identify-plant.js` returnerer nu alle tre felter
-- Ved manuel oprettelse: `fetchPlantInfo()` gemmer nu care-data fra `plant-info.js`
+- Ved identificér-foto: `identify-plant.js` returnerer alle tre felter
+- Ved ny plante: `fetchPlantInfo()` gemmer care-data fra `plant-info.js`
 - Begge Netlify-funktioner returnerer nu JSON med `{info, water, light, perennial}`
 
-**Migration af eksisterende planter:**
+**Migration af eksisterende planter (enkeltstående - kør én gang):**
 - Forsiden viser banner "X elementer mangler trivseldata" med "Udfyld automatisk"-knap
 - `migrateAllCareData()` processer alle planter uden care-data (300ms pause pr. plante)
-- Individuel knap "🌿 Hent trivseldata automatisk" på hver planteside der mangler data
+- Individuel "🌿 Hent trivseldata"-knap på hver planteside der mangler data
+
+**Fravalgt:** vindtolerance - ikke nok værdi for almindelig havebrug
 
 ---
 
