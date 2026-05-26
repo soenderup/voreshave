@@ -30,6 +30,7 @@ end tell')
 SCREEN_W=$(echo "$SCREEN_INFO" | cut -d, -f1)
 SCREEN_H=$(echo "$SCREEN_INFO" | cut -d, -f2)
 TERM_W=$(python3 -c "print(int($SCREEN_W * 0.67))")
+SAFARI_W=$(python3 -c "print(int($SCREEN_W * 0.33))")
 
 # Gem vindues-ID og placér Terminal (venstre 67%)
 TERM_WIN_ID=$(osascript -e "
@@ -39,9 +40,18 @@ tell application \"Terminal\"
 end tell")
 echo "$TERM_WIN_ID" > "$TMP_DIR/terminal_win_id.txt"
 
-# Åbn Safari med localhost (ingen AppleScript — crasher Safari)
+# Åbn Safari med localhost
 open -a Safari "http://localhost:$PORT"
-sleep 0.5
+sleep 1.5
+
+# Placér Safari (højre 33%) via System Events — ingen direkte Safari AppleScript
+osascript -e "
+tell application \"System Events\"
+    tell process \"Safari\"
+        set position of window 1 to {$TERM_W, 0}
+        set size of window 1 to {$SAFARI_W, $SCREEN_H}
+    end tell
+end tell" 2>/dev/null || true
 
 # Giv fokus tilbage til Terminal
 osascript -e 'tell application "Terminal" to activate'
