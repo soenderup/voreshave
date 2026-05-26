@@ -5,13 +5,46 @@
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.22 på `https://voreshave.soenderup.dk`
-- **Seneste branch:** `feature/zone-foldout` (merget til main)
+- **Live version:** v1.23 på `https://voreshave.soenderup.dk`
+- **Seneste branch:** `feature/diagnose-plant` (merget til main)
 - **Næste:** Se prioriteringslisten nedenfor
 
 ---
 
 ## Seneste arbejde (26. maj — denne session)
+
+### AI-plantediagnose: "Hvad fejler den?" (v1.23)
+
+**Ny funktion:**
+- Knap "🔍 Hvad fejler den?" på element-siden (info-tab), under "Viden om"
+- Vises kun for admin og member (ikke gæst)
+- Tryk → fil-picker åbner (kamera/bibliotek) → foto analyseres af Claude Sonnet vision
+- Resultat vises i sheet: diagnose, symptombeskrivelse, behandling og disclaimer
+- "Gem som note" gemmer diagnosen som historik-entry på planten
+
+**Ny Netlify-funktion:** `netlify/functions/diagnose-plant.js`
+- Samme mønster som `identify-plant.js` (base64 → Claude Sonnet 4.6 vision → JSON)
+- Input: `{imageBase64, plantName, latinName}`
+- Output: `{diagnosis, symptoms, treatment, disclaimer}` eller `{notRecognized: true}`
+
+### Dev-miljø: Safari-crash fjernet
+
+**Problem:** AppleScript-styring af Safari crashede konsekvent ved hver session.
+- `dev-start.sh` brugte `close every window` + `make new document` + `set bounds` → crash
+- `dev-stop.sh` brugte samme mønster til at nulstille vinduesstørrelse → crash
+- `dev-reload.sh` sendte keystrokes (`Cmd+Option+E`, `Cmd+Option+R`) til Safari → crash
+
+**Løsning:**
+- Al AppleScript på Safari fjernet fra alle tre scripts
+- `dev-start.sh` bruger nu `open -a Safari "http://localhost:8766"` — ingen positionering
+- `dev-stop.sh` rører ikke Safari overhovedet
+- `dev-reload.sh` printer kun en besked i terminalen — tryk Cmd+R manuelt
+
+**Bivirkning:** Safari positioneres ikke automatisk — placér manuelt efter sessionstart.
+
+---
+
+## Seneste arbejde (26. maj — forrige session)
 
 ### UI-polish: header, navigation og forsiden
 
@@ -201,7 +234,8 @@ Med mange zoner kan det blive relevant.
 - **Firestore test mode udløber ~24. juni 2026** - husk sikkerhedsregler!
 - **Firebase plan:** Blaze (Pay-as-you-go)
 - **Viden om + Anbefalinger + Identificer:** Koster øre pr. opslag via Anthropic API
-- **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8766`
+- **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8766` — Safari åbner automatisk men positioneres IKKE (AppleScript fjernet pga. crash)
+- **Safari auto-reload:** Deaktiveret — tryk Cmd+R manuelt når index.html ændres
 - **Lokal server understøtter IKKE POST** - Netlify-funktioner testes kun på live
 - **Deploy:** `git push` → GitHub → Netlify auto-deploy. Spørg ALTID inden push
 - **PWA cache:** SW bruger network-first for HTML — luk og genåbn app for at få seneste version
