@@ -1,13 +1,35 @@
 # Handoff — Vores Have
-*Opdateret: 26. maj 2026 (session 6)*
+*Opdateret: 26. maj 2026 (session 7)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.25 + UI-rettelser på `https://voreshave.soenderup.dk`
-- **Seneste:** Vækst-tidslinje + accordion-zoner + UI-polish
+- **Live version:** v1.25 + UI-rettelser + login-forbedringer på `https://voreshave.soenderup.dk`
+- **Seneste:** Husk mig på login, Tøm log, Safari dev-fix
 - **Næste:** Se idé-listen og prioriteringslisten nedenfor
+
+---
+
+## Seneste arbejde (26. maj — session 7)
+
+### Login-forbedringer + dev-rettelse
+
+**Husk mig på login:**
+- Checkbox "Husk mig på denne enhed" vises under PIN-tasterne
+- Korrekt PIN + hak → brugernavn gemmes i `localStorage['voreshave-remember']`
+- `checkAccess()` auto-logger ind ved sideindlæsning hvis bruger er husket (ingen lockscreen)
+- "Glem denne enhed"-knap i ☰-menuen (vises kun hvis brugeren er husket på enheden)
+- Hvis brugeren er slettet ryddes huske-posten automatisk
+
+**Tøm log:**
+- "🗑️ Tøm log"-knap i bunden af login-loggen (vises kun når der er poster)
+- Bekræftelsesdialog → sletter alle entries i `voreshave/loginlog` i Firestore → opdaterer visningen
+
+**Dev-fix: Safari responsivt design:**
+- `dev-start.sh` brugte engelske menunavne ("Develop" / "Enter Responsive Design View")
+- Rettet til danske: "Udvikler" / "Start responsiv designfunktion"
+- Tilføjet `sleep 0.5` + `activate` inden klik for at undgå timing-fejl
 
 ---
 
