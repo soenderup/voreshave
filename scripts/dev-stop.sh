@@ -12,21 +12,9 @@ if [ -f "$TMP_DIR/watcher.pid" ]; then
     kill "$(cat "$TMP_DIR/watcher.pid")" 2>/dev/null || true
 fi
 
-# Luk Safari localhost-vinduer og nulstil vinduesstørrelse
+# Luk Safari localhost-faner (ingen vindues-nulstilling — crasher Safari)
 osascript << 'APPLESCRIPT'
-tell application "Finder"
-    set screenBounds to bounds of window of desktop
-    set screenW to item 3 of screenBounds
-    set screenH to item 4 of screenBounds
-end tell
-
-set winW to round (screenW * 0.8)
-set winH to round (screenH * 0.8)
-set winX to round ((screenW - winW) / 2)
-set winY to round ((screenH - winH) / 2)
-
 tell application "Safari"
-    -- Luk localhost-vinduer
     set toClose to {}
     repeat with w in every window
         try
@@ -38,14 +26,6 @@ tell application "Safari"
     repeat with w in toClose
         close w
     end repeat
-
-    -- Nulstil Safari's vindueshukommelse og quit hvis ingen andre vinduer er åbne
-    if (count of windows) is 0 then
-        make new document
-        set bounds of front window to {winX, winY, winX + winW, winY + winH}
-        delay 0.3
-        quit
-    end if
 end tell
 APPLESCRIPT
 
