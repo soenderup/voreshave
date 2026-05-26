@@ -6,13 +6,37 @@
 ## STATUS LIGE NU (læs først)
 
 - **Live version:** v1.22 på `https://voreshave.soenderup.dk`
+- **Seneste branch:** `feature/zone-foldout` (merget til main)
 - **Næste:** Se prioriteringslisten nedenfor
 
 ---
 
-## Seneste arbejde (26. maj)
+## Seneste arbejde (26. maj — denne session)
 
-### Vejrudsigt widget (v1.22)
+### UI-polish: header, navigation og forsiden
+
+**Header venstrestillet:**
+- Logo + "Vores Have" er nu venstrestillet i stedet for centreret
+- Flugter visuelt med indholdet nedenunder (PÅMINDELSER-linjen)
+- Tilbage-knap (`‹`) er fjernet fra headeren
+
+**Tilbage-knap flyttet til detail-hero:**
+- `‹` sidder nu i det lysegrønne `detail-hero`-område foran element-titlen
+- Element-titlen flugter præcist med "Vores Have" i headeren (pixel-målt og justeret)
+- Latin-navn indrykket tilsvarende
+
+**Zoner starter foldet ind:**
+- Alle zone-kort er collapsed som standard ved sideindlæsning
+- Implementeret via `collapsedZones` Set + `zonesInitialized`-flag i `mergeLocalPhotos()`
+- Live-opdateringer fra Firestore (onSnapshot) nulstiller ikke brugerens åbne/lukkede valg
+
+**Fjernet zone/element-tæller fra forsiden:**
+- Teksten "X zoner · Y elementer" er fjernet fra område-headers (FORHAVE, BAGHAVE etc.)
+- Behold kun ⚠️-ikonet — det giver reel information
+
+---
+
+## Vejrudsigt widget (v1.22)
 
 **Placering:** Lige under den orange påmindelseslinje på forsiden.
 
@@ -87,11 +111,6 @@ Migration kører automatisk første gang appen åbnes. `voreshave/pins` røres i
 - Gradient-overlay i bunden, zone-navn som hvid tekst i hjørnet
 - Fjernet ikon, type og beskrivelse fra zone-headeren
 - Bugfix: tilbage fra element direkte i område går til hjem, ikke ghost-zone
-
-**App-header:**
-- Logo altid centreret via `position: relative` + absolut positionerede knapper
-- Tilbageknap ændret til smal `‹` pil (ingen tekstforskydning af logo)
-- Emoji og titel i CSS grid-layout - ugedag flugter præcist med "V"et
 
 **Login-log (kun Steen):**
 - Logger bruger, tidspunkt og enhed ved hvert PIN-login
