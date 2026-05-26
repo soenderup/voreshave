@@ -1306,9 +1306,12 @@ function zoneStatus(zid) {
 function goTo(view, zoneId = null, plantId = null, tab = 'main') {
     nav = { ...nav, view, zoneId, plantId, tab };
     render();
-    if (view === 'plant' && plantId) {
-        const p = plant(plantId);
-        if (p && p.latinName && !p.aiInfo) fetchPlantInfo(plantId);
+    if (view === 'plant') {
+        document.getElementById('app').scrollTop = 0;
+        if (plantId) {
+            const p = plant(plantId);
+            if (p && p.latinName && !p.aiInfo) fetchPlantInfo(plantId);
+        }
     }
 }
 function goBack() {
