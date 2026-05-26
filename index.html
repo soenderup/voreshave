@@ -1357,7 +1357,7 @@ function renderHome() {
         <div class="attention-strip">
             <div class="strip-header" onclick="attentionOpen=!attentionOpen;render()">
                 <h2>Kræver opmærksomhed (${attentionPlants.length})</h2>
-                <span class="strip-chevron${attentionOpen ? ' open' : ''}">▾</span>
+                <span class="strip-chevron${attentionOpen ? ' open' : ''}">▼</span>
             </div>
             ${attentionOpen ? `<div class="strip-body">${attentionPlants.map(p => {
                 const z = zone(p.zoneId);
@@ -1373,7 +1373,7 @@ function renderHome() {
         <div class="urgent-strip">
             <div class="strip-header" onclick="urgentOpen=!urgentOpen;render()">
                 <h2>Påmindelser (${urgent.length})</h2>
-                <span class="strip-chevron${urgentOpen ? ' open' : ''}">▾</span>
+                <span class="strip-chevron${urgentOpen ? ' open' : ''}">▼</span>
             </div>
             ${urgentOpen ? `<div class="strip-body">${urgent.map(r => {
                 const days = daysUntil(r.date);
