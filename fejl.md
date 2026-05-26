@@ -75,6 +75,18 @@ osascript -e 'tell application "Terminal" to return id of front window'
 # De to skal matche!
 ```
 
+---
+
+## Fejl 2: Safari crasher ved auto-reload (26. maj 2026)
+
+**Symptom:** Safari viser fejlmeddelelse om at ville lukke, hver gang Claude redigerer en fil.
+
+**Årsag:** `dev-reload.sh` sendte AppleScript-keystrokes (`Cmd+Option+E` og `Cmd+Option+R`) til Safari for at tømme cache og hård-genindlæse. Disse keystrokes kunne ramme dialoger i Safari på det forkerte tidspunkt.
+
+**Rettelse (commit 3daf557):** Keystroke-kommandoerne er fjernet. URL-navigeringen i AppleScriptet (`set URL of t to "..."`) genindlæser siden tilstrækkeligt.
+
+---
+
 Hvis `/tmp/voreshave_dev/` er **tom** igen på trods af rettelserne, er problemet formentlig at:
 - Stop-hook fra forrige session kørte *efter* ny sessions dev-start.sh
 - Løsning: tilføj session-token til dev-start.sh som dev-stop.sh tjekker inden sletning
