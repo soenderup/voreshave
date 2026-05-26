@@ -1,5 +1,5 @@
 # Handoff — Vores Have
-*Opdateret: 26. maj 2026*
+*Opdateret: 26. maj 2026 (session 3)*
 
 ---
 
@@ -35,12 +35,10 @@
 - `dev-reload.sh` sendte keystrokes (`Cmd+Option+E`, `Cmd+Option+R`) til Safari → crash
 
 **Løsning:**
-- Al AppleScript på Safari fjernet fra alle tre scripts
-- `dev-start.sh` bruger nu `open -a Safari "http://localhost:8766"` — ingen positionering
+- Al direkte AppleScript på Safari fjernet fra alle tre scripts
+- `dev-start.sh` åbner Safari med `open -a Safari`, venter 1.5 sek., placerer derefter vinduet via `System Events` (accessibility API) — højre 33%
 - `dev-stop.sh` rører ikke Safari overhovedet
 - `dev-reload.sh` printer kun en besked i terminalen — tryk Cmd+R manuelt
-
-**Bivirkning:** Safari positioneres ikke automatisk — placér manuelt efter sessionstart.
 
 ---
 
@@ -234,7 +232,7 @@ Med mange zoner kan det blive relevant.
 - **Firestore test mode udløber ~24. juni 2026** - husk sikkerhedsregler!
 - **Firebase plan:** Blaze (Pay-as-you-go)
 - **Viden om + Anbefalinger + Identificer:** Koster øre pr. opslag via Anthropic API
-- **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8766` — Safari åbner automatisk men positioneres IKKE (AppleScript fjernet pga. crash)
+- **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8766` — Safari åbner automatisk og placeres i højre 33% (Terminal i venstre 67%) via System Events
 - **Safari auto-reload:** Deaktiveret — tryk Cmd+R manuelt når index.html ændres
 - **Lokal server understøtter IKKE POST** - Netlify-funktioner testes kun på live
 - **Deploy:** `git push` → GitHub → Netlify auto-deploy. Spørg ALTID inden push
