@@ -1,13 +1,24 @@
 # Handoff — Vores Have
-*Opdateret: 26. maj 2026 (session 5)*
+*Opdateret: 26. maj 2026 (session 6)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.25 på `https://voreshave.soenderup.dk`
-- **Seneste branch:** `feature/photo-timeline` (merget til main)
-- **Næste:** Se prioriteringslisten nedenfor
+- **Live version:** v1.25 + UI-rettelser på `https://voreshave.soenderup.dk`
+- **Seneste:** Vækst-tidslinje + accordion-zoner + UI-polish
+- **Næste:** Se idé-listen og prioriteringslisten nedenfor
+
+---
+
+## Seneste arbejde (26. maj — session 6)
+
+### UI-rettelser (ingen versionsbump)
+
+- **Pile i bannere:** `▾` skiftet til `▼` i orange påmindelses- og opmærksomhedsbannere — alle pile nu `0.85rem` og visuelt ens
+- **Accordion-zoner:** Kun én zone åben ad gangen pr. område - åbner man en, lukkes de andre automatisk
+- **Scroll til top:** Elementside starter altid fra toppen (ikke midtsiden fra forrige scroll-position)
+- **Zoner kollapset ved område-skift:** Åbner man BAGHAVE fra FORHAVE er alle zoner foldet ind fra start
 
 ---
 
@@ -258,6 +269,21 @@ Storage:
   { id: 'uid3', name: 'Gæst',  pin: '000000', role: 'guest',  initials: 'G' },
 ]}
 ```
+
+---
+
+## Idéer til fremtidige funktioner
+
+Brainstormet 26. maj — ingen rækkefølge, ingen deadline:
+
+| Idé | Beskrivelse | Sværhed |
+|-----|-------------|---------|
+| **"Hvad kan jeg plante nu?"** | AI foreslår hvad der er sæson til baseret på dato og måned | Lille |
+| **Ønskeliste / frøbank** | Simpel liste over planter man vil købe eller frø man har liggende | Lille |
+| **Samliv-guide** | Vælg en plante → AI svarer hvad den trives/ikke trives med som nabo | Mellem |
+| **Havens årskalender** | Månedsoversigt: hvad blomstrer, høstes, beskæres hvornår — genereret pr. plante | Mellem |
+| **Vækst-tidslinje** | ~~Se fotos over tid pr. plante~~ | ✓ Bygget (v1.25) |
+| **Havens årsberetning** | Dashboard: antal planter, noter logget, årets plante — mest for hyggens skyld | Stor |
 
 ---
 
