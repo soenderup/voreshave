@@ -1,17 +1,40 @@
 # Handoff — Vores Have
-*Opdateret: 25. maj 2026 (dag 2 - aften)*
+*Opdateret: 26. maj 2026*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
 - **Live version:** v1.15 på `https://voreshave.soenderup.dk`
-- **Alt virker** - direkte elementer under område, identificér medfører foto
-- **Næste session:** se prioriteringslisten nederst
+- **Branch:** `feature/plant-care-icons` (v1.16 - IKKE pushet/merget endnu)
+- **Næste:** merge branch + push → Netlify deploy + kør migrations-banner
 
 ---
 
-## Dagens arbejde
+## Seneste arbejde (26. maj - feature/plant-care-icons)
+
+### Trivseldata-ikoner for vand, lys og levetid (v1.16)
+
+**Tre nye felter på alle planter:**
+- `water`: `'dry'` (💧) / `'normal'` (💧💧) / `'moist'` (💧💧💧)
+- `light`: `'full'` (☀️) / `'full-partial'` (☀️🌤️) / `'partial'` (🌤️) / `'partial-shade'` (🌤️☁️) / `'shade'` (☁️)
+- `perennial`: `true` (♾️) / `false` (🌱)
+
+**Visning:** Ikonerne erstatter den overflødige "Foto"-label på plantedetalje-siden - care icons til venstre, foto til højre.
+
+**Auto-udfyldning:**
+- Ved identificér-foto: `identify-plant.js` returnerer nu alle tre felter
+- Ved manuel oprettelse: `fetchPlantInfo()` gemmer nu care-data fra `plant-info.js`
+- Begge Netlify-funktioner returnerer nu JSON med `{info, water, light, perennial}`
+
+**Migration af eksisterende planter:**
+- Forsiden viser banner "X elementer mangler trivseldata" med "Udfyld automatisk"-knap
+- `migrateAllCareData()` processer alle planter uden care-data (300ms pause pr. plante)
+- Individuel knap "🌿 Hent trivseldata automatisk" på hver planteside der mangler data
+
+---
+
+## Tidligere arbejde
 
 ### Identifikation og navngivning (v1.14)
 
