@@ -158,46 +158,93 @@ Storage:
 
 ## Hvad mangler — prioriteret
 
-### 1. Firestore sikkerhedsregler (deadline ~24. juni 2026)
-Firestore kører i "test mode" - alle kan læse/skrive. Kræver Firebase Authentication.
-
-### 2. Firebase Authentication
-- Erstatter PIN-systemet på sigt
-- Email/password for Steen og Linda
-
 ### ~~3. Samlet oprettelsesflow via hamburgermenuen~~ ✅ FÆRDIG (v1.20)
 
-### 3. (næste) Noget nyt
-**Baggrund:** I dag er "Tilføj zone" og "Tilføj element" spredt rundt i UI'et som inline-knapper i zone-visninger og på forsiden. Da kun Steen kan oprette (canEdit), og hamburgermenuen altid er tilgængelig for ham, giver det mere mening at samle alt oprettelse ét sted.
+---
 
-**Hvad der skal bygges:**
-1. **Hamburgermenuen viser altid** "Ny zone" og "Nyt element" - uanset hvilken side man er på (home, zone, plant). Fjern de kontekstspecifikke "Ny zone i [navn]"-valg fra menuen.
-2. **"Ny zone"-dialog** får en område-vælger øverst (dropdown med Forhave/Baghave/Terrasse/Indgange/Indendørs). Valgfrit: forælderzone-vælger (zoner i det valgte område). Pre-select automatisk baseret på hvad man kigger på:
-   - Står man på forsiden: ingen pre-selection
-   - Står man i en zone: pre-select dens område (og zonen som forælderzone)
-3. **"Nyt element"-dialog** får område-vælger + zone-vælger. Pre-select baseret på aktuel visning:
-   - Stands man i en zone: pre-select dens område og zonen selv
-   - Stands man på forsiden: ingen pre-selection
-4. **Fjern alle inline "Tilføj zone" / "Tilføj element"-knapper** fra:
-   - Bunden af zone-visningen (`section-add-btn` for zone og element)
-   - Forsiden under hvert område (`+ Tilføj element`-knappen)
-   - Forsiden under alle områder (`+ Tilføj ny zone`-knappen)
+### 1. Brugerstyring via UI (næste prioritet)
 
-**Pre-selection-logik:**
+**Ønsket:** Steen skal via UI kunne oprette nye brugere (maks 5), tildele dem en rolle og sætte deres PIN. Ingen Firebase Auth - kun PIN-login som nu.
+
+**Roller der skal understøttes:**
+| Rolle | Hvad må man |
+|-------|-------------|
+| `admin` | Alt - inkl. opret/slet brugere, rediger zoner og elementer |
+| `member` | Log noter, tilføj påmindelser, se anbefalinger |
+| `guest` | Læse kun - ingen ændringer |
+
+**Nuværende problem:** Brugerne er hardcodet (`canEdit() = currentUser() === 'Steen'`), og PIN-data er en flad struktur `{ Steen: '123456', Linda: '...' }` i Firestore. Maks-antal og roller kan ikke styres.
+
+---
+
+**Hvad der skal bygges - trin for trin:**
+
+**Trin 1: Ny datastruktur i Firestore**
+
+Erstat `voreshave/pins` med `voreshave/users`:
 ```js
-// Aktuel kontekst tilgås via nav.view, nav.zoneId
-// Pre-select område: zone(nav.zoneId)?.area
-// Pre-select zone: nav.zoneId (hvis man er i en zone)
+// voreshave/users
+{
+  list: [
+    { id: 'uid1', name: 'Steen', pin: '123456', role: 'admin' },
+    { id: 'uid2', name: 'Linda', pin: '654321', role: 'member' },
+    { id: 'uid3', name: 'Gæst',  pin: '000000', role: 'guest' },
+  ]
+}
+```
+Migration: ved første load tjekkes om `voreshave/users` eksisterer - ellers oprettes den ud fra det eksisterende `voreshave/pins`.
+
+**Trin 2: Refaktor af roller**
+
+Erstat de tre hardcodede funktioner:
+```js
+// I dag:
+function canEdit() { return currentUser() === 'Steen'; }
+function canLog()  { return currentUser() === 'Steen' || currentUser() === 'Linda'; }
+
+// Ny:
+function currentUserObj() { return users.find(u => u.name === currentUser()); }
+function canEdit() { return currentUserObj()?.role === 'admin'; }
+function canLog()  { return ['admin','member'].includes(currentUserObj()?.role); }
 ```
 
-**Pickerne til area og zone eksisterer allerede** i `openEditZone()` og `openEditPlant()` - genbrug dem.
+**Trin 3: Lockscreen**
 
-**OBS:** Ghost-zoner (`isDirect: true`) må ikke vises i zone-vælgeren - de er usynlige.
+Lockscreen læser fra `users.list` i stedet for hardcodet `{ Steen, Linda, Gæst }`. PIN-validering: find bruger med matchende PIN i listen.
 
-### 4. Push-notifikationer på iPhone
+**Trin 4: Brugerstyring UI**
+
+Ny sektion i hamburgermenu (kun admin):
+- **"👥 Brugere"** - åbner brugerliste
+- Viser alle brugere med navn + rolle + "Rediger"-knap
+- **Opret bruger**: navn + PIN + rolle (dropdown). Deaktiveret hvis 5 brugere allerede.
+- **Rediger bruger**: skift navn, PIN, rolle. Kan ikke slette sig selv. Kan ikke fjerne sin egen admin-rolle.
+- **Slet bruger**: bekræftelse.
+
+**Trin 5: Validering**
+- Maks 5 brugere i alt
+- Mindst én admin skal altid eksistere
+- PIN skal være 4-6 cifre
+- Navne skal være unikke
+
+---
+
+**Hvad det ikke løser:**
+- Firestore sikkerhedsregler kræver stadig Firebase Auth (se pkt. 2 nedenfor)
+- Ingen "glemt PIN"-recovery
+- Session er stadig `sessionStorage` - nulstilles ved app-luk
+
+**Estimat:** 3-4 timers arbejde. Alt inden for eksisterende stack.
+
+---
+
+### 2. Firestore sikkerhedsregler (deadline ~24. juni 2026)
+Firestore kører i "test mode" - alle kan læse/skrive uden login. Kræver Firebase Authentication for at kunne skrive ordentlige regler. Firebase Auth er et større projekt (2-3 dage) og løses separat fra brugerstyring ovenfor.
+
+### 3. Push-notifikationer på iPhone
 Kræver Firebase Cloud Messaging + opdateret service worker.
 
-### 5. Søgefunktion
+### 4. Søgefunktion
 Med mange zoner kan det blive relevant.
 
 ---
