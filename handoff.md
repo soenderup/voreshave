@@ -158,10 +158,37 @@ Firestore kører i "test mode" - alle kan læse/skrive. Kræver Firebase Authent
 - Erstatter PIN-systemet på sigt
 - Email/password for Steen og Linda
 
-### 3. Push-notifikationer på iPhone
+### 3. Samlet oprettelsesflow via hamburgermenuen
+**Baggrund:** I dag er "Tilføj zone" og "Tilføj element" spredt rundt i UI'et som inline-knapper i zone-visninger og på forsiden. Da kun Steen kan oprette (canEdit), og hamburgermenuen altid er tilgængelig for ham, giver det mere mening at samle alt oprettelse ét sted.
+
+**Hvad der skal bygges:**
+1. **Hamburgermenuen viser altid** "Ny zone" og "Nyt element" - uanset hvilken side man er på (home, zone, plant). Fjern de kontekstspecifikke "Ny zone i [navn]"-valg fra menuen.
+2. **"Ny zone"-dialog** får en område-vælger øverst (dropdown med Forhave/Baghave/Terrasse/Indgange/Indendørs). Valgfrit: forælderzone-vælger (zoner i det valgte område). Pre-select automatisk baseret på hvad man kigger på:
+   - Står man på forsiden: ingen pre-selection
+   - Står man i en zone: pre-select dens område (og zonen som forælderzone)
+3. **"Nyt element"-dialog** får område-vælger + zone-vælger. Pre-select baseret på aktuel visning:
+   - Stands man i en zone: pre-select dens område og zonen selv
+   - Stands man på forsiden: ingen pre-selection
+4. **Fjern alle inline "Tilføj zone" / "Tilføj element"-knapper** fra:
+   - Bunden af zone-visningen (`section-add-btn` for zone og element)
+   - Forsiden under hvert område (`+ Tilføj element`-knappen)
+   - Forsiden under alle områder (`+ Tilføj ny zone`-knappen)
+
+**Pre-selection-logik:**
+```js
+// Aktuel kontekst tilgås via nav.view, nav.zoneId
+// Pre-select område: zone(nav.zoneId)?.area
+// Pre-select zone: nav.zoneId (hvis man er i en zone)
+```
+
+**Pickerne til area og zone eksisterer allerede** i `openEditZone()` og `openEditPlant()` - genbrug dem.
+
+**OBS:** Ghost-zoner (`isDirect: true`) må ikke vises i zone-vælgeren - de er usynlige.
+
+### 4. Push-notifikationer på iPhone
 Kræver Firebase Cloud Messaging + opdateret service worker.
 
-### 4. Søgefunktion
+### 5. Søgefunktion
 Med mange zoner kan det blive relevant.
 
 ---
