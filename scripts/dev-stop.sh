@@ -52,5 +52,22 @@ if [ -n "$TERM_WIN_ID" ] && [[ "$TERM_WIN_ID" =~ ^[0-9]+$ ]]; then
     disown
 fi
 
+# Luk Safari-vinduet med localhost:8766
+osascript -e "
+tell application \"Safari\"
+    try
+        set wins to every window
+        repeat with w in wins
+            try
+                if URL of current tab of w contains \"localhost:8766\" then
+                    close w
+                end if
+            end try
+        end repeat
+        if (count of windows) is 0 then quit
+    end try
+end tell
+" 2>/dev/null || true
+
 # Ryd op
 rm -f "$TMP_DIR/terminal_win_id.txt" "$TMP_DIR/server.pid" "$TMP_DIR/claude.pid" "$TMP_DIR/watcher.pid" "$TMP_DIR/session.token"
