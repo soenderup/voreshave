@@ -53,6 +53,16 @@ tell application \"Safari\"
     set bounds of window 1 to {$TERM_W, 0, $SAFARI_RIGHT, $SCREEN_H}
 end tell" 2>/dev/null || true
 
+# Slå Responsivt design-visning til (kun hvis den ikke allerede er aktiv)
+osascript -e '
+tell application "System Events"
+    tell process "Safari"
+        try
+            click menu item "Enter Responsive Design View" of menu "Develop" of menu bar 1
+        end try
+    end tell
+end tell' 2>/dev/null || true
+
 # Giv fokus tilbage til Terminal
 osascript -e 'tell application "Terminal" to activate'
 
