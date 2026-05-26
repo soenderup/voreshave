@@ -1,7 +1,7 @@
 #!/bin/bash
 # Genindlæs ændret side i Safari med tom cache
 
-PROJECT_ROOT="/Users/steensonderup/Documents/udvikling/minhave"
+PROJECT_ROOT="/Users/steensonderup/Documents/udvikling/VoresHave"
 PORT=8766
 
 # Læs tool-info fra stdin

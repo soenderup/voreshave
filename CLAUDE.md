@@ -1,4 +1,4 @@
-# minhave — CLAUDE.md
+# VoresHave — CLAUDE.md
 
 ## Projekt
 En have-app. Teknologistack er rent HTML/CSS/JS - ingen build-trin, ingen frameworks.

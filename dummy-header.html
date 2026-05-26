@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Vejr dummy — Varianter</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green-dark: #2d5a27;
+    --green-mid: #4a7c3f;
+    --green-light: #e8f0e5;
+    --terra: #c46b3a;
+    --terra-light: #f5e8df;
+    --cream: #faf7f2;
+    --brown: #6b4e35;
+    --text: #2a2a2a;
+    --muted: #7a7a7a;
+    --border: #ece9e3;
+    --white: #ffffff;
+    --sky: #d0e8f5;
+    --sky-mid: #6aabcf;
+  }
+  html, body { background: #ccc; font-family: -apple-system, sans-serif; }
+  body { padding: 1.5rem 0.5rem; display: flex; flex-direction: column; gap: 2.5rem; align-items: center; }
+
+  .variant-label {
+    font-size: 0.75rem; font-weight: 700; color: #444;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: -1.5rem;
+    text-align: center; width: 100%; max-width: 380px;
+  }
+  .frame { width: 100%; max-width: 380px; background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 3px 16px rgba(0,0,0,.15); }
+
+  /* ── Shared app-header ── */
+  .app-header { background: var(--green-dark); padding: 0.75rem 1rem; display: flex; align-items: center; gap: 0.8rem; }
+  .app-header .logo { font-size: 1.5rem; }
+  .app-header .title { color: white; font-size: 1.1rem; font-weight: 700; }
+  .app-header .sub { color: rgba(255,255,255,0.55); font-size: 0.68rem; margin-top: 0.05rem; }
+  .app-header .btn { margin-left: auto; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.12); border: none; color: white; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+
+  /* ── Shared reminder strip ── */
+  .urgent-strip { background: var(--terra); padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.6rem; }
+  .urgent-strip span { color: white; font-size: 0.85rem; flex: 1; }
+  .urgent-strip .badge { background: rgba(0,0,0,0.18); color: white; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; }
+
+  /* ── Shared zone list ── */
+  .card-content { padding: 0.75rem 1rem; }
+  .zone-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+  .zone-row:last-child { border-bottom: none; }
+  .zone-row .zi { font-size: 1rem; }
+  .zone-row .zn { font-size: 0.88rem; font-weight: 500; color: var(--green-dark); flex: 1; }
+  .zone-row .zm { font-size: 0.72rem; color: var(--muted); }
+
+
+  /* ══════════════════════════════════════════════
+     A — Kompakt scrollbar-stribe
+     En enkelt tyk linje, scrollable ved mange dage.
+     Tager minimal plads - god til mobilflow.
+  ══════════════════════════════════════════════ */
+  .weather-a {
+    background: var(--sky);
+    padding: 0.35rem 0.5rem;
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .weather-a::-webkit-scrollbar { display: none; }
+  .weather-a .wa-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.08rem;
+    min-width: 52px;
+    padding: 0.2rem 0;
+  }
+  .wa-lbl  { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; color: var(--sky-mid); letter-spacing: 0.05em; }
+  .wa-icon { font-size: 1.25rem; line-height: 1.1; }
+  .wa-hi   { font-size: 0.8rem; font-weight: 700; color: var(--text); }
+  .wa-lo   { font-size: 0.68rem; color: var(--muted); }
+  .wa-rain { font-size: 0.6rem; color: #4a90c4; height: 0.8rem; }
+  .wa-divider { width: 1px; height: 42px; background: rgba(106,171,207,.3); flex-shrink: 0; margin: 0 2px; }
+
+
+  /* ══════════════════════════════════════════════
+     B — 5-dages grid-kort (hvid baggrund)
+     Strukturerede runde kort per dag.
+     God balance mellem info og pladsforbrug.
+  ══════════════════════════════════════════════ */
+  .weather-b {
+    background: linear-gradient(160deg, #edf6fc 0%, #d4ecf7 100%);
+    padding: 0.6rem 0.75rem;
+  }
+  .wb-head { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.45rem; }
+  .wb-head .lbl { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sky-mid); flex: 1; }
+  .wb-head .src { font-size: 0.56rem; color: var(--muted); }
+  .wb-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.25rem; }
+  .wb-cell {
+    background: rgba(255,255,255,0.55);
+    border-radius: 10px;
+    padding: 0.4rem 0.15rem;
+    display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
+  }
+  .wb-cell.today { background: rgba(255,255,255,0.92); box-shadow: 0 1px 5px rgba(0,0,0,.07); }
+  .wb-day  { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+  .wb-cell.today .wb-day { color: var(--green-dark); }
+  .wb-icon { font-size: 1.2rem; }
+  .wb-hi   { font-size: 0.78rem; font-weight: 700; color: var(--text); }
+  .wb-lo   { font-size: 0.65rem; color: var(--muted); margin-top: -0.1rem; }
+  .wb-rain { font-size: 0.6rem; color: #4a90c4; height: 0.75rem; }
+
+
+  /* ══════════════════════════════════════════════
+     C — "Nu + 4 dage" med himmelblå gradient
+     Fuld vejr-oplevelse med aktuel vejrsituation.
+     Tager lidt mere plads - men meget overskueligt.
+  ══════════════════════════════════════════════ */
+  .weather-c {
+    background: linear-gradient(160deg, #1a6694 0%, #2d8fc4 55%, #5aacd8 100%);
+    padding: 0.75rem 0.9rem;
+  }
+  .wc-now { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem; }
+  .wc-big-icon { font-size: 2.6rem; line-height: 1; flex-shrink: 0; }
+  .wc-temp { font-size: 2.1rem; font-weight: 300; color: white; line-height: 1; }
+  .wc-desc { font-size: 0.73rem; color: rgba(255,255,255,0.8); margin-top: 0.15rem; }
+  .wc-meta { display: flex; gap: 0.75rem; margin-top: 0.25rem; }
+  .wc-meta span { font-size: 0.63rem; color: rgba(255,255,255,0.65); }
+  .wc-divider { height: 1px; background: rgba(255,255,255,0.2); margin-bottom: 0.55rem; }
+  .wc-days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.3rem; }
+  .wc-day {
+    background: rgba(255,255,255,0.13);
+    border-radius: 9px;
+    padding: 0.35rem 0.2rem;
+    display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
+  }
+  .wcd-lbl  { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,0.6); }
+  .wcd-icon { font-size: 1.1rem; }
+  .wcd-hi   { font-size: 0.78rem; font-weight: 600; color: white; }
+  .wcd-lo   { font-size: 0.63rem; color: rgba(255,255,255,0.5); }
+  .wcd-rain { font-size: 0.6rem; color: rgba(170,220,255,0.9); height: 0.75rem; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ VARIANT A ═══════════════════════════ -->
+<div class="variant-label">A — Kompakt stribe</div>
+<div class="frame">
+  <div class="app-header">
+    <div class="logo">🌿</div>
+    <div><div class="title">Vores Have</div><div class="sub">Tirsdag 26. maj</div></div>
+    <button class="btn">☰</button>
+  </div>
+  <div class="urgent-strip">
+    <span>🔔 Vand tomaterne</span>
+    <div class="badge">3 påmindelser</div>
+  </div>
+
+  <div class="weather-a">
+    <div class="wa-day">
+      <div class="wa-lbl">I dag</div>
+      <div class="wa-icon">⛅</div>
+      <div class="wa-hi">21°</div>
+      <div class="wa-lo">13°</div>
+      <div class="wa-rain">💧 30%</div>
+    </div>
+    <div class="wa-divider"></div>
+    <div class="wa-day">
+      <div class="wa-lbl">Ons</div>
+      <div class="wa-icon">🌧️</div>
+      <div class="wa-hi">16°</div>
+      <div class="wa-lo">11°</div>
+      <div class="wa-rain">💧 80%</div>
+    </div>
+    <div class="wa-divider"></div>
+    <div class="wa-day">
+      <div class="wa-lbl">Tor</div>
+      <div class="wa-icon">🌦️</div>
+      <div class="wa-hi">18°</div>
+      <div class="wa-lo">10°</div>
+      <div class="wa-rain">💧 40%</div>
+    </div>
+    <div class="wa-divider"></div>
+    <div class="wa-day">
+      <div class="wa-lbl">Fre</div>
+      <div class="wa-icon">☀️</div>
+      <div class="wa-hi">23°</div>
+      <div class="wa-lo">12°</div>
+      <div class="wa-rain"></div>
+    </div>
+    <div class="wa-divider"></div>
+    <div class="wa-day">
+      <div class="wa-lbl">Lør</div>
+      <div class="wa-icon">☀️</div>
+      <div class="wa-hi">25°</div>
+      <div class="wa-lo">14°</div>
+      <div class="wa-rain"></div>
+    </div>
+    <div class="wa-divider"></div>
+    <div class="wa-day">
+      <div class="wa-lbl">Søn</div>
+      <div class="wa-icon">⛅</div>
+      <div class="wa-hi">19°</div>
+      <div class="wa-lo">12°</div>
+      <div class="wa-rain">💧 20%</div>
+    </div>
+    <div class="wa-divider"></div>
+    <div class="wa-day">
+      <div class="wa-lbl">Man</div>
+      <div class="wa-icon">🌦️</div>
+      <div class="wa-hi">17°</div>
+      <div class="wa-lo">10°</div>
+      <div class="wa-rain">💧 50%</div>
+    </div>
+  </div>
+
+  <div class="card-content">
+    <div class="zone-row"><span class="zi">🌿</span><span class="zn">Køkkenhave</span><span class="zm">4 planter</span></div>
+    <div class="zone-row"><span class="zi">🌳</span><span class="zn">Frugthave</span><span class="zm">6 planter</span></div>
+    <div class="zone-row"><span class="zi">🌸</span><span class="zn">Blomsterbed</span><span class="zm">8 planter</span></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ VARIANT B ═══════════════════════════ -->
+<div class="variant-label">B — 5-dages grid-kort</div>
+<div class="frame">
+  <div class="app-header">
+    <div class="logo">🌿</div>
+    <div><div class="title">Vores Have</div><div class="sub">Tirsdag 26. maj</div></div>
+    <button class="btn">☰</button>
+  </div>
+  <div class="urgent-strip">
+    <span>🔔 Vand tomaterne</span>
+    <div class="badge">3 påmindelser</div>
+  </div>
+
+  <div class="weather-b">
+    <div class="wb-head">
+      <span class="lbl">Vejrudsigt — 5 dage</span>
+      <span class="src">Open-Meteo</span>
+    </div>
+    <div class="wb-row">
+      <div class="wb-cell today">
+        <div class="wb-day">I dag</div>
+        <div class="wb-icon">⛅</div>
+        <div class="wb-hi">21°</div>
+        <div class="wb-lo">13°</div>
+        <div class="wb-rain">💧 30%</div>
+      </div>
+      <div class="wb-cell">
+        <div class="wb-day">Ons</div>
+        <div class="wb-icon">🌧️</div>
+        <div class="wb-hi">16°</div>
+        <div class="wb-lo">11°</div>
+        <div class="wb-rain">💧 80%</div>
+      </div>
+      <div class="wb-cell">
+        <div class="wb-day">Tor</div>
+        <div class="wb-icon">🌦️</div>
+        <div class="wb-hi">18°</div>
+        <div class="wb-lo">10°</div>
+        <div class="wb-rain">💧 40%</div>
+      </div>
+      <div class="wb-cell">
+        <div class="wb-day">Fre</div>
+        <div class="wb-icon">☀️</div>
+        <div class="wb-hi">23°</div>
+        <div class="wb-lo">12°</div>
+        <div class="wb-rain"></div>
+      </div>
+      <div class="wb-cell">
+        <div class="wb-day">Lør</div>
+        <div class="wb-icon">☀️</div>
+        <div class="wb-hi">25°</div>
+        <div class="wb-lo">14°</div>
+        <div class="wb-rain"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-content">
+    <div class="zone-row"><span class="zi">🌿</span><span class="zn">Køkkenhave</span><span class="zm">4 planter</span></div>
+    <div class="zone-row"><span class="zi">🌳</span><span class="zn">Frugthave</span><span class="zm">6 planter</span></div>
+    <div class="zone-row"><span class="zi">🌸</span><span class="zn">Blomsterbed</span><span class="zm">8 planter</span></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ VARIANT C ═══════════════════════════ -->
+<div class="variant-label">C — Nu + 4 dage (blå gradient)</div>
+<div class="frame">
+  <div class="app-header">
+    <div class="logo">🌿</div>
+    <div><div class="title">Vores Have</div><div class="sub">Tirsdag 26. maj</div></div>
+    <button class="btn">☰</button>
+  </div>
+  <div class="urgent-strip">
+    <span>🔔 Vand tomaterne</span>
+    <div class="badge">3 påmindelser</div>
+  </div>
+
+  <div class="weather-c">
+    <div class="wc-now">
+      <div class="wc-big-icon">⛅</div>
+      <div>
+        <div class="wc-temp">21°</div>
+        <div class="wc-desc">Delvis skyet — nat 13°</div>
+        <div class="wc-meta">
+          <span>💧 30%</span>
+          <span>💨 5 m/s SV</span>
+          <span>Viborg</span>
+        </div>
+      </div>
+    </div>
+    <div class="wc-divider"></div>
+    <div class="wc-days">
+      <div class="wc-day">
+        <div class="wcd-lbl">Ons</div>
+        <div class="wcd-icon">🌧️</div>
+        <div class="wcd-hi">16°</div>
+        <div class="wcd-lo">11°</div>
+        <div class="wcd-rain">💧 80%</div>
+      </div>
+      <div class="wc-day">
+        <div class="wcd-lbl">Tor</div>
+        <div class="wcd-icon">🌦️</div>
+        <div class="wcd-hi">18°</div>
+        <div class="wcd-lo">10°</div>
+        <div class="wcd-rain">💧 40%</div>
+      </div>
+      <div class="wc-day">
+        <div class="wcd-lbl">Fre</div>
+        <div class="wcd-icon">☀️</div>
+        <div class="wcd-hi">23°</div>
+        <div class="wcd-lo">12°</div>
+        <div class="wcd-rain"></div>
+      </div>
+      <div class="wc-day">
+        <div class="wcd-lbl">Lør</div>
+        <div class="wcd-icon">☀️</div>
+        <div class="wcd-hi">25°</div>
+        <div class="wcd-lo">14°</div>
+        <div class="wcd-rain"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-content">
+    <div class="zone-row"><span class="zi">🌿</span><span class="zn">Køkkenhave</span><span class="zm">4 planter</span></div>
+    <div class="zone-row"><span class="zi">🌳</span><span class="zn">Frugthave</span><span class="zm">6 planter</span></div>
+    <div class="zone-row"><span class="zi">🌸</span><span class="zn">Blomsterbed</span><span class="zm">8 planter</span></div>
+  </div>
+</div>
+
+<div style="height: 2rem;"></div>
+</body>
+</html>

@@ -1,9 +1,9 @@
 #!/bin/bash
 # Starter dev-miljø: server, vinduer og branch-info
 
-PROJECT_DIR="/Users/steensonderup/Documents/udvikling/minhave"
+PROJECT_DIR="/Users/steensonderup/Documents/udvikling/VoresHave"
 PORT=8766
-TMP_DIR="/tmp/minhave_dev"
+TMP_DIR="/tmp/voreshave_dev"
 mkdir -p "$TMP_DIR"
 
 # Slå eksisterende watcher ihjel
@@ -58,8 +58,8 @@ osascript -e 'tell application "Terminal" to activate'
 
 # Start baggrundsvagter: lukker vinduer når Claude Code afsluttes (ikke ved /clear)
 nohup bash -c '
-TMP_DIR="/tmp/minhave_dev"
-PROJECT_DIR="/Users/steensonderup/Documents/udvikling/minhave"
+TMP_DIR="/tmp/voreshave_dev"
+PROJECT_DIR="/Users/steensonderup/Documents/udvikling/VoresHave"
 
 # Find Claude Code processen ved at gå op ad procestræet
 TARGET_PID=""

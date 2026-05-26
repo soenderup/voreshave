@@ -1,7 +1,7 @@
 #!/bin/bash
 # Oprydning: luk Safari-vindue, stop server, luk Terminal-vindue
 
-TMP_DIR="/tmp/minhave_dev"
+TMP_DIR="/tmp/voreshave_dev"
 PORT=8766
 
 # Stop HTTP server

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Vejr dummy — Fold ud</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green-dark: #2d5a27;
+    --green-mid: #4a7c3f;
+    --green-light: #e8f0e5;
+    --terra: #c46b3a;
+    --cream: #faf7f2;
+    --text: #2a2a2a;
+    --muted: #7a7a7a;
+    --border: #ece9e3;
+    --white: #ffffff;
+  }
+  html, body { background: #bbb; font-family: -apple-system, sans-serif; }
+  body { padding: 2rem 0.5rem; display: flex; flex-direction: column; gap: 2.5rem; align-items: center; }
+
+  .variant-label {
+    font-size: 0.72rem; font-weight: 700; color: #444;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: -1.5rem;
+    text-align: center; width: 100%; max-width: 380px;
+  }
+  .frame {
+    width: 100%; max-width: 380px;
+    background: var(--white);
+    border-radius: 14px; overflow: hidden;
+    box-shadow: 0 3px 16px rgba(0,0,0,.15);
+  }
+
+  /* ── App header ── */
+  .app-header {
+    background: var(--green-dark);
+    padding: 0.75rem 1rem;
+    display: flex; align-items: center; gap: 0.8rem;
+  }
+  .app-header .logo { font-size: 1.5rem; }
+  .app-header .title { color: white; font-size: 1.1rem; font-weight: 700; }
+  .app-header .sub   { color: rgba(255,255,255,0.55); font-size: 0.68rem; margin-top: 0.05rem; }
+  .app-header .btn   {
+    margin-left: auto; width: 34px; height: 34px; border-radius: 50%;
+    background: rgba(255,255,255,0.12); border: none;
+    color: white; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Orange reminder strip ── */
+  .urgent-strip {
+    background: var(--terra);
+    padding: 0.5rem 1rem;
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+  .urgent-strip span { color: white; font-size: 0.85rem; flex: 1; }
+  .urgent-strip .badge {
+    background: rgba(0,0,0,0.18); color: white;
+    font-size: 0.7rem; font-weight: 700;
+    padding: 0.15rem 0.5rem; border-radius: 999px;
+  }
+
+  /* ══════════════════════════════════════════════
+     VEJR-WIDGET
+  ══════════════════════════════════════════════ */
+  .weather-widget {
+    background: linear-gradient(160deg, #1a6694 0%, #2d8fc4 55%, #5aacd8 100%);
+    overflow: hidden;
+  }
+
+  /* Lukket tilstand — én linje, samme højde som orange strip */
+  .weather-collapsed {
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .wc-icon-sm  { font-size: 1.05rem; line-height: 1; flex-shrink: 0; }
+  .wc-day-temp { font-size: 0.88rem; font-weight: 700; color: white; white-space: nowrap; }
+  .wc-ngt-temp { font-size: 0.82rem; color: rgba(255,255,255,0.6); white-space: nowrap; }
+  .wc-rain-sm  { font-size: 0.82rem; color: rgba(170,220,255,0.95); white-space: nowrap; }
+  .wc-wind-sm  { font-size: 0.82rem; color: rgba(255,255,255,0.65); white-space: nowrap; }
+  .wc-dot      { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,0.25); flex-shrink: 0; }
+  .wc-chevron  {
+    margin-left: auto;
+    font-size: 0.65rem; color: rgba(255,255,255,0.5);
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+  }
+  .weather-widget.open .wc-chevron { transform: rotate(180deg); }
+
+  /* Udvidet panel */
+  .weather-expanded {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+  .weather-widget.open .weather-expanded {
+    max-height: 200px;
+  }
+  .weather-expanded-inner {
+    padding: 0.1rem 0.9rem 0.75rem;
+  }
+  .we-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.18);
+    margin-bottom: 0.6rem;
+  }
+
+  /* Stor aktuel temp */
+  .we-now {
+    display: flex; align-items: center; gap: 0.7rem;
+    margin-bottom: 0.6rem;
+  }
+  .we-big-icon { font-size: 2.4rem; line-height: 1; flex-shrink: 0; }
+  .we-big-temp { font-size: 2rem; font-weight: 300; color: white; line-height: 1; }
+  .we-desc     { font-size: 0.73rem; color: rgba(255,255,255,0.8); margin-top: 0.15rem; }
+  .we-meta     { display: flex; gap: 0.75rem; margin-top: 0.2rem; }
+  .we-meta span{ font-size: 0.63rem; color: rgba(255,255,255,0.6); }
+
+  /* 4-dages forecast */
+  .we-days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.3rem; }
+  .we-day  {
+    background: rgba(255,255,255,0.13); border-radius: 9px;
+    padding: 0.35rem 0.2rem;
+    display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
+  }
+  .wed-lbl  { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,0.6); }
+  .wed-icon { font-size: 1.1rem; }
+  .wed-hi   { font-size: 0.78rem; font-weight: 600; color: white; }
+  .wed-lo   { font-size: 0.63rem; color: rgba(255,255,255,0.5); }
+  .wed-rain { font-size: 0.6rem; color: rgba(170,220,255,0.9); height: 0.75rem; }
+
+  /* ── Zone list ── */
+  .card-content { padding: 0.75rem 1rem; }
+  .zone-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+  .zone-row:last-child { border-bottom: none; }
+  .zone-row .zi { font-size: 1rem; }
+  .zone-row .zn { font-size: 0.88rem; font-weight: 500; color: var(--green-dark); flex: 1; }
+  .zone-row .zm { font-size: 0.72rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ── Lukket ── -->
+<div class="variant-label">Lukket (samme højde som påmindelsen)</div>
+<div class="frame">
+  <div class="app-header">
+    <div class="logo">🌿</div>
+    <div><div class="title">Vores Have</div><div class="sub">Tirsdag 26. maj</div></div>
+    <button class="btn">☰</button>
+  </div>
+  <div class="urgent-strip">
+    <span>🔔 Vand tomaterne</span>
+    <div class="badge">3 påmindelser</div>
+  </div>
+  <div class="weather-widget" id="w1">
+    <div class="weather-collapsed" onclick="toggle('w1')">
+      <span class="wc-icon-sm">⛅</span>
+      <span class="wc-day-temp">21°</span>
+      <span class="wc-ngt-temp">(13°)</span>
+      <span class="wc-dot"></span>
+      <span class="wc-rain-sm">💧 30%</span>
+      <span class="wc-dot"></span>
+      <span class="wc-wind-sm">💨 5 m/s SV</span>
+      <span class="wc-chevron">▼</span>
+    </div>
+    <div class="weather-expanded">
+      <div class="weather-expanded-inner">
+        <div class="we-divider"></div>
+        <div class="we-now">
+          <div class="we-big-icon">⛅</div>
+          <div>
+            <div class="we-big-temp">21°</div>
+            <div class="we-desc">Delvis skyet — nat 13°</div>
+            <div class="we-meta">
+              <span>💧 30%</span>
+              <span>💨 5 m/s SV</span>
+              <span>Viborg</span>
+            </div>
+          </div>
+        </div>
+        <div class="we-days">
+          <div class="we-day"><div class="wed-lbl">Ons</div><div class="wed-icon">🌧️</div><div class="wed-hi">16°</div><div class="wed-lo">11°</div><div class="wed-rain">💧 80%</div></div>
+          <div class="we-day"><div class="wed-lbl">Tor</div><div class="wed-icon">🌦️</div><div class="wed-hi">18°</div><div class="wed-lo">10°</div><div class="wed-rain">💧 40%</div></div>
+          <div class="we-day"><div class="wed-lbl">Fre</div><div class="wed-icon">☀️</div><div class="wed-hi">23°</div><div class="wed-lo">12°</div><div class="wed-rain"></div></div>
+          <div class="we-day"><div class="wed-lbl">Lør</div><div class="wed-icon">☀️</div><div class="wed-hi">25°</div><div class="wed-lo">14°</div><div class="wed-rain"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card-content">
+    <div class="zone-row"><span class="zi">🌿</span><span class="zn">Køkkenhave</span><span class="zm">4 planter</span></div>
+    <div class="zone-row"><span class="zi">🌳</span><span class="zn">Frugthave</span><span class="zm">6 planter</span></div>
+    <div class="zone-row"><span class="zi">🌸</span><span class="zn">Blomsterbed</span><span class="zm">8 planter</span></div>
+  </div>
+</div>
+
+<!-- ── Åben ── -->
+<div class="variant-label">Åben (fold-ud tilstand)</div>
+<div class="frame">
+  <div class="app-header">
+    <div class="logo">🌿</div>
+    <div><div class="title">Vores Have</div><div class="sub">Tirsdag 26. maj</div></div>
+    <button class="btn">☰</button>
+  </div>
+  <div class="urgent-strip">
+    <span>🔔 Vand tomaterne</span>
+    <div class="badge">3 påmindelser</div>
+  </div>
+  <div class="weather-widget open" id="w2">
+    <div class="weather-collapsed" onclick="toggle('w2')">
+      <span class="wc-icon-sm">⛅</span>
+      <span class="wc-day-temp">21°</span>
+      <span class="wc-ngt-temp">(13°)</span>
+      <span class="wc-dot"></span>
+      <span class="wc-rain-sm">💧 30%</span>
+      <span class="wc-dot"></span>
+      <span class="wc-wind-sm">💨 5 m/s SV</span>
+      <span class="wc-chevron">▼</span>
+    </div>
+    <div class="weather-expanded">
+      <div class="weather-expanded-inner">
+        <div class="we-divider"></div>
+        <div class="we-now">
+          <div class="we-big-icon">⛅</div>
+          <div>
+            <div class="we-big-temp">21°</div>
+            <div class="we-desc">Delvis skyet — nat 13°</div>
+            <div class="we-meta">
+              <span>💧 30%</span>
+              <span>💨 5 m/s SV</span>
+              <span>Viborg</span>
+            </div>
+          </div>
+        </div>
+        <div class="we-days">
+          <div class="we-day"><div class="wed-lbl">Ons</div><div class="wed-icon">🌧️</div><div class="wed-hi">16°</div><div class="wed-lo">11°</div><div class="wed-rain">💧 80%</div></div>
+          <div class="we-day"><div class="wed-lbl">Tor</div><div class="wed-icon">🌦️</div><div class="wed-hi">18°</div><div class="wed-lo">10°</div><div class="wed-rain">💧 40%</div></div>
+          <div class="we-day"><div class="wed-lbl">Fre</div><div class="wed-icon">☀️</div><div class="wed-hi">23°</div><div class="wed-lo">12°</div><div class="wed-rain"></div></div>
+          <div class="we-day"><div class="wed-lbl">Lør</div><div class="wed-icon">☀️</div><div class="wed-hi">25°</div><div class="wed-lo">14°</div><div class="wed-rain"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card-content">
+    <div class="zone-row"><span class="zi">🌿</span><span class="zn">Køkkenhave</span><span class="zm">4 planter</span></div>
+    <div class="zone-row"><span class="zi">🌳</span><span class="zn">Frugthave</span><span class="zm">6 planter</span></div>
+    <div class="zone-row"><span class="zi">🌸</span><span class="zn">Blomsterbed</span><span class="zm">8 planter</span></div>
+  </div>
+</div>
+
+<div style="height: 2rem;"></div>
+
+<script>
+  function toggle(id) {
+    document.getElementById(id).classList.toggle('open');
+  }
+</script>
+</body>
+</html>

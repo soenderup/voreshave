@@ -687,7 +687,7 @@ let identifyState = { imageDataUrl: null, result: null };
 let db = { zones: [], plants: [], reminders: [], history: [] };
 
 // ── PHOTO STORAGE (IndexedDB - mere robust end localStorage på iOS Safari) ──
-const PHOTO_DB_NAME = 'minhave-photos';
+const PHOTO_DB_NAME = 'voreshave-photos';
 const PHOTO_STORE = 'photos';
 let photoCache = new Map();
 
@@ -781,7 +781,7 @@ function mergeLocalPhotos() {
 }
 
 async function loadDB() {
-    const localRaw = localStorage.getItem('minhave-v3');
+    const localRaw = localStorage.getItem('voreshave-v3');
     try {
         const snap = await DATA_REF.get();
         if (snap.exists) {
@@ -791,7 +791,7 @@ async function loadDB() {
             await DATA_REF.set(db);
         }
         mergeLocalPhotos();
-        localStorage.setItem('minhave-v3', JSON.stringify(db));
+        localStorage.setItem('voreshave-v3', JSON.stringify(db));
     } catch (e) {
         if (localRaw) db = JSON.parse(localRaw);
         else seedDB();
@@ -801,14 +801,14 @@ async function loadDB() {
         if (snap.exists && !snap.metadata.hasPendingWrites) {
             db = snap.data();
             mergeLocalPhotos();
-            localStorage.setItem('minhave-v3', JSON.stringify(db));
-            if (sessionStorage.getItem('minhave-unlocked') === '1') render();
+            localStorage.setItem('voreshave-v3', JSON.stringify(db));
+            if (sessionStorage.getItem('voreshave-unlocked') === '1') render();
         }
     });
 }
 
 function saveDB() {
-    try { localStorage.setItem('minhave-v3', JSON.stringify(db)); } catch (e) { console.warn('localStorage write failed:', e); }
+    try { localStorage.setItem('voreshave-v3', JSON.stringify(db)); } catch (e) { console.warn('localStorage write failed:', e); }
     DATA_REF.set(db).catch(console.error);
 }
 
@@ -826,10 +826,10 @@ async function loadUsers() {
         const snap = await USERS_REF.get();
         if (snap.exists) {
             users = snap.data().list || [];
-            localStorage.setItem('minhave-users', JSON.stringify(users));
+            localStorage.setItem('voreshave-users', JSON.stringify(users));
         } else {
             // Ingen users-dokument endnu — migrer fra pins
-            const cached = localStorage.getItem('minhave-users');
+            const cached = localStorage.getItem('voreshave-users');
             if (cached) {
                 users = JSON.parse(cached);
             } else {
@@ -840,14 +840,14 @@ async function loadUsers() {
             }
         }
     } catch (e) {
-        const cached = localStorage.getItem('minhave-users');
+        const cached = localStorage.getItem('voreshave-users');
         if (cached) { users = JSON.parse(cached); }
         else { users = []; }
     }
 }
 
 function saveUsers() {
-    localStorage.setItem('minhave-users', JSON.stringify(users));
+    localStorage.setItem('voreshave-users', JSON.stringify(users));
     USERS_REF.set({ list: users }).catch(console.error);
 }
 
@@ -857,19 +857,19 @@ async function loadSettings() {
         const snap = await SETTINGS_REF.get();
         if (snap.exists) {
             appSettings = snap.data();
-            localStorage.setItem('minhave-settings', JSON.stringify(appSettings));
+            localStorage.setItem('voreshave-settings', JSON.stringify(appSettings));
         } else {
-            const cached = localStorage.getItem('minhave-settings');
+            const cached = localStorage.getItem('voreshave-settings');
             if (cached) appSettings = JSON.parse(cached);
         }
     } catch (e) {
-        const cached = localStorage.getItem('minhave-settings');
+        const cached = localStorage.getItem('voreshave-settings');
         if (cached) try { appSettings = JSON.parse(cached); } catch {}
     }
 }
 
 function saveSettings() {
-    localStorage.setItem('minhave-settings', JSON.stringify(appSettings));
+    localStorage.setItem('voreshave-settings', JSON.stringify(appSettings));
     SETTINGS_REF.set(appSettings).catch(console.error);
 }
 
@@ -895,7 +895,7 @@ function windDir(deg) {
 async function fetchWeatherIfNeeded() {
     const loc = appSettings.location;
     if (!loc?.lat || !loc?.lon) return;
-    const cached = localStorage.getItem('minhave-weather');
+    const cached = localStorage.getItem('voreshave-weather');
     if (cached) {
         try {
             const obj = JSON.parse(cached);
@@ -906,13 +906,13 @@ async function fetchWeatherIfNeeded() {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max,winddirection_10m_dominant&current_weather=true&timezone=Europe%2FCopenhagen&forecast_days=5`;
         const res = await fetch(url);
         const json = await res.json();
-        localStorage.setItem('minhave-weather', JSON.stringify({ timestamp: Date.now(), lat: loc.lat, lon: loc.lon, data: json }));
-        if (sessionStorage.getItem('minhave-unlocked') === '1') render();
+        localStorage.setItem('voreshave-weather', JSON.stringify({ timestamp: Date.now(), lat: loc.lat, lon: loc.lon, data: json }));
+        if (sessionStorage.getItem('voreshave-unlocked') === '1') render();
     } catch (e) { console.warn('Vejr fetch fejlede:', e); }
 }
 
 function getWeatherData() {
-    const cached = localStorage.getItem('minhave-weather');
+    const cached = localStorage.getItem('voreshave-weather');
     if (!cached) return null;
     try {
         const obj = JSON.parse(cached);
@@ -1038,7 +1038,7 @@ async function geocodeLocation() {
 function selectLocation(lat, lon, name, displayName) {
     appSettings.location = { lat, lon, name, displayName };
     saveSettings();
-    localStorage.removeItem('minhave-weather');
+    localStorage.removeItem('voreshave-weather');
     fetchWeatherIfNeeded();
     closeSheet();
     render();
@@ -2877,7 +2877,7 @@ let pinTemp = '';
 let pinMode = '';
 let setupName = '';
 
-function currentUser()    { return sessionStorage.getItem('minhave-user') || ''; }
+function currentUser()    { return sessionStorage.getItem('voreshave-user') || ''; }
 function currentUserObj() { return users.find(u => u.name === currentUser()) || null; }
 function isGuest()        { return currentUserObj()?.role === 'guest'; }
 function canEdit()        { return currentUserObj()?.role === 'admin'; }
@@ -2885,7 +2885,7 @@ function canLog()         { return ['admin','member'].includes(currentUserObj()?
 function canManageUsers() { return currentUserObj()?.role === 'admin'; }
 
 function checkAccess() {
-    if (sessionStorage.getItem('minhave-unlocked') === '1') return true;
+    if (sessionStorage.getItem('voreshave-unlocked') === '1') return true;
     const hasPins = users.some(u => u.pin);
     showLockscreen(hasPins ? 'enter' : 'nameselect');
     return false;
@@ -2992,8 +2992,8 @@ function getDevice() {
 }
 
 function unlockAs(name) {
-    sessionStorage.setItem('minhave-unlocked', '1');
-    sessionStorage.setItem('minhave-user', name);
+    sessionStorage.setItem('voreshave-unlocked', '1');
+    sessionStorage.setItem('voreshave-user', name);
     // Log login-hændelse
     const entry = { user: name, time: new Date().toISOString(), device: getDevice() };
     // Hent eksisterende, tilføj ny, trim til max 100, gem
@@ -3025,8 +3025,8 @@ async function openLoginLog() {
 }
 
 function lockApp() {
-    sessionStorage.removeItem('minhave-unlocked');
-    sessionStorage.removeItem('minhave-user');
+    sessionStorage.removeItem('voreshave-unlocked');
+    sessionStorage.removeItem('voreshave-user');
     closeSheet();
     showLockscreen('enter');
 }
@@ -3132,7 +3132,7 @@ function saveUserEdit(id) {
     const adminCount = users.filter(x => x.role === 'admin').length;
     if (isSelf && wasAdmin && role !== 'admin' && adminCount === 1) { alert('Der skal altid være mindst én admin'); return; }
     // Opdater sessionStorage hvis man ændrer sit eget navn
-    if (isSelf && name !== u.name) { sessionStorage.setItem('minhave-user', name); }
+    if (isSelf && name !== u.name) { sessionStorage.setItem('voreshave-user', name); }
     u.name = name;
     u.initials = initials || name[0];
     u.role = role;
