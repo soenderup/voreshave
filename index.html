@@ -602,6 +602,7 @@ const VERSION = '1.17';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
+const LOGINLOG_REF = fsDB.collection('voreshave').doc('loginlog');
 
 // ── UUID ──
 const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -2662,11 +2663,42 @@ function startChangePinFor(name) {
     showLockscreen('setup');
 }
 
+function getDevice() {
+    const ua = navigator.userAgent;
+    if (/iPhone/.test(ua)) return 'iPhone';
+    if (/iPad/.test(ua)) return 'iPad';
+    if (/Android/.test(ua)) return 'Android';
+    if (/Macintosh/.test(ua)) return 'Mac';
+    if (/Windows/.test(ua)) return 'Windows';
+    return 'Ukendt';
+}
+
 function unlockAs(name) {
     sessionStorage.setItem('minhave-unlocked', '1');
     sessionStorage.setItem('minhave-user', name);
+    // Log login-hændelse
+    const entry = { user: name, time: new Date().toISOString(), device: getDevice() };
+    LOGINLOG_REF.update({ entries: firebase.firestore.FieldValue.arrayUnion(entry) })
+        .catch(() => LOGINLOG_REF.set({ entries: [entry] })); // opret dokument hvis det ikke findes
     document.getElementById('lockscreen').classList.remove('visible');
     render();
+}
+
+async function openLoginLog() {
+    closeSheet();
+    const snap = await LOGINLOG_REF.get();
+    const entries = snap.exists ? (snap.data().entries || []) : [];
+    const rows = entries.slice().reverse().slice(0, 60).map(e => {
+        const d = new Date(e.time);
+        const dato = d.toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' });
+        const tid  = d.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.55rem 0;border-bottom:1px solid var(--border)">
+            <span style="font-weight:600;color:var(--green-dark)">${e.user}</span>
+            <span style="font-size:0.78rem;color:var(--muted)">${e.device}</span>
+            <span style="font-size:0.78rem;color:var(--muted);text-align:right">${dato} ${tid}</span>
+        </div>`;
+    }).join('') || '<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0">Ingen logins registreret endnu</div>';
+    openSheet('Login-log', `<div style="padding:0 1.2rem 1rem">${rows}</div>`);
 }
 
 function openUserMenu() {
@@ -2678,6 +2710,7 @@ function openUserMenu() {
             <button class="btn-primary" style="margin:0" onclick="startChangePinFor('${user}')">Skift min PIN</button>
             <button class="btn-primary" style="margin:0;background:var(--green-mid)" onclick="startChangePinFor('${otherUser}')">Sæt ${otherUser}s PIN</button>
             <button class="btn-primary" style="margin:0;background:var(--green-mid)" onclick="startChangePinFor('Gæst')">${pins.Gæst ? 'Skift gæste-PIN' : 'Opret gæste-PIN'}</button>
+            <button class="btn-primary" style="margin:0;background:#4a6080" onclick="openLoginLog()">📋 Login-log</button>
             ` : ''}
             <button class="btn-primary" style="margin:0;background:var(--terra)" onclick="lockApp()">Lås appen</button>
         </div>
