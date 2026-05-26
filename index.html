@@ -1434,7 +1434,7 @@ function renderHome() {
                 ${emptyHTML}
             </div>`;
 
-        return `<div class="${depth > 0 ? 'zone-foldout zone-foldout-sub' : 'zone-foldout'}">
+        return `<div class="${depth > 0 ? 'zone-foldout zone-foldout-sub' : 'zone-foldout'}" data-zone-id="${z.id}">
             <div class="zone-foldout-header" onclick="toggleZone('${z.id}')">
                 <span class="zone-icon">${icon}</span>
                 <div class="zone-foldout-info">
@@ -2623,7 +2623,8 @@ function toggleArea(areaKey) {
 }
 
 function toggleZone(zid) {
-    if (collapsedZones.has(zid)) {
+    const wasCollapsed = collapsedZones.has(zid);
+    if (wasCollapsed) {
         collapsedZones.delete(zid);
     } else {
         collapsedZones.add(zid);
@@ -2640,6 +2641,17 @@ function toggleZone(zid) {
         }
     }
     render();
+    // Scroll åbnet zone til toppen af #app
+    if (wasCollapsed) {
+        requestAnimationFrame(() => {
+            const appEl = document.getElementById('app');
+            const el = document.querySelector('[data-zone-id="' + zid + '"]');
+            if (el && appEl) {
+                const offset = el.getBoundingClientRect().top - appEl.getBoundingClientRect().top + appEl.scrollTop;
+                appEl.scrollTo({ top: offset, behavior: 'smooth' });
+            }
+        });
+    }
 }
 
 function openMainMenu() {
