@@ -5,12 +5,41 @@
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.21 på `https://voreshave.soenderup.dk`
+- **Live version:** v1.22 på `https://voreshave.soenderup.dk`
 - **Næste:** Se prioriteringslisten nedenfor
 
 ---
 
 ## Seneste arbejde (26. maj)
+
+### Vejrudsigt widget (v1.22)
+
+**Placering:** Lige under den orange påmindelseslinje på forsiden.
+
+**Opførsel:**
+- **Lukket:** Én kompakt linje (samme højde som orange banner): `⛅ 21° (13°) 💧 30% 💨 5 m/s SV ▼`
+- **Åben:** Klik folder ud til "Nu + 4 dage"-visning med blå gradient, stor aktuel temp + 4-dages grid
+- **Placeholder:** Vises som `🌡️ [stednavn] — henter vejr...` hvis API er nede eller data endnu ikke cachet
+
+**Datakilde:** [Open-Meteo](https://open-meteo.com) — gratis, ingen API-nøgle, direkte browser-fetch
+- Geocoding: `https://geocoding-api.open-meteo.com/v1/search`
+- Vejr: `https://api.open-meteo.com/v1/forecast` — daily weathercode, max/min temp, nedbørsprocent, vindstyrke/-retning
+- Cache: `localStorage['minhave-weather']` — max 1 time, invalideres ved lokationsskift
+
+**Admin-opsætning:** ☰ → "📍 Vejr & lokation" (kun admin)
+- Søg på bynavn → geocoder → vælg fra liste → gemmes i `voreshave/settings` i Firestore
+- Viser nuværende lokation under søgefeltet
+
+**Ny Firestore-reference:** `voreshave/settings`
+- Struktur: `{ location: { lat, lon, name, displayName } }`
+
+**Ny localStorage-nøgle:** `minhave-weather`
+- Struktur: `{ timestamp, lat, lon, data: {current_weather, daily: {...}} }`
+
+**Ny localStorage-nøgle:** `minhave-settings`
+- Backup-cache af Firestore settings
+
+---
 
 ### Rollebaseret brugerstyring via UI (v1.21)
 
@@ -91,7 +120,7 @@ Migration kører automatisk første gang appen åbnes. `voreshave/pins` røres i
 
 ```
 voreshave/
-├── index.html              ← hele appen (v1.21)
+├── index.html              ← hele appen (v1.22)
 ├── manifest.json           ← PWA-manifest
 ├── sw.js                   ← Service worker (cache: vores-have-v7, network-first for HTML)
 ├── netlify.toml            ← Netlify config (Node 18, secrets-scanner slået fra)
@@ -108,10 +137,11 @@ voreshave/
 **Firebase (projekt: voreshave-5e7de):**
 ```
 Firestore:
-  voreshave/data    ← al havedata (zones, plants, reminders, history)
-  voreshave/pins    ← gammel PIN-struktur (beholdes til migration, rør ikke)
-  voreshave/users   ← ny brugerstruktur med roller (oprettet automatisk v1.21)
+  voreshave/data     ← al havedata (zones, plants, reminders, history)
+  voreshave/pins     ← gammel PIN-struktur (beholdes til migration, rør ikke)
+  voreshave/users    ← brugerstruktur med roller (oprettet automatisk v1.21)
   voreshave/loginlog ← login-historik
+  voreshave/settings ← app-indstillinger inkl. vejr-lokation (oprettet v1.22)
 
 Storage:
   photos/{uuid}.jpg ← zone- og elementfotos
@@ -158,6 +188,7 @@ Med mange zoner kan det blive relevant.
 - **PWA cache:** SW bruger network-first for HTML — luk og genåbn app for at få seneste version
 - **Cache-bump:** Kun nødvendigt når `SHELL`-listen i `sw.js` ændres (nye ikoner e.l.)
 - **VERSION:** Kun ved større funktionsændringer
+- **Vejr-widget:** Henter fra Open-Meteo (gratis). Cache 1 time i localStorage. Kræver admin sætter lokation via ☰ → Vejr & lokation. Viser placeholder hvis API er nede.
 - **Netlify gratis-plan:** 10 sekunders timeout på functions - hold kald små
 - **voreshave/pins:** Rør ikke — bruges til migration hvis nogen endnu ikke har fået `voreshave/users`
 
