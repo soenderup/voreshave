@@ -590,7 +590,7 @@ firebase.initializeApp({
 });
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
-const VERSION = '1.17';
+const VERSION = '1.19';
 
 const DATA_REF = fsDB.collection('voreshave').doc('data');
 const PINS_REF = fsDB.collection('voreshave').doc('pins');
@@ -2025,53 +2025,6 @@ function openMainMenu() {
         <div style="padding:0 1.2rem 0.5rem;text-align:center;font-size:0.65rem;color:var(--muted);opacity:0.6">Vores Have v${VERSION}</div>`);
 }
 
-function handleContext() {
-    if (nav.view === 'home' && canEdit()) {
-        openAddZone(null);
-    } else if (nav.view === 'zone') {
-        const zid = nav.zoneId;
-        const z = zone(zid);
-        const editRow = canEdit() ? `
-            <button class="choice-btn" onclick="closeSheet();openEditZone('${zid}')">
-                <span class="choice-icon">✏️</span>
-                <div><div class="choice-label">Rediger zone</div><div class="choice-desc">Navn, type, beskrivelse</div></div>
-            </button>` : '';
-        const addRows = canEdit() ? `
-            <button class="choice-btn" onclick="closeSheet();openAddZone('${zid}')">
-                <span class="choice-icon">🌿</span>
-                <div><div class="choice-label">Ny zone</div><div class="choice-desc">F.eks. højbed, sektion</div></div>
-            </button>
-            <button class="choice-btn" onclick="closeSheet();openAddPlant('${zid}')">
-                <span class="choice-icon">🌱</span>
-                <div><div class="choice-label">Nyt element</div><div class="choice-desc">Plante, træ, busk osv.</div></div>
-            </button>` : '';
-        openSheet(z?.name || 'Zone', `
-            <div style="display:flex;flex-direction:column;gap:0.8rem;padding:0.5rem 0 1rem">
-                ${editRow}${addRows}
-            </div>`);
-    } else if (nav.view === 'plant') {
-        const pid = nav.plantId;
-        const p = plant(pid);
-        const editRow = canEdit() ? `
-            <button class="choice-btn" onclick="closeSheet();openEditPlant('${pid}')">
-                <span class="choice-icon">✏️</span>
-                <div><div class="choice-label">Rediger element</div><div class="choice-desc">Navn, type, placering</div></div>
-            </button>` : '';
-        openSheet(p?.name || 'Element', `
-            <div style="display:flex;flex-direction:column;gap:0.8rem;padding:0.5rem 0 1rem">
-                ${editRow}
-                <button class="choice-btn" onclick="closeSheet();openAddReminder('plant','${pid}')">
-                    <span class="choice-icon">🔔</span>
-                    <div><div class="choice-label">Tilføj påmindelse</div></div>
-                </button>
-                <button class="choice-btn" onclick="closeSheet();openAddHistory('plant','${pid}')">
-                    <span class="choice-icon">📝</span>
-                    <div><div class="choice-label">Tilføj log-note</div></div>
-                </button>
-            </div>`);
-    }
-}
-
 // ── COMPLETE REMINDER ──
 function completeReminder(rid) {
     const r = db.reminders.find(x => x.id === rid);
@@ -2747,14 +2700,19 @@ function unlockAs(name) {
     sessionStorage.setItem('minhave-user', name);
     // Log login-hændelse
     const entry = { user: name, time: new Date().toISOString(), device: getDevice() };
-    LOGINLOG_REF.update({ entries: firebase.firestore.FieldValue.arrayUnion(entry) })
-        .catch(() => LOGINLOG_REF.set({ entries: [entry] })); // opret dokument hvis det ikke findes
+    // Hent eksisterende, tilføj ny, trim til max 100, gem
+    LOGINLOG_REF.get().then(snap => {
+        const existing = snap.exists ? (snap.data().entries || []) : [];
+        const trimmed = [...existing, entry].slice(-100);
+        LOGINLOG_REF.set({ entries: trimmed });
+    }).catch(() => LOGINLOG_REF.set({ entries: [entry] }));
     document.getElementById('lockscreen').classList.remove('visible');
     render();
 }
 
 async function openLoginLog() {
     closeSheet();
+    openSheet('Login-log', `<div style="padding:1rem 1.2rem;color:var(--muted);font-size:0.85rem">Henter...</div>`);
     const snap = await LOGINLOG_REF.get();
     const entries = snap.exists ? (snap.data().entries || []) : [];
     const rows = entries.slice().reverse().slice(0, 60).map(e => {
@@ -2768,22 +2726,6 @@ async function openLoginLog() {
         </div>`;
     }).join('') || '<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0">Ingen logins registreret endnu</div>';
     openSheet('Login-log', `<div style="padding:0 1.2rem 1rem">${rows}</div>`);
-}
-
-function openUserMenu() {
-    const user = currentUser();
-    const otherUser = user === 'Steen' ? 'Linda' : 'Steen';
-    openSheet(user || 'Bruger', `
-        <div style="padding:0.8rem 1.2rem 0;display:flex;flex-direction:column;gap:0.7rem">
-            ${canEdit() ? `
-            <button class="btn-primary" style="margin:0" onclick="startChangePinFor('${user}')">Skift min PIN</button>
-            <button class="btn-primary" style="margin:0;background:var(--green-mid)" onclick="startChangePinFor('${otherUser}')">Sæt ${otherUser}s PIN</button>
-            <button class="btn-primary" style="margin:0;background:var(--green-mid)" onclick="startChangePinFor('Gæst')">${pins.Gæst ? 'Skift gæste-PIN' : 'Opret gæste-PIN'}</button>
-            <button class="btn-primary" style="margin:0;background:#4a6080" onclick="openLoginLog()">📋 Login-log</button>
-            ` : ''}
-            <button class="btn-primary" style="margin:0;background:var(--terra)" onclick="lockApp()">Lås appen</button>
-        </div>
-        <div style="padding:1.2rem 1.2rem 0.5rem;text-align:center;font-size:0.65rem;color:var(--muted);opacity:0.6">Vores Have v${VERSION}</div>`);
 }
 
 function lockApp() {
