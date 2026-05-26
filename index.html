@@ -37,22 +37,27 @@
             padding: 0.9rem 1rem 0.8rem;
             display: flex;
             align-items: center;
-            gap: 0.6rem;
+            justify-content: center;
+            position: relative;
             z-index: 100;
             min-height: 54px;
         }
         #back-btn {
             display: none;
+            position: absolute;
+            left: 1rem;
             background: none;
             border: none;
             color: rgba(255,255,255,0.85);
-            font-size: 1rem;
-            padding: 0.2rem 0.4rem 0.2rem 0;
+            font-size: 1.8rem;
+            line-height: 1;
+            padding: 0;
             cursor: pointer;
-            flex-shrink: 0;
         }
-        #header-title { flex: 1; color: white; font-size: 1.3rem; font-weight: 700; }
-        #header-sub { color: rgba(255,255,255,0.6); font-size: 0.72rem; margin-top: 0.1rem; }
+        #header-center { text-align: left; }
+        #header-title { color: white; font-size: 1.3rem; font-weight: 700; }
+        #header-sub { color: rgba(255,255,255,0.6); font-size: 0.72rem; margin-top: 0.1rem; padding-left: 0.25rem; }
+        #header-right { position: absolute; right: 1rem; display: flex; align-items: center; gap: 0.5rem; }
         #add-btn, #edit-btn {
             background: rgba(255,255,255,0.15);
             border: none;
@@ -161,6 +166,11 @@
         .detail-hero-sub { color: var(--muted); font-size: 0.8rem; margin-top: 0.2rem; }
         .detail-hero-photo { width: 100%; height: 140px; object-fit: cover; display: block; border-radius: 10px; margin-top: 0.8rem; }
         .detail-hero-photo-placeholder { width: 100%; height: 90px; background: rgba(0,0,0,0.05); border-radius: 10px; margin-top: 0.8rem; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.78rem; cursor: pointer; border: 1.5px dashed var(--border); }
+        /* Zone hero med foto og titel-overlay */
+        .zone-hero-wrap { position: relative; margin: 0 1rem 0; border-radius: 10px; overflow: hidden; height: 140px; }
+        .zone-hero-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer; }
+        .zone-hero-grad { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.42) 100%); pointer-events: none; }
+        .zone-hero-name { position: absolute; bottom: 11px; left: 14px; right: 40px; color: white; font-size: 1.2rem; font-weight: 700; text-shadow: 0 1px 4px rgba(0,0,0,.45); line-height: 1.2; pointer-events: none; }
 
         /* Tabs */
         .tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); }
@@ -519,14 +529,17 @@
 <body>
 
 <div id="header">
-    <button id="back-btn" onclick="goBack()">← Tilbage</button>
-    <div style="flex:1">
-        <div id="header-title" onclick="goTo('home')" style="cursor:pointer">Min Have</div>
-        <div id="header-sub"></div>
+    <button id="back-btn" onclick="goBack()">‹</button>
+    <div id="header-center" onclick="goTo('home')" style="cursor:pointer;display:inline-grid;grid-template-columns:auto auto;column-gap:0.35rem;align-items:center">
+        <span id="header-emoji" style="grid-column:1;grid-row:1;align-self:center;font-size:1.5rem">🌿</span>
+        <div id="header-title" style="grid-column:2;grid-row:1">Vores Have</div>
+        <div id="header-sub" style="grid-column:2;grid-row:2"></div>
     </div>
-    <button id="user-btn" onclick="openUserMenu()"></button>
-    <button id="edit-btn" onclick="handleEdit()" style="display:none">✏️</button>
-    <button id="add-btn" onclick="handleAdd()">+</button>
+    <div id="header-right">
+        <button id="user-btn" onclick="openUserMenu()"></button>
+        <button id="edit-btn" onclick="handleEdit()" style="display:none">✏️</button>
+        <button id="add-btn" onclick="handleAdd()">+</button>
+    </div>
 </div>
 
 <div id="lockscreen">
@@ -922,7 +935,10 @@ function goTo(view, zoneId = null, plantId = null, tab = 'main') {
     }
 }
 function goBack() {
-    if (nav.view === 'plant') goTo('zone', nav.zoneId);
+    if (nav.view === 'plant') {
+        if (isDirectZone(nav.zoneId)) goTo('home');
+        else goTo('zone', nav.zoneId);
+    }
     else if (nav.view === 'zone') {
         const z = zone(nav.zoneId);
         if (z?.parentZoneId) goTo('zone', z.parentZoneId);
@@ -959,7 +975,7 @@ function render() {
     userBtn.style.background = user === 'Linda' ? 'rgba(123,79,166,0.4)' : 'rgba(255,255,255,0.18)';
 
     // Header viser altid det samme
-    title.innerHTML = '🌿 Vores Have';
+    title.innerHTML = 'Vores Have';
     sub.textContent = new Date().toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' });
 
     if (nav.view === 'home') {
@@ -1191,15 +1207,16 @@ function renderZone(zid) {
     const mainCount = subs.length + plants.length;
 
     return `
-        <div class="detail-hero">
-            <div style="font-size:1.8rem;margin-bottom:0.3rem">${icon}</div>
-            <div style="font-size:1.25rem;font-weight:700;color:var(--green-dark);margin-bottom:0.15rem">${z.name}</div>
-            <div style="font-size:0.78rem;color:var(--muted);margin-bottom:${z.description ? '0.3rem' : '0'}">${ZONE_TYPES[z.type]?.label || z.type}</div>
-            ${z.description ? `<div class="detail-hero-sub">${z.description}</div>` : ''}
+        <div class="detail-hero" style="${z.photo ? 'padding:1rem 0 1rem 0' : ''}">
             ${z.photo
-                ? `<div style="position:relative;margin-top:0.7rem"><img class="detail-hero-photo" src="${z.photo}" onclick="viewPhoto('${z.photo}')">
-                   ${canEdit() ? `<button class="zone-photo-delete" onclick="deleteZonePhoto('${zid}',event)">×</button>` : ''}</div>`
-                : (canEdit() ? `<div class="detail-hero-photo-placeholder" onclick="pickZonePhoto('${zid}')">📷 Tilføj zonefoto</div>` : '')
+                ? `<div class="zone-hero-wrap">
+                       <img src="${z.photo}" onclick="viewPhoto('${z.photo}')">
+                       <div class="zone-hero-grad"></div>
+                       <div class="zone-hero-name">${z.name}</div>
+                       ${canEdit() ? `<button class="zone-photo-delete" onclick="deleteZonePhoto('${zid}',event)">×</button>` : ''}
+                   </div>`
+                : `<div style="font-size:1.25rem;font-weight:700;color:var(--green-dark)">${z.name}</div>
+                   ${canEdit() ? `<div class="detail-hero-photo-placeholder" onclick="pickZonePhoto('${zid}')">📷 Tilføj zonefoto</div>` : ''}`
             }
         </div>
         <div class="tabs">
