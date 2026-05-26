@@ -1,5 +1,5 @@
 # Handoff — Vores Have
-*Opdateret: 26. maj 2026 (session 3)*
+*Opdateret: 26. maj 2026 (session 4)*
 
 ---
 
@@ -11,7 +11,31 @@
 
 ---
 
-## Seneste arbejde (26. maj — denne session)
+## Seneste arbejde (26. maj — session 4)
+
+### Søgefunktion (v1.24)
+
+**Ny funktion:**
+- 🔍 Søg som 4. fane i bottom-nav
+- Live-søgning mens man skriver (ingen Enter nødvendig)
+- Søger i plantenavne, latinnavne, beskrivelser og zonenavne
+- Resultater grupperes i "Planter" og "Zoner" med antal
+- Klik på plante-resultat → navigerer direkte til planten
+- Klik på zone-resultat → navigerer til Haven og folder zonen ud
+- Clear-knap (✕) vises når der er tekst i feltet
+- Tom state og "ingen resultater"-state med emoji
+
+### Safari-vindue placeres automatisk
+
+Safari positioneres nu i højre 33% ved sessionstart via `System Events` (accessibility API) — tidligere åbnede den bare uden positionering.
+
+### Forfaldne påmindelser ryddet
+
+Alle påmindelser med overskredet dato er slettet fra Firestore via konsol.
+
+---
+
+## Seneste arbejde (26. maj — session 3)
 
 ### AI-plantediagnose: "Hvad fejler den?" (v1.23)
 
@@ -170,7 +194,7 @@ Migration kører automatisk første gang appen åbnes. `voreshave/pins` røres i
 
 ```
 voreshave/
-├── index.html              ← hele appen (v1.22)
+├── index.html              ← hele appen (v1.24)
 ├── manifest.json           ← PWA-manifest
 ├── sw.js                   ← Service worker (cache: vores-have-v7, network-first for HTML)
 ├── netlify.toml            ← Netlify config (Node 18, secrets-scanner slået fra)
@@ -222,8 +246,7 @@ Firestore kører i "test mode" - alle kan læse/skrive uden login. Kræver Fireb
 ### 2. Push-notifikationer på iPhone
 Kræver Firebase Cloud Messaging + opdateret service worker.
 
-### 3. Søgefunktion
-Med mange zoner kan det blive relevant.
+### 3. ~~Søgefunktion~~ ✓ Bygget (v1.24)
 
 ---
 
