@@ -39,12 +39,17 @@
 ### Retry ved Anthropic 529/503
 - Alle fire Netlify-funktioner (plant-info, recommendations, identify-plant, diagnose-plant) venter 1 sek og prøver automatisk igen ved 529/503
 
-### Jordbund-slider
-- Ny care-indikator på elementsiden mellem Lys og Levetid
+### Jord-slider (jordbund/dræning)
+- Ny care-indikator på elementsiden mellem Lys og Levetid — label: **"Jord"**
 - 3 segmenter: `🏜️` velafdrænet ← → `🌊` fugtig/leret
 - Værdier: `'well-drained'` / `'normal'` / `'moist'`
 - Returneres af `identify-plant.js` og `plant-info.js`
-- Migrations-funktion i ☰ → "🔄 Opdater jordbundsdata" (kør én gang for at populere eksisterende planter)
+- Migrations-funktion i ☰ → "🔄 Opdater jordbundsdata" — **allerede kørt, alle planter har nu data**
+- Migrations-knappen kan fjernes i næste session (eller beholdes til genopfriskning)
+
+### Identificer — sycophancy-fix
+- Hint behandles nu som "påstand der vurderes mod billedet", ikke kendsgerning der bekræftes
+- Claude instrueres til at sige fra hvis hint modsiger det den ser (f.eks. "du skriver blå blomster, men jeg ser røde")
 
 ### Burgermenu
 - Komprimeret: padding `1rem` → `0.6rem`, ikon `1.5rem` → `1.15rem`, label `1rem` → `0.88rem`
@@ -376,7 +381,7 @@ Kræver Firebase Cloud Messaging + opdateret service worker.
 - **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8766` — Safari åbner automatisk og placeres i højre 33% (Terminal i venstre 67%) via System Events
 - **Safari auto-reload:** Deaktiveret — tryk Cmd+R manuelt når index.html ændres
 - **Lokal server understøtter IKKE POST** - Netlify-funktioner testes kun på live
-- **Jordbund-migration:** ☰ → "🔄 Opdater jordbundsdata" — kør én gang efter deploy for at populere `drainage`-feltet på eksisterende planter
+- **Jord-migration:** Allerede kørt — alle planter har `drainage`-felt. Migrations-knap kan fjernes i næste session
 - **Deploy:** `git push` → GitHub → Netlify auto-deploy. Spørg ALTID inden push
 - **PWA cache:** SW bruger network-first for HTML — luk og genåbn app for at få seneste version
 - **Cache-bump:** Kun nødvendigt når `SHELL`-listen i `sw.js` ændres (nye ikoner e.l.)
