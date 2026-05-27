@@ -913,6 +913,7 @@ async function loadDB() {
         mergeLocalPhotos();
         localStorage.setItem('voreshave-v3', JSON.stringify(db));
     } catch (e) {
+        logError('loadDB fejlede: ' + e.message, 'loadDB', '');
         if (localRaw) db = JSON.parse(localRaw);
         else seedDB();
         mergeLocalPhotos();
@@ -960,6 +961,7 @@ async function loadUsers() {
             }
         }
     } catch (e) {
+        logError('loadUsers fejlede: ' + e.message, 'loadUsers', '');
         const cached = localStorage.getItem('voreshave-users');
         if (cached) { users = JSON.parse(cached); }
         else { users = []; }
@@ -983,6 +985,7 @@ async function loadSettings() {
             if (cached) appSettings = JSON.parse(cached);
         }
     } catch (e) {
+        logError('loadSettings fejlede: ' + e.message, 'loadSettings', '');
         const cached = localStorage.getItem('voreshave-settings');
         if (cached) try { appSettings = JSON.parse(cached); } catch {}
     }
@@ -1028,7 +1031,7 @@ async function fetchWeatherIfNeeded() {
         const json = await res.json();
         localStorage.setItem('voreshave-weather', JSON.stringify({ timestamp: Date.now(), lat: loc.lat, lon: loc.lon, data: json }));
         if (sessionStorage.getItem('voreshave-unlocked') === '1') render();
-    } catch (e) { console.warn('Vejr fetch fejlede:', e); }
+    } catch (e) { logError('Vejr fetch fejlede: ' + e.message, 'fetchWeather', ''); }
 }
 
 function getWeatherData() {
@@ -1151,6 +1154,7 @@ async function geocodeLocation() {
             </button>`;
         }).join('');
     } catch (e) {
+        logError('Lokationssøgning fejlede: ' + e.message, 'searchLocation', '');
         document.getElementById('loc-result').innerHTML = '<div style="color:var(--terra);font-size:0.85rem">Søgning fejlede. Tjek internetforbindelsen.</div>';
     }
 }
@@ -1743,7 +1747,7 @@ async function doPickZonePhoto(zid, source) {
             const zFresh = zone(zid);
             if (zFresh) { zFresh.photo = url; saveDB(); }
         } catch (err) {
-            console.error('Foto-upload til Storage fejlede:', err);
+            logError('Foto-upload (zone) fejlede: ' + err.message, 'uploadZonePhoto', '');
         }
     };
     input.click();
@@ -1782,7 +1786,7 @@ async function doPickElementPhoto(pid, source) {
             const pFresh = plant(pid);
             if (pFresh) { pFresh.photo = url; saveDB(); }
         } catch (err) {
-            console.error('Foto-upload til Storage fejlede:', err);
+            logError('Foto-upload (element) fejlede: ' + err.message, 'uploadPlantPhoto', '');
         }
     };
     input.click();
@@ -1880,7 +1884,7 @@ async function doPickTimelinePhoto(pid, source) {
                     saveDB();
                 }
             }
-        } catch (err) { console.error('Foto-upload fejlede:', err); }
+        } catch (err) { logError('Foto-upload (tidslinje) fejlede: ' + err.message, 'uploadTimelinePhoto', ''); }
     };
     input.click();
 }
@@ -2045,6 +2049,7 @@ async function openPlantSuggestions(pid) {
             </div>`;
         }).join('');
     } catch (e) {
+        logError('Anbefalinger fejlede: ' + e.message, 'fetchRecommendations', '');
         const body = document.getElementById('suggestions-body');
         if (body) body.innerHTML = `<div style="padding:1rem;color:#c0392b;font-size:0.85rem">Kunne ikke hente anbefalinger – prøv igen.</div>`;
     }
@@ -2209,6 +2214,7 @@ async function identifyPlant() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         identifyState.result = await res.json();
     } catch (e) {
+        logError('Identificer fejlede: ' + e.message, 'identifyPlant', '');
         identifyState.result = { notRecognized: true };
     }
     identifyState.correcting = false;
@@ -2295,6 +2301,7 @@ async function runDiagnose() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         result = await res.json();
     } catch (e) {
+        logError('Diagnose fejlede: ' + e.message, 'runDiagnose', '');
         result = { notRecognized: true };
     }
 
@@ -2413,7 +2420,7 @@ function submitAddPlantFromIdentify() {
         uploadBase64Photo(photoBase64).then(url => {
             const pFresh = plant(newPlant.id);
             if (pFresh) { pFresh.photo = url; saveDB(); }
-        }).catch(err => console.error('Identify-foto upload fejlede:', err));
+        }).catch(err => logError('Identify-foto upload fejlede: ' + err.message, 'uploadIdentifyPhoto', ''));
     }
 }
 
@@ -3226,9 +3233,9 @@ async function fetchPlantInfo(pid) {
             saveDB();
         }
     } catch (e) {
+        logError('fetchPlantInfo fejlede: ' + e.message, 'fetchPlantInfo', '');
         setStatus('Netværksfejl – er du online?');
         showRetry();
-        console.warn('fetchPlantInfo fejlede:', e);
     }
 }
 
@@ -3258,7 +3265,7 @@ async function fetchCareData(pid) {
             saveDB(); render();
         }
     } catch (e) {
-        console.warn('fetchCareData fejlede:', e);
+        logError('fetchCareData fejlede: ' + e.message, 'fetchCareData', '');
         if (btn) { btn.disabled = false; btn.textContent = '🌿 Prøv igen'; }
     }
 }
