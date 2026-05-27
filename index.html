@@ -2822,6 +2822,9 @@ function openMainMenu() {
         </button>
         <button class="choice-btn" onclick="openErrorLog()">
             <span class="choice-icon">🐛</span><div><div class="choice-label">Fejl-log</div></div>
+        </button>
+        <button class="choice-btn" onclick="migrateAllDrainage()">
+            <span class="choice-icon">🔄</span><div><div class="choice-label">Opdater jordbundsdata</div><div class="choice-desc">Én gang — henter for alle planter</div></div>
         </button>` : ''}
         ${localStorage.getItem('voreshave-remember') === user ? `
         <button class="choice-btn" onclick="forgetDevice()">
@@ -3714,6 +3717,44 @@ async function clearErrorLog() {
     if (!confirm('Vil du slette hele fejl-loggen?')) return;
     await ERRORLOG_REF.set({ entries: [] });
     openErrorLog();
+}
+
+async function migrateAllDrainage() {
+    const plants = db.plants || [];
+    if (plants.length === 0) { alert('Ingen planter fundet.'); return; }
+    closeSheet();
+    openSheet('🔄 Opdaterer jordbund...', `
+        <div style="padding:1.2rem">
+            <div id="migrate-status" style="font-size:0.88rem;color:var(--muted)">Starter...</div>
+            <div id="migrate-bar" style="margin-top:0.8rem;height:6px;border-radius:3px;background:var(--border)">
+                <div id="migrate-fill" style="height:100%;border-radius:3px;background:var(--green-mid);width:0%;transition:width 0.3s"></div>
+            </div>
+        </div>
+    `);
+    let done = 0, errors = 0;
+    for (const p of plants) {
+        const status = document.getElementById('migrate-status');
+        const fill = document.getElementById('migrate-fill');
+        if (status) status.textContent = `${done + 1}/${plants.length}: ${p.name}`;
+        try {
+            const res = await fetch('/.netlify/functions/plant-info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: p.name, latinName: p.latinName || '', plantType: p.type || '', note: '' }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const fresh = db.plants.find(x => x.id === p.id);
+                if (fresh && data.drainage) fresh.drainage = data.drainage;
+            }
+        } catch (e) { errors++; }
+        done++;
+        if (fill) fill.style.width = Math.round(done / plants.length * 100) + '%';
+        await new Promise(r => setTimeout(r, 300)); // lille pause mellem kald
+    }
+    saveDB();
+    const status = document.getElementById('migrate-status');
+    if (status) status.textContent = `✓ Færdig — ${done} planter opdateret${errors ? `, ${errors} fejl` : ''}`;
 }
 
 async function testErrorLog() {
