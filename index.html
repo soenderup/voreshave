@@ -764,13 +764,21 @@ const SETTINGS_REF = fsDB.collection('voreshave').doc('settings');
 const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 
 // ── GLOBAL FEJL-LOGGER ──
-function logError(msg, source, lineno) {
+function logError(msg, source, lineno, errorObj) {
     try {
         const user = sessionStorage.getItem('voreshave-user') || '(ikke logget ind)';
+        const stack = (errorObj?.stack || (errorObj instanceof Error ? errorObj.stack : null))
+            ? String(errorObj.stack).replace(new RegExp(location.origin, 'g'), '').slice(0, 1000)
+            : '';
+        const ctx = typeof nav !== 'undefined'
+            ? [nav.view, nav.plantId ? 'plante:' + nav.plantId : '', nav.zoneId ? 'zone:' + nav.zoneId : ''].filter(Boolean).join(' · ')
+            : '';
         const entry = {
-            msg: String(msg).slice(0, 300),
+            msg: String(msg).slice(0, 400),
             source: source ? String(source).replace(location.origin, '') : '',
             line: lineno || '',
+            stack,
+            ctx,
             user,
             time: new Date().toISOString()
         };
@@ -781,8 +789,11 @@ function logError(msg, source, lineno) {
         }).catch(() => ERRORLOG_REF.set({ entries: [entry] }));
     } catch(e) { /* undgå fejl-i-fejl-loop */ }
 }
-window.onerror = (msg, src, line) => { logError(msg, src, line); return false; };
-window.onunhandledrejection = e => { logError('Promise: ' + (e.reason?.message || e.reason), '', ''); };
+window.onerror = (msg, src, line, col, error) => { logError(msg, src, line, error); return false; };
+window.onunhandledrejection = e => {
+    const err = e.reason;
+    logError(err?.message || String(err), '', '', err instanceof Error ? err : null);
+};
 
 // ── STATE ──
 const today = new Date();
@@ -925,7 +936,7 @@ async function loadDB() {
         mergeLocalPhotos();
         localStorage.setItem('voreshave-v3', JSON.stringify(db));
     } catch (e) {
-        logError('loadDB fejlede: ' + e.message, 'loadDB', '');
+        logError('loadDB fejlede: ' + e.message, 'loadDB', '', e);
         if (localRaw) db = JSON.parse(localRaw);
         else seedDB();
         mergeLocalPhotos();
@@ -973,7 +984,7 @@ async function loadUsers() {
             }
         }
     } catch (e) {
-        logError('loadUsers fejlede: ' + e.message, 'loadUsers', '');
+        logError('loadUsers fejlede: ' + e.message, 'loadUsers', '', e);
         const cached = localStorage.getItem('voreshave-users');
         if (cached) { users = JSON.parse(cached); }
         else { users = []; }
@@ -997,7 +1008,7 @@ async function loadSettings() {
             if (cached) appSettings = JSON.parse(cached);
         }
     } catch (e) {
-        logError('loadSettings fejlede: ' + e.message, 'loadSettings', '');
+        logError('loadSettings fejlede: ' + e.message, 'loadSettings', '', e);
         const cached = localStorage.getItem('voreshave-settings');
         if (cached) try { appSettings = JSON.parse(cached); } catch {}
     }
@@ -1043,7 +1054,7 @@ async function fetchWeatherIfNeeded() {
         const json = await res.json();
         localStorage.setItem('voreshave-weather', JSON.stringify({ timestamp: Date.now(), lat: loc.lat, lon: loc.lon, data: json }));
         if (sessionStorage.getItem('voreshave-unlocked') === '1') render();
-    } catch (e) { logError('Vejr fetch fejlede: ' + e.message, 'fetchWeather', ''); }
+    } catch (e) { logError('Vejr fetch fejlede: ' + e.message, 'fetchWeather', '', e); }
 }
 
 function getWeatherData() {
@@ -1166,7 +1177,7 @@ async function geocodeLocation() {
             </button>`;
         }).join('');
     } catch (e) {
-        logError('Lokationssøgning fejlede: ' + e.message, 'searchLocation', '');
+        logError('Lokationssøgning fejlede: ' + e.message, 'searchLocation', '', e);
         document.getElementById('loc-result').innerHTML = '<div style="color:var(--terra);font-size:0.85rem">Søgning fejlede. Tjek internetforbindelsen.</div>';
     }
 }
@@ -2106,7 +2117,7 @@ async function openPlantSuggestions(pid) {
             </div>`;
         }).join('');
     } catch (e) {
-        logError('Anbefalinger fejlede: ' + e.message, 'fetchRecommendations', '');
+        logError('Anbefalinger fejlede: ' + e.message, 'fetchRecommendations', '', e);
         const body = document.getElementById('suggestions-body');
         if (body) body.innerHTML = `<div style="padding:1rem;color:#c0392b;font-size:0.85rem">Kunne ikke hente anbefalinger – prøv igen.</div>`;
     }
@@ -2271,7 +2282,7 @@ async function identifyPlant() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         identifyState.result = await res.json();
     } catch (e) {
-        logError('Identificer fejlede: ' + e.message, 'identifyPlant', '');
+        logError('Identificer fejlede: ' + e.message, 'identifyPlant', '', e);
         identifyState.result = { notRecognized: true };
     }
     identifyState.correcting = false;
@@ -2358,7 +2369,7 @@ async function runDiagnose() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         result = await res.json();
     } catch (e) {
-        logError('Diagnose fejlede: ' + e.message, 'runDiagnose', '');
+        logError('Diagnose fejlede: ' + e.message, 'runDiagnose', '', e);
         result = { notRecognized: true };
     }
 
@@ -3299,7 +3310,7 @@ async function fetchPlantInfo(pid) {
             saveDB();
         }
     } catch (e) {
-        logError('fetchPlantInfo fejlede: ' + e.message, 'fetchPlantInfo', '');
+        logError('fetchPlantInfo fejlede: ' + e.message, 'fetchPlantInfo', '', e);
         setStatus('Netværksfejl – er du online?');
         showRetry();
     }
@@ -3332,7 +3343,7 @@ async function fetchCareData(pid) {
             saveDB(); render();
         }
     } catch (e) {
-        logError('fetchCareData fejlede: ' + e.message, 'fetchCareData', '');
+        logError('fetchCareData fejlede: ' + e.message, 'fetchCareData', '', e);
         if (btn) { btn.disabled = false; btn.textContent = '🌿 Prøv igen'; }
     }
 }
@@ -3736,14 +3747,17 @@ async function openErrorLog() {
         const d = new Date(e.time);
         const dato = d.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' });
         const tid  = d.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
-        const src  = e.source ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem;word-break:break-all">${e.source}${e.line ? ':' + e.line : ''}</div>` : '';
-        return `<div style="padding:0.55rem 0;border-bottom:1px solid var(--border)">
+        const src   = e.source ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:0.15rem;word-break:break-all">📄 ${e.source}${e.line ? ':' + e.line : ''}</div>` : '';
+        const ctx   = e.ctx    ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:0.1rem">📍 ${e.ctx}</div>` : '';
+        const stack = e.stack  ? `<pre style="font-size:0.62rem;color:var(--muted);white-space:pre-wrap;word-break:break-all;margin-top:0.4rem;background:rgba(0,0,0,0.04);padding:0.4rem 0.5rem;border-radius:6px;max-height:110px;overflow-y:auto;line-height:1.4">${e.stack}</pre>` : '';
+        return `<div style="padding:0.6rem 0;border-bottom:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem">
-                <span style="font-size:0.82rem;color:var(--text);flex:1;word-break:break-word">${e.msg}</span>
-                <span style="font-size:0.72rem;color:var(--muted);white-space:nowrap">${dato} ${tid}</span>
+                <span style="font-size:0.82rem;color:var(--text);flex:1;word-break:break-word;font-weight:600">${e.msg}</span>
+                <span style="font-size:0.7rem;color:var(--muted);white-space:nowrap">${dato} ${tid}</span>
             </div>
-            ${src}
-            <div style="font-size:0.72rem;color:var(--green-dark);margin-top:0.1rem">${e.user}</div>
+            ${src}${ctx}
+            <div style="font-size:0.7rem;color:var(--green-dark);margin-top:0.1rem">👤 ${e.user}</div>
+            ${stack}
         </div>`;
     }).join('') || '<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0">Ingen fejl registreret 🎉</div>';
     openSheet('Fejl-log', `
@@ -4011,7 +4025,7 @@ async function runAICheck() {
 
     } catch (e) {
         if (btn) { btn.disabled = false; btn.textContent = '🤖 Kør AI-tjek (fejl — prøv igen)'; }
-        logError('runAICheck: ' + e.message, 'check-plants', 0);
+        logError('runAICheck: ' + e.message, 'check-plants', 0, e);
     }
 }
 
