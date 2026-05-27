@@ -3674,18 +3674,27 @@ async function openErrorLog() {
     }).join('') || '<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0">Ingen fejl registreret 🎉</div>';
     openSheet('Fejl-log', `
         <div style="padding:0 1.2rem 1rem">${rows}</div>
-        ${entries.length > 0 ? `
-        <div style="padding:0 1.2rem 1.2rem">
+        <div style="padding:0 1.2rem 1.2rem;display:flex;flex-direction:column;gap:0.5rem">
+            <button onclick="testErrorLog()" style="width:100%;padding:0.75rem;border:1px solid var(--border);border-radius:12px;background:var(--white);color:var(--green-dark);font-size:0.85rem;cursor:pointer">
+                🧪 Send test-fejl
+            </button>
+            ${entries.length > 0 ? `
             <button onclick="clearErrorLog()" style="width:100%;padding:0.75rem;border:1px solid var(--border);border-radius:12px;background:var(--white);color:var(--muted);font-size:0.85rem;cursor:pointer">
                 🗑️ Tøm log
-            </button>
-        </div>` : ''}
+            </button>` : ''}
+        </div>
     `);
 }
 
 async function clearErrorLog() {
     if (!confirm('Vil du slette hele fejl-loggen?')) return;
     await ERRORLOG_REF.set({ entries: [] });
+    openErrorLog();
+}
+
+async function testErrorLog() {
+    logError('Test-fejl — bekræfter at fejl-loggen virker', 'test', 0);
+    await new Promise(r => setTimeout(r, 800));
     openErrorLog();
 }
 
