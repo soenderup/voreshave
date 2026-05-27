@@ -1,5 +1,5 @@
-const CACHE = 'vores-have-v7';
-const SHELL = ['/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE = 'vores-have-v8';
+const SHELL = ['/manifest.json', '/icons/icon-180.png', '/icons/icon-192.png', '/icons/icon-512.png'];
 const HTML = ['/', '/index.html'];
 
 self.addEventListener('install', e => {
