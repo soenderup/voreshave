@@ -3903,10 +3903,10 @@ function runLocalChecks() {
     db.plants.forEach(p => {
         if (!p.type || p.perennial === undefined || p.perennial === null) return;
         if (p.perennial === true && p.type === 'Etårig') {
-            issues.push({ severity: 'warning', message: `"${p.name}": type er "Etårig" men trivseldata siger "Flerårig"`, action: `openEditPlant('${p.id}')` });
+            issues.push({ severity: 'warning', message: `"${p.name}": type er "Etårig" men trivseldata siger "Flerårig"`, detail: 'Tryk Ret for at synkronisere trivseldata med typen', action: `fixPerennialConflict('${p.id}')` });
         }
         if (p.perennial === false && altidFlerårig.includes(p.type)) {
-            issues.push({ severity: 'warning', message: `"${p.name}": type er "${p.type}" (flerårig) men trivseldata siger "Etårig"`, action: `openEditPlant('${p.id}')` });
+            issues.push({ severity: 'warning', message: `"${p.name}": type er "${p.type}" (flerårig) men trivseldata siger "Etårig"`, detail: 'Tryk Ret for at synkronisere trivseldata med typen', action: `fixPerennialConflict('${p.id}')` });
         }
     });
 
@@ -4053,6 +4053,16 @@ async function runAICheck() {
         if (btn) { btn.disabled = false; btn.textContent = '🤖 Kør AI-tjek (fejl — prøv igen)'; }
         logError('runAICheck: ' + e.message, 'check-plants', 0, e);
     }
+}
+
+async function fixPerennialConflict(pid) {
+    const p = plant(pid);
+    if (!p) return;
+    const altidFlerårigTypes = ['Staude', 'Træ', 'Busk', 'Hæk', 'Klatrer', 'Græs'];
+    if (p.type === 'Etårig') p.perennial = false;
+    else if (altidFlerårigTypes.includes(p.type)) p.perennial = true;
+    await saveDB();
+    showRegistrationCheck(); // Genindlæs listen
 }
 
 async function applyAISuggestion(pid, suggestedType, btn) {
