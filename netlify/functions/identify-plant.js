@@ -25,9 +25,9 @@ exports.handler = async function (event) {
 
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const mediaType = imageBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
-    const hintText = hint ? `\n\nBrugerens note: "${hint}"` : '';
-    const correctionText = correction ? `\n\nBrugerens kommentar til dit forrige svar: "${correction}"` : '';
-    const responseField = (hint || correction) ? `\n  "response": "1-2 sætninger på hverdagsdansk der direkte adresserer brugerens tekst — bekræft, nuancer eller forklar hvad du lægger vægt på i din vurdering",` : '';
+    const hintText = hint ? `\n\nBrugerens påstand om planten: "${hint}". Brug dette som ét input — men stol primært på hvad du selv ser i billedet. Brugerens påstand kan være forkert.` : '';
+    const correctionText = correction ? `\n\nBrugerens kommentar til dit forrige svar: "${correction}". Det forrige svar var forkert på dette punkt — tag det med i din nye vurdering.` : '';
+    const responseField = (hint || correction) ? `\n  "response": "1-2 sætninger på hverdagsdansk: adresser brugerens tekst ærligt — hvis den STEMMER med billedet, bekræft det kort; hvis den IKKE stemmer med hvad du ser, sig det direkte og forklar hvad du faktisk ser",` : '';
 
     const prompt = `Du er dansk planteekspert. Identificer planten på billedet.${hintText}${correctionText}
 
