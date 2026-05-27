@@ -165,11 +165,11 @@
         .zone-element-meta { font-size: 0.73rem; color: var(--muted); margin-top: 0.05rem; }
         .zone-element-empty { padding: 0.8rem 1rem; font-size: 0.82rem; color: var(--muted); font-style: italic; }
         .menu-section-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 0 0.2rem; }
-        .choice-btn { display: flex; align-items: center; gap: 0.9rem; width: 100%; background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 1rem 1.1rem; cursor: pointer; text-align: left; }
+        .choice-btn { display: flex; align-items: center; gap: 0.7rem; width: 100%; background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem; cursor: pointer; text-align: left; }
         .choice-btn:active { opacity: 0.8; }
-        .choice-icon { font-size: 1.5rem; flex-shrink: 0; }
-        .choice-label { font-size: 1rem; font-weight: 600; color: var(--green-dark); }
-        .choice-desc { font-size: 0.78rem; color: var(--muted); margin-top: 0.1rem; }
+        .choice-icon { font-size: 1.15rem; flex-shrink: 0; }
+        .choice-label { font-size: 0.88rem; font-weight: 600; color: var(--green-dark); }
+        .choice-desc { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
 
         /* ── PLANT LIST ── */
         .plant-list { border-top: 1px solid var(--border); }
@@ -2810,7 +2810,7 @@ function openMainMenu() {
         </button>`;
 
     openSheet('Menu', `
-        <div style="display:flex;flex-direction:column;gap:0.6rem;padding:0.5rem 0 1rem">
+        <div style="display:flex;flex-direction:column;gap:0.35rem;padding:0.5rem 0 1rem">
             ${contextSection}${userSection}
         </div>
         <div style="padding:0 1.2rem 0.5rem;text-align:center;font-size:0.65rem;color:var(--muted);opacity:0.6">Vores Have v${VERSION}</div>`);
