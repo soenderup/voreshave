@@ -1409,7 +1409,7 @@ function renderHome() {
     const URGENT_MAX = 5;
     const urgentVisible = urgent.slice(0, URGENT_MAX);
     const urgentHidden = urgent.length - urgentVisible.length;
-    const urgentLabel = urgentHidden > 0 ? `Påmindelser (+${urgentHidden})` : `Påmindelser (${urgent.length})`;
+    const urgentLabel = urgentHidden > 0 ? `Påmindelser (+${URGENT_MAX})` : `Påmindelser (${urgent.length})`;
     const urgentHTML = urgent.length === 0 ? '' : `
         <div class="urgent-strip">
             <div class="strip-header" onclick="urgentOpen=!urgentOpen;render()">
