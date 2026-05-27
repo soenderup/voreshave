@@ -44,7 +44,14 @@ Vigtigt: "Stueplante" er en gyldig type for indendørs planter som orkidéer, gu
 Planter at vurdere:
 ${plantList}
 
-Returner KUN et JSON-array med de planter der sandsynligvis har FORKERT type — kun dem du er ret sikker på er fejlregistreret. Vær konservativ: hellere for få end for mange. Ingen tekst udenfor JSON:
+VIGTIGT: Vær meget konservativ. Flag KUN planter hvor registreringen er åbenlyst forkert. Flg. er alle acceptable og må ALDRIG flages:
+- Figentræ som "Træ" ELLER "Frugt" (begge er korrekte)
+- Lavendel som "Staude" ELLER "Busk" (begge bruges i praksis)
+- Gummitræ som "Træ" ELLER "Stueplante" ELLER "Andet" (det er en stueplante-kontekst)
+- Tomat som "Grøntsag" ELLER "Frugt" (begge er korrekte)
+- Rosmarin/timian som "Krydderurt" ELLER "Busk" (begge er korrekte)
+
+Returner KUN et JSON-array med de planter der sandsynligvis har FORKERT type — kun dem du er MEGET sikker på er fejlregistreret. Hellere ingen resultater end forkerte. Ingen tekst udenfor JSON:
 [
   {
     "index": 1,

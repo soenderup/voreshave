@@ -4028,11 +4028,18 @@ async function runAICheck() {
         const data = await res.json();
         const aiIssues = data.issues || [];
 
-        const rows = !aiIssues.length
+        const ignored = new Set(db.ignoredAIChecks || []);
+        const visibleIssues = aiIssues.filter(issue => {
+            const p = db.plants.find(x => x.name === issue.name);
+            return !p || !ignored.has(p.id);
+        });
+
+        const rows = !visibleIssues.length
             ? '<div style="font-size:0.84rem;color:var(--muted);text-align:center;padding:1rem 0">Claude fandt ingen mistænkelige typeregistreringer 🎉</div>'
-            : aiIssues.map(issue => {
+            : visibleIssues.map(issue => {
                 const p = db.plants.find(x => x.name === issue.name);
                 const retBtn = (p && issue.suggestedType) ? `<button onclick="applyAISuggestion('${p.id}','${issue.suggestedType}',this)" style="font-size:0.72rem;padding:0.25rem 0.65rem;border:1px solid var(--border);border-radius:6px;background:var(--white);color:var(--green-dark);cursor:pointer;white-space:nowrap;flex-shrink:0">Ret</button>` : '';
+                const ignBtn = p ? `<button onclick="ignoreAICheck('${p.id}',this)" style="font-size:0.72rem;padding:0.25rem 0.65rem;border:none;background:none;color:var(--muted);cursor:pointer;white-space:nowrap;flex-shrink:0">Ignorer</button>` : '';
                 const forslag = issue.suggestedType ? ` → foreslår: <strong>${issue.suggestedType}</strong>` : '';
                 return `<div style="padding:0.55rem 0;border-bottom:1px solid var(--border);display:flex;gap:0.5rem;align-items:flex-start">
                     <span style="font-size:0.88rem;flex-shrink:0;margin-top:0.1rem">🤖</span>
@@ -4040,7 +4047,7 @@ async function runAICheck() {
                         <div style="font-size:0.82rem;color:var(--text)">"${issue.name}": <em>${issue.currentType}</em>${forslag}</div>
                         <div style="font-size:0.7rem;color:var(--muted);margin-top:0.1rem">${issue.reason}</div>
                     </div>
-                    ${retBtn}
+                    ${retBtn}${ignBtn}
                 </div>`;
             }).join('');
 
@@ -4053,6 +4060,13 @@ async function runAICheck() {
         if (btn) { btn.disabled = false; btn.textContent = '🤖 Kør AI-tjek (fejl — prøv igen)'; }
         logError('runAICheck: ' + e.message, 'check-plants', 0, e);
     }
+}
+
+async function ignoreAICheck(pid, btn) {
+    if (!db.ignoredAIChecks) db.ignoredAIChecks = [];
+    if (!db.ignoredAIChecks.includes(pid)) db.ignoredAIChecks.push(pid);
+    await saveDB();
+    btn.closest('div[style]').remove();
 }
 
 async function fixPerennialConflict(pid) {
