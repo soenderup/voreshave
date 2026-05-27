@@ -2201,7 +2201,7 @@ function openDiagnose(pid) {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.capture = 'environment';
+    // Ingen capture-attribut → iOS viser native vælger: Tag foto / Fotoarkiv / Gennemse
     input.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -2209,14 +2209,29 @@ function openDiagnose(pid) {
         reader.onload = async (ev) => {
             const resized = await resizeImageForAPI(ev.target.result, 800);
             diagnoseState.imageDataUrl = resized;
-            await runDiagnose();
+            showDiagnoseHintsSheet();
         };
         reader.readAsDataURL(file);
     };
     input.click();
 }
 
+function showDiagnoseHintsSheet() {
+    openSheet('🔍 Hvad fejler den?', `
+        <div class="form-body">
+            <img src="${diagnoseState.imageDataUrl}" style="width:100%;border-radius:10px;margin-bottom:1.1rem;max-height:220px;object-fit:cover">
+            <label style="font-size:0.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:0.4rem">Tilføj hint (valgfrit)</label>
+            <textarea id="diagnose-hint" rows="3"
+                style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:0.7rem;font-size:0.9rem;line-height:1.45;resize:none;font-family:inherit;color:var(--text);background:var(--cream)"
+                placeholder="Eks: jorden er meget våd · det var frost i nat · ved siden af står en rhododendron · bladene hænger siden i går"></textarea>
+            <button class="btn-primary" style="margin-top:0.9rem" onclick="runDiagnose()">Analysér</button>
+            <button class="btn-secondary" style="margin-top:0.5rem" onclick="closeSheet()">Annuller</button>
+        </div>
+    `);
+}
+
 async function runDiagnose() {
+    const hint = document.getElementById('diagnose-hint')?.value?.trim() || '';
     const p = plant(diagnoseState.plantId);
     openSheet('🔍 Analyserer...', `<div style="padding:1.5rem;text-align:center;color:var(--muted)">⏳ Kigger på planten...</div>`);
 
@@ -2229,6 +2244,7 @@ async function runDiagnose() {
                 imageBase64: diagnoseState.imageDataUrl,
                 plantName: p?.name || '',
                 latinName: p?.latinName || '',
+                hint: hint,
             }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

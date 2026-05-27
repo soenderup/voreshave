@@ -16,7 +16,7 @@ function httpsPost(options, body) {
 exports.handler = async function (event) {
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
-    const { imageBase64, plantName, latinName } = JSON.parse(event.body || '{}');
+    const { imageBase64, plantName, latinName, hint } = JSON.parse(event.body || '{}');
     const apiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!apiKey || !imageBase64) {
@@ -27,8 +27,9 @@ exports.handler = async function (event) {
     const mediaType = imageBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
 
     const plantInfo = plantName ? `Planten hedder "${plantName}"${latinName ? ` (${latinName})` : ''}.` : '';
+    const hintInfo = hint ? `\n\nBrugeren tilføjer denne kontekst: "${hint}"` : '';
 
-    const prompt = `Du er dansk havekonsulent og plantepatolog. ${plantInfo} Analyser billedet og diagnosticer hvad der er galt med planten.
+    const prompt = `Du er dansk havekonsulent og plantepatolog. ${plantInfo} Analyser billedet og diagnosticer hvad der er galt med planten.${hintInfo}
 
 Returner KUN et JSON-objekt uden forklaring:
 {
