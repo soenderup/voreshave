@@ -449,6 +449,7 @@ Kræver Firebase Cloud Messaging + opdateret service worker.
 - **Cache-bump:** Kun nødvendigt når `SHELL`-listen i `sw.js` ændres (nye ikoner e.l.)
 - **VERSION:** Kun ved større funktionsændringer
 - **Vejr-widget:** Henter fra Open-Meteo (gratis). Cache 1 time i localStorage. Kræver admin sætter lokation via ☰ → Vejr & lokation. Viser placeholder hvis API er nede.
+- **Netlify gratis-plan:** 125.000 function-kald/måned - vi har overskredet det. Overvej at flytte til **Cloudflare Workers** (100.000 kald/dag gratis). Funktionerne der skal flyttes: plant-info, recommendations, identify-plant, diagnose-plant, check-plants
 - **Netlify gratis-plan:** 10 sekunders timeout på functions - hold kald små
 - **voreshave/pins:** Rør ikke — bruges til migration hvis nogen endnu ikke har fået `voreshave/users`
 
