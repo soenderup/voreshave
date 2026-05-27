@@ -2128,6 +2128,16 @@ function renderIdentify() {
                     <div class="identify-actions">
                         ${canEdit() ? `<button class="btn-primary" onclick="openAddPlantFromIdentify()">+ Opret element</button>` : ''}
                         <button class="btn-secondary" onclick="startCorrection()">↩ Prøv igen</button>
+                        <div style="display:flex;gap:0.5rem;margin-top:0.2rem">
+                            ${result.latinName ? `<a href="https://da.wikipedia.org/wiki/${encodeURIComponent(result.latinName)}" target="_blank" rel="noopener"
+                                style="flex:1;text-align:center;padding:0.6rem;border:1px solid var(--border);border-radius:10px;font-size:0.82rem;color:var(--muted);text-decoration:none;background:var(--white)">
+                                📖 Wikipedia
+                            </a>` : ''}
+                            <a href="https://www.google.dk/search?q=${encodeURIComponent((result.name || '') + ' plante')}" target="_blank" rel="noopener"
+                                style="flex:1;text-align:center;padding:0.6rem;border:1px solid var(--border);border-radius:10px;font-size:0.82rem;color:var(--muted);text-decoration:none;background:var(--white)">
+                                🔎 Google
+                            </a>
+                        </div>
                     </div>
                 </div>`;
         }
