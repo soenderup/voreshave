@@ -37,7 +37,9 @@ Eksempler på fejlregistreringer:
 - En tulipan registreret som "Stauder" (tulipaner er "Løgplante")
 - En tomat registreret som "Frugt" (tomat er "Grøntsag" i havesammenhæng)
 
-Gyldige typer: Stauder, Blomst, Løgplante, Grøntsag, Frugt, Træ, Busk, Hæk, Klatrer, Græs, Etårig, Andet
+Gyldige typer: Staude, Blomst, Løgplante, Grøntsag, Frugt, Krydderurt, Træ, Busk, Hæk, Klatrer, Græs, Etårig, Stueplante, Andet
+
+Vigtigt: "Stueplante" er en gyldig type for indendørs planter som orkidéer, gummitræer og lignende stueplanter. Brug IKKE "Andet" til stueplanter — brug "Stueplante".
 
 Planter at vurdere:
 ${plantList}
