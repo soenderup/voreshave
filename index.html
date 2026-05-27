@@ -1564,7 +1564,8 @@ function renderHome() {
 function careIconsHTML(p) {
     const wVal = { dry: 1, normal: 2, moist: 3 }[p.water] || 0;
     const lVal = { shade: 1, 'partial-shade': 2, partial: 3, 'full-partial': 4, full: 5 }[p.light] || 0;
-    if (!wVal && !lVal && p.perennial == null) return '';
+    const dVal = { 'well-drained': 1, normal: 2, moist: 3 }[p.drainage] || 0;
+    if (!wVal && !lVal && !dVal && p.perennial == null) return '';
     const segs = (n, total) => Array.from({length: total}, (_, i) =>
         `<div class="care-seg${i < n ? ' on' : ''}"></div>`).join('');
     const waterRow = wVal ? `<div class="care-row">
@@ -1581,13 +1582,20 @@ function careIconsHTML(p) {
             <div class="care-segs">${segs(lVal, 5)}</div>
             <span class="care-end r">☀️</span>
         </div></div>` : '';
+    const drainRow = dVal ? `<div class="care-row">
+        <span class="care-lbl">Jordbund</span>
+        <div class="care-track">
+            <span class="care-end l">🏜️</span>
+            <div class="care-segs">${segs(dVal, 3)}</div>
+            <span class="care-end r">🌊</span>
+        </div></div>` : '';
     const perRow = p.perennial != null ? `<div class="care-row">
         <span class="care-lbl">Levetid</span>
         <div class="care-pills">
             <span class="cpill${p.perennial === false ? ' on' : ''}">🌱 Etårig</span>
             <span class="cpill${p.perennial === true ? ' on' : ''}">♾️ Flerårig</span>
         </div></div>` : '';
-    return `<div class="care-block">${waterRow}${lightRow}${perRow}</div>`;
+    return `<div class="care-block">${waterRow}${lightRow}${drainRow}${perRow}</div>`;
 }
 
 function renderPlant(pid) {
@@ -3236,6 +3244,7 @@ async function fetchPlantInfo(pid) {
             if (data.info) fresh.aiInfo = data.info;
             if (data.water) fresh.water = data.water;
             if (data.light) fresh.light = data.light;
+            if (data.drainage) fresh.drainage = data.drainage;
             if (data.perennial != null) fresh.perennial = data.perennial;
             saveDB();
         }
@@ -3268,6 +3277,7 @@ async function fetchCareData(pid) {
         if (fresh) {
             if (data.water) fresh.water = data.water;
             if (data.light) fresh.light = data.light;
+            if (data.drainage) fresh.drainage = data.drainage;
             if (data.perennial != null) fresh.perennial = data.perennial;
             saveDB(); render();
         }

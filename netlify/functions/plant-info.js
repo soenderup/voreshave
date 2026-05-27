@@ -41,11 +41,13 @@ exports.handler = async function (event) {
   "info": "3-5 konkrete sætninger på hverdagsdansk om pasning, vanding, beskæring, dansk klima og særlige hensyn${missingInfo}",
   "water": "dry",
   "light": "full",
+  "drainage": "well-drained",
   "perennial": true
 }
 
 Mulige water-værdier: "dry" (tørketålende), "normal" (normal vanding), "moist" (fugtighedskrævende – hold jord fugtig)
 Mulige light-værdier: "full" (fuld sol, 6+ timer), "full-partial" (sol til halvskygge), "partial" (halvskygge, 3-6 timer), "partial-shade" (halvskygge til skygge), "shade" (skygge, under 3 timer)
+Mulige drainage-værdier: "well-drained" (velafdrænet, sandet/let jord), "normal" (normal havejord), "moist" (fugtig, leret jord der holder på vand)
 perennial: true hvis flerårig, false hvis etårig/toårig
 
 Plante:

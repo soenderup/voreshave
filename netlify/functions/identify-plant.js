@@ -40,11 +40,13 @@ Returner KUN et JSON-objekt uden forklaring:
   "description": "2-3 sætninger om planten på naturligt hverdagsdansk",
   "water": "dry",
   "light": "full",
+  "drainage": "well-drained",
   "perennial": true
 }
 
 water-værdier: "dry" (tørketålende), "normal" (normal vanding), "moist" (fugtighedskrævende)
 light-værdier: "full" (fuld sol), "full-partial" (sol til halvskygge), "partial" (halvskygge), "partial-shade" (halvskygge til skygge), "shade" (skygge)
+drainage-værdier: "well-drained" (velafdrænet, sandet jord), "normal" (normal havejord), "moist" (fugtig, leret jord)
 perennial: true hvis flerårig, false hvis etårig/toårig
 
 Hvis billedet ikke viser en plante eller er for utydeligt til at identificere: { "notRecognized": true }`;
