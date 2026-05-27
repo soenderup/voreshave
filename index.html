@@ -3877,8 +3877,8 @@ function runLocalChecks() {
     db.plants.forEach(p => {
         const z = db.zones.find(z => z.id === p.zoneId);
         if (!z || !p.type) return;
-        if (['Træ', 'Busk'].includes(p.type) && ['krukke', 'kasse', 'højbed'].includes(z.type)) {
-            issues.push({ severity: 'warning', message: `"${p.name}" er registreret som ${p.type} men er i "${z.name}" (${ZONE_TYPES[z.type]?.label})`, detail: 'Træer og buske er sjældent i krukker — er typen korrekt?', action: `openEditPlant('${p.id}')` });
+        if (p.type === 'Træ' && ['krukke', 'kasse', 'højbed'].includes(z.type)) {
+            issues.push({ severity: 'warning', message: `"${p.name}" er registreret som ${p.type} men er i "${z.name}" (${ZONE_TYPES[z.type]?.label})`, detail: 'Træer er sjældent i krukker — er typen korrekt?', action: `openEditPlant('${p.id}')` });
         }
     });
 
@@ -3957,13 +3957,16 @@ function showRegistrationCheck() {
         const retBtn = issue.action
             ? `<button onclick="${issue.action}" style="font-size:0.72rem;padding:0.25rem 0.65rem;border:1px solid var(--border);border-radius:6px;background:var(--white);color:var(--green-dark);cursor:pointer;white-space:nowrap;flex-shrink:0">Ret</button>`
             : '';
-        return `<div style="padding:0.55rem 0;border-bottom:1px solid var(--border);display:flex;gap:0.5rem;align-items:flex-start">
+        const ignoreBtn = issue.severity === 'info'
+            ? `<button onclick="this.closest('div[data-issue]').remove()" style="font-size:0.72rem;padding:0.25rem 0.65rem;border:none;background:none;color:var(--muted);cursor:pointer;white-space:nowrap;flex-shrink:0">Ignorer</button>`
+            : '';
+        return `<div data-issue style="padding:0.55rem 0;border-bottom:1px solid var(--border);display:flex;gap:0.5rem;align-items:flex-start">
             <span style="font-size:0.88rem;flex-shrink:0;margin-top:0.1rem">${icon}</span>
             <div style="flex:1;min-width:0">
                 <div style="font-size:0.82rem;color:var(--text)">${issue.message}</div>
                 ${issue.detail ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:0.1rem">${issue.detail}</div>` : ''}
             </div>
-            ${retBtn}
+            ${retBtn}${ignoreBtn}
         </div>`;
     };
 
@@ -4056,6 +4059,11 @@ async function applyAISuggestion(pid, suggestedType, btn) {
     const p = plant(pid);
     if (!p) return;
     p.type = suggestedType;
+    // Synkroniser perennial med den nye type
+    const altidFlerårigTypes = ['Staude', 'Træ', 'Busk', 'Hæk', 'Klatrer', 'Græs'];
+    const altidEtårigTypes = ['Etårig'];
+    if (altidFlerårigTypes.includes(suggestedType)) p.perennial = true;
+    else if (altidEtårigTypes.includes(suggestedType)) p.perennial = false;
     await saveDB();
     btn.textContent = '✓';
     btn.disabled = true;
