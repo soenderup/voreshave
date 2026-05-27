@@ -1,13 +1,42 @@
 # Handoff — Vores Have
-*Opdateret: 27. maj 2026 (session 8)*
+*Opdateret: 27. maj 2026 (session 9)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.25 + fejl-log + diagnose/identificer forbedringer + jordbund-slider på `https://voreshave.soenderup.dk`
-- **Seneste:** Fejl-log, diagnose/identificer UX, jordbund-slider, burgermenu komprimeret
+- **Live version:** v1.25 + tjek-registreringer + drainage-normalisering på `https://voreshave.soenderup.dk`
+- **Seneste:** Admin-funktion "Tjek registreringer", `parseDrainage()` normalisering
 - **Næste:** Firestore sikkerhedsregler (deadline ~24. juni!), se idé-listen
+
+---
+
+## Seneste arbejde (27. maj — session 9)
+
+### Admin: "Tjek registreringer" (☰-menu, kun admin)
+- Ny knap i hamburgermenu: "🔍 Tjek registreringer"
+- **Lokal tjek (øjeblikkeligt)** — kører direkte på `db` uden API:
+  - 🔴 Forældreløse planter (zoneId peger på ikke-eksisterende zone)
+  - 🔴 Forældreløse påmindelser/noter (entityId peger på slettet plante/zone)
+  - ⚠️ Stor plante i lille beholder (Træ/Busk i krukke/kasse/højbed)
+  - ⚠️ Hæk-plante ikke i hæk-zone
+  - ⚠️ Plante i træ-zone der ikke er Træ/Busk
+  - ⚠️ Perennial/type-modstrid (Stauder markeret etårig, Etårig markeret flerårig)
+  - ℹ️ Mangler type, latinsk navn, trivseldata
+  - ℹ️ Dubletter (samme navn i samme zone)
+  - ℹ️ Tomme zoner (ingen planter/underzoner)
+- **AI-tjek** — kalder `/.netlify/functions/check-plants` (Claude Haiku)
+  - Sender alle planter med navn + latinsk navn + type
+  - Claude markerer mistænkelige typeregistreringer med begrundelse
+  - Foreslår korrekt type
+- Ny Netlify-funktion: `netlify/functions/check-plants.js`
+
+### `parseDrainage()` — drainage-normalisering
+- Ny hjælpefunktion normaliserer drainage-værdier
+- Håndterer: dansk ("velafdrænet", "fugtig", "leret"), forkert casing ("Well-Drained"), underscore ("well_drained"), varianter ("sandet jord")
+- Bruges i **rendering** (careIconsHTML) og alle **3 steder der skriver** drainage
+- Forhindrer at uventede svar fra Claude-API ødelægger drainage-visningen
+- Rettede et problem hvor "Opdater jordbundsdata" ikke persisterede korrekt pga. onSnapshot-race (migrationen virker online)
 
 ---
 
@@ -45,7 +74,7 @@
 - Værdier: `'well-drained'` / `'normal'` / `'moist'`
 - Returneres af `identify-plant.js` og `plant-info.js`
 - Migrations-funktion i ☰ → "🔄 Opdater jordbundsdata" — **allerede kørt, alle planter har nu data**
-- Migrations-knappen kan fjernes i næste session (eller beholdes til genopfriskning)
+- Migrations-knappen beholdes til genopfriskning — kør altid fra live-sitet, ikke localhost
 
 ### Identificer — sycophancy-fix
 - Hint behandles nu som "påstand der vurderes mod billedet", ikke kendsgerning der bekræftes
@@ -381,7 +410,8 @@ Kræver Firebase Cloud Messaging + opdateret service worker.
 - **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8766` — Safari åbner automatisk og placeres i højre 33% (Terminal i venstre 67%) via System Events
 - **Safari auto-reload:** Deaktiveret — tryk Cmd+R manuelt når index.html ændres
 - **Lokal server understøtter IKKE POST** - Netlify-funktioner testes kun på live
-- **Jord-migration:** Allerede kørt — alle planter har `drainage`-felt. Migrations-knap kan fjernes i næste session
+- **Jord-migration:** Kør altid fra **live-sitet** (ikke localhost). Migrations-knappen kan beholdes til genopfriskning
+- **parseDrainage():** Normaliserer drainage-værdier mod dansk/forkert casing — bruges i rendering + alle skrivepunkter
 - **Deploy:** `git push` → GitHub → Netlify auto-deploy. Spørg ALTID inden push
 - **PWA cache:** SW bruger network-first for HTML — luk og genåbn app for at få seneste version
 - **Cache-bump:** Kun nødvendigt når `SHELL`-listen i `sw.js` ændres (nye ikoner e.l.)
