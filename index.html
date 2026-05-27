@@ -755,10 +755,32 @@ const DATA_REF     = fsDB.collection('voreshave').doc('data');
 const PINS_REF     = fsDB.collection('voreshave').doc('pins');
 const USERS_REF    = fsDB.collection('voreshave').doc('users');
 const LOGINLOG_REF = fsDB.collection('voreshave').doc('loginlog');
+const ERRORLOG_REF = fsDB.collection('voreshave').doc('errorlog');
 const SETTINGS_REF = fsDB.collection('voreshave').doc('settings');
 
 // ── UUID ──
 const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+// ── GLOBAL FEJL-LOGGER ──
+function logError(msg, source, lineno) {
+    try {
+        const user = sessionStorage.getItem('voreshave-user') || '(ikke logget ind)';
+        const entry = {
+            msg: String(msg).slice(0, 300),
+            source: source ? String(source).replace(location.origin, '') : '',
+            line: lineno || '',
+            user,
+            time: new Date().toISOString()
+        };
+        ERRORLOG_REF.get().then(snap => {
+            const existing = snap.exists ? (snap.data().entries || []) : [];
+            const trimmed = [...existing, entry].slice(-200);
+            ERRORLOG_REF.set({ entries: trimmed });
+        }).catch(() => ERRORLOG_REF.set({ entries: [entry] }));
+    } catch(e) { /* undgå fejl-i-fejl-loop */ }
+}
+window.onerror = (msg, src, line) => { logError(msg, src, line); return false; };
+window.onunhandledrejection = e => { logError('Promise: ' + (e.reason?.message || e.reason), '', ''); };
 
 // ── STATE ──
 const today = new Date();
@@ -2714,6 +2736,9 @@ function openMainMenu() {
         </button>
         <button class="choice-btn" onclick="openLoginLog()">
             <span class="choice-icon">📋</span><div><div class="choice-label">Login-log</div></div>
+        </button>
+        <button class="choice-btn" onclick="openErrorLog()">
+            <span class="choice-icon">🐛</span><div><div class="choice-label">Fejl-log</div></div>
         </button>` : ''}
         ${localStorage.getItem('voreshave-remember') === user ? `
         <button class="choice-btn" onclick="forgetDevice()">
@@ -3565,6 +3590,42 @@ async function clearLoginLog() {
     if (!confirm('Vil du slette hele login-loggen?')) return;
     await LOGINLOG_REF.set({ entries: [] });
     openLoginLog();
+}
+
+async function openErrorLog() {
+    closeSheet();
+    openSheet('Fejl-log', `<div style="padding:1rem 1.2rem;color:var(--muted);font-size:0.85rem">Henter...</div>`);
+    const snap = await ERRORLOG_REF.get();
+    const entries = snap.exists ? (snap.data().entries || []) : [];
+    const rows = entries.slice().reverse().slice(0, 100).map(e => {
+        const d = new Date(e.time);
+        const dato = d.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' });
+        const tid  = d.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
+        const src  = e.source ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem;word-break:break-all">${e.source}${e.line ? ':' + e.line : ''}</div>` : '';
+        return `<div style="padding:0.55rem 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem">
+                <span style="font-size:0.82rem;color:var(--text);flex:1;word-break:break-word">${e.msg}</span>
+                <span style="font-size:0.72rem;color:var(--muted);white-space:nowrap">${dato} ${tid}</span>
+            </div>
+            ${src}
+            <div style="font-size:0.72rem;color:var(--green-dark);margin-top:0.1rem">${e.user}</div>
+        </div>`;
+    }).join('') || '<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0">Ingen fejl registreret 🎉</div>';
+    openSheet('Fejl-log', `
+        <div style="padding:0 1.2rem 1rem">${rows}</div>
+        ${entries.length > 0 ? `
+        <div style="padding:0 1.2rem 1.2rem">
+            <button onclick="clearErrorLog()" style="width:100%;padding:0.75rem;border:1px solid var(--border);border-radius:12px;background:var(--white);color:var(--muted);font-size:0.85rem;cursor:pointer">
+                🗑️ Tøm log
+            </button>
+        </div>` : ''}
+    `);
+}
+
+async function clearErrorLog() {
+    if (!confirm('Vil du slette hele fejl-loggen?')) return;
+    await ERRORLOG_REF.set({ entries: [] });
+    openErrorLog();
 }
 
 function lockApp() {
