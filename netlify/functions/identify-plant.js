@@ -26,12 +26,13 @@ exports.handler = async function (event) {
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const mediaType = imageBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
     const hintText = hint ? `\n\nBrugerens note: "${hint}"` : '';
-    const correctionText = correction ? `\n\nBrugerens rettelse af dit forrige svar: "${correction}". Det forrige svar var forkert på dette punkt — tag det med i din nye vurdering.` : '';
+    const correctionText = correction ? `\n\nBrugerens kommentar til dit forrige svar: "${correction}"` : '';
+    const correctionResponseField = correction ? `\n  "correctionResponse": "1-2 sætninger på hverdagsdansk der direkte adresserer brugerens kommentar og forklarer hvorfor du nu foreslår denne plante",` : '';
 
     const prompt = `Du er dansk planteekspert. Identificer planten på billedet.${hintText}${correctionText}
 
 Returner KUN et JSON-objekt uden forklaring:
-{
+{${correctionResponseField}
   "name": "dansk plantenavn",
   "latinName": "latinsk navn eller null",
   "type": "én af: Stauder, Blomst, Løgplante, Grøntsag, Frugt, Træ, Busk, Hæk, Klatrer, Græs, Etårig, Andet",
