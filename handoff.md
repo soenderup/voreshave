@@ -1,13 +1,57 @@
 # Handoff — Vores Have
-*Opdateret: 27. maj 2026 (session 10)*
+*Opdateret: 27. maj 2026 (session 11)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.25 + swipe-navigation + forbedret fejl-log på `https://voreshave.soenderup.dk`
-- **Seneste:** Svip-navigation mellem planter, forbedret fejl-log (stack trace), slet zone tilgængelig
-- **Næste:** Firestore sikkerhedsregler (deadline ~24. juni!), se idé-listen
+- **Live version:** v1.25 + diverse fixes på `https://voreshave.soenderup.dk`
+- **Seneste:** Tjek registreringer forbedret, nye plantetyper, app-ikon opdateret
+- **Næste:** Firestore sikkerhedsregler (deadline ~24. juni!), Cloudflare Workers migration (Netlify koster), se idé-listen
+
+---
+
+## Seneste arbejde (27. maj — session 11)
+
+### Tjek registreringer — mange forbedringer
+
+- **Hæk-check ignorerer nu ghost-zoner** (isDirect) — "Liguster"-advarsler forsvandt
+- **Perennial-konflikter** får auto-fix "Ret"-knap der synkroniserer trivseldata med typen
+- **AI-forslag** opdaterer nu også `perennial`-feltet ved "Ret"
+- **Busk i krukke** fjernet fra advarsler — kun Træ advares (Busk i krukke er helt normalt)
+- **Info-items** (tomme zoner) får "Ignorer"-knap der fjerner dem visuelt
+- **AI flip-flop fix:** "Ignorer permanent"-knap gemmer plant-id i `db.ignoredAIChecks` — planten flagges aldrig igen
+- **Prompt skærpet:** AI instrueres eksplicit om at tvetydige planter (figentræ, lavendel, gummitræ, tomat) er acceptable og ikke må flages
+
+### Nye plantetyper
+
+- `Stauder` omdøbt til `Staude` (ental som alle andre typer)
+- `Stueplante` tilføjet — til orkidéer, gummitræer og lignende
+- `Krydderurt` tilføjet — til basilikum, timian, rosmarin osv.
+- Migration kører automatisk ved app-start: `type === 'Stauder'` → `'Staude'`
+- `altidFlerårig`-listen og AI-prompt opdateret med nye typer
+
+### App-ikon (hjemmeskærm)
+
+- Nyt ikon: 🌿 emoji på mørk grøn baggrund med afrundede hjørner
+- Genereret via SVG + qlmanage + Pillow (Python)
+- `apple-touch-icon` peger nu på `/icons/icon-180-v2.png` (nyt filnavn tvinger iOS til at hente frisk)
+- SW cache bumped til v8, `skipWaiting()` tilføjet så ny SW overtager med det samme
+- Favicon.svg opdateret tilsvarende
+
+### Plantedato — "Ukendt"
+
+- Dato-felt starter nu tomt (ikke dagens dato) ved oprettelse
+- "Ukendt"-checkbox skjuler/rydder dato-feltet — fungerer på iPhone
+- Eksisterende planter med dato: checkbox ikke hakket, dato vises
+- Eksisterende planter uden dato: checkbox hakket, felt skjult
+- Visning: viser "Ukendt" i kursiv når plantedato mangler
+
+### Netlify overforbrug
+
+- Sitet var nede pga. overskredne function-kald (125k/måned gratis)
+- Betalt 100 kr. for ekstra kald
+- **Overvej Cloudflare Workers** (100k kald/dag gratis) — se huskelisten
 
 ---
 
