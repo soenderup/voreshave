@@ -1406,13 +1406,17 @@ function renderHome() {
         </div>`;
 
     const urgent = urgentReminders();
+    const URGENT_MAX = 5;
+    const urgentVisible = urgent.slice(0, URGENT_MAX);
+    const urgentHidden = urgent.length - urgentVisible.length;
+    const urgentLabel = urgentHidden > 0 ? `Påmindelser (+${urgentHidden})` : `Påmindelser (${urgent.length})`;
     const urgentHTML = urgent.length === 0 ? '' : `
         <div class="urgent-strip">
             <div class="strip-header" onclick="urgentOpen=!urgentOpen;render()">
-                <h2>Påmindelser (${urgent.length})</h2>
+                <h2>${urgentLabel}</h2>
                 <span class="strip-chevron${urgentOpen ? ' open' : ''}">▼</span>
             </div>
-            ${urgentOpen ? `<div class="strip-body">${urgent.map(r => {
+            ${urgentOpen ? `<div class="strip-body">${urgentVisible.map(r => {
                 const days = daysUntil(r.date);
                 const hot = new Date(r.date) <= new Date();
                 let who = '';
@@ -1425,7 +1429,10 @@ function renderHome() {
                     <div class="urgent-dot${hot ? ' hot' : ''}"></div>
                     <div>${r.text}<span class="urgent-meta">${who}${days}</span></div>
                 </div>`;
-            }).join('')}</div>` : ''}
+            }).join('')}${urgentHidden > 0 ? `
+                <div onclick="goTo('calendar')" style="padding:0.55rem 0.2rem;font-size:0.82rem;color:rgba(255,255,255,0.8);cursor:pointer;text-decoration:underline;text-underline-offset:3px">
+                    + ${urgentHidden} flere → Se alle i kalenderen
+                </div>` : ''}</div>` : ''}
         </div>`;
 
     function zoneCard(z, depth = 0) {
