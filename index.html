@@ -885,7 +885,7 @@ const ZONE_TYPES = {
     andet:       { label: 'Andet',       icon: '🏡' },
 };
 
-const PLANT_TYPES = ['Stauder','Blomst','Løgplante','Grøntsag','Frugt','Træ','Busk','Hæk','Klatrer','Græs','Etårig','Andet'];
+const PLANT_TYPES = ['Staude','Blomst','Løgplante','Grøntsag','Frugt','Krydderurt','Træ','Busk','Hæk','Klatrer','Græs','Etårig','Stueplante','Andet'];
 
 const AREAS = {
     forhave:   { label: 'Forhave',    icon: '🏠' },
@@ -921,7 +921,12 @@ function mergeLocalPhotos() {
             needsPhotoMigration = true;
         }
     });
-    if (needsPhotoMigration) saveDB();
+    // Migrer "Stauder" → "Staude"
+    let needsTypeMigration = false;
+    (db.plants || []).forEach(p => {
+        if (p.type === 'Stauder') { p.type = 'Staude'; needsTypeMigration = true; }
+    });
+    if (needsPhotoMigration || needsTypeMigration) saveDB();
 }
 
 async function loadDB() {
@@ -1275,7 +1280,7 @@ function seedDB() {
         { id: pJord5,    zoneId: zK5,     name: 'Jordbær',       latinName: 'Fragaria × ananassa',     type: 'Frugt',    plantedDate: '', note: '', infoLink: '' },
         { id: pJord6,    zoneId: zK6,     name: 'Jordbær',       latinName: 'Fragaria × ananassa',     type: 'Frugt',    plantedDate: '', note: '', infoLink: '' },
         { id: pKlem,     zoneId: zKlem,   name: 'Klematis',      latinName: 'Clematis',                type: 'Klatrer',  plantedDate: '', note: 'Lille bed på terrassen.', infoLink: '' },
-        { id: pBirg,     zoneId: zBirg,   name: 'Birgitte med det sorte øje', latinName: 'Rudbeckia hirta', type: 'Stauder', plantedDate: '', note: 'Lille bed på terrassen. Blomstrer sensommer.', infoLink: '' },
+        { id: pBirg,     zoneId: zBirg,   name: 'Birgitte med det sorte øje', latinName: 'Rudbeckia hirta', type: 'Staude', plantedDate: '', note: 'Lille bed på terrassen. Blomstrer sensommer.', infoLink: '' },
     ];
 
     db.reminders = [
@@ -3894,7 +3899,7 @@ function runLocalChecks() {
     });
 
     // 7. Perennial/type-modstrid
-    const altidFlerårig = ['Stauder', 'Træ', 'Busk', 'Hæk', 'Klatrer', 'Græs'];
+    const altidFlerårig = ['Staude', 'Træ', 'Busk', 'Hæk', 'Klatrer', 'Græs'];
     db.plants.forEach(p => {
         if (!p.type || p.perennial === undefined || p.perennial === null) return;
         if (p.perennial === true && p.type === 'Etårig') {
