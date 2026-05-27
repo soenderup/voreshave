@@ -1642,16 +1642,17 @@ function renderPlant(pid) {
     return `
         <div class="detail-hero" style="padding-bottom:0.8rem">
             ${heroHasNav ? `
-            <div style="display:flex;align-items:center;gap:0.2rem;margin-bottom:0.1rem">
-                <button class="hero-nav-btn${heroIdx === 0 ? ' dim' : ''}"
-                    onclick="${heroIdx > 0 ? 'navToPlantSibling(-1)' : 'goBack()'}">‹</button>
+            <button onclick="goBack()" style="background:none;border:none;padding:0;margin-bottom:0.45rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;color:var(--green-mid);font-size:0.78rem;font-weight:600">
+                <span style="font-size:1rem;line-height:1">‹</span> ${heroZone ? heroZone.name : 'Tilbage'}
+            </button>
+            <div style="display:flex;align-items:center;gap:0.2rem">
+                <button class="hero-nav-btn${heroIdx === 0 ? ' dim' : ''}" onclick="navToPlantSibling(-1)">‹</button>
                 <div style="flex:1;min-width:0;padding:0 0.1rem">
                     <div style="font-size:1.25rem;font-weight:700;color:var(--green-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
                     ${p.latinName ? `<div class="detail-hero-sub">${p.latinName}</div>` : ''}
-                    <div style="font-size:0.68rem;color:var(--muted);font-weight:600;margin-top:0.12rem;letter-spacing:0.02em">${heroIdx + 1} af ${heroSiblings.length}${heroZone ? ` · ${heroZone.name}` : ''}</div>
+                    <div style="font-size:0.68rem;color:var(--muted);font-weight:600;margin-top:0.12rem;letter-spacing:0.02em">${heroIdx + 1} af ${heroSiblings.length}</div>
                 </div>
-                <button class="hero-nav-btn${heroIdx === heroSiblings.length - 1 ? ' dim' : ''}"
-                    onclick="navToPlantSibling(1)">›</button>
+                <button class="hero-nav-btn${heroIdx === heroSiblings.length - 1 ? ' dim' : ''}" onclick="navToPlantSibling(1)">›</button>
             </div>
             ` : `
             <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:0.15rem">
