@@ -1,13 +1,58 @@
 # Handoff — Vores Have
-*Opdateret: 26. maj 2026 (session 7)*
+*Opdateret: 27. maj 2026 (session 8)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.25 + UI-rettelser + login-forbedringer på `https://voreshave.soenderup.dk`
-- **Seneste:** Husk mig på login, Tøm log, Safari dev-fix
-- **Næste:** Se idé-listen og prioriteringslisten nedenfor
+- **Live version:** v1.25 + fejl-log + diagnose/identificer forbedringer + jordbund-slider på `https://voreshave.soenderup.dk`
+- **Seneste:** Fejl-log, diagnose/identificer UX, jordbund-slider, burgermenu komprimeret
+- **Næste:** Firestore sikkerhedsregler (deadline ~24. juni!), se idé-listen
+
+---
+
+## Seneste arbejde (27. maj — session 8)
+
+### Fejl-log
+- Global fejlfangst via `window.onerror` + `window.onunhandledrejection` → Firestore (`voreshave/errorlog`)
+- `logError()` tilføjet i alle vigtige catch-blokke: loadDB, loadUsers, loadSettings, vejr, lokationssøgning, foto-upload (zone/element/tidslinje), anbefalinger, identificer, diagnose, fetchPlantInfo, fetchCareData
+- Fejl-log UI i ☰ (kun admin): viser fejlbesked, fil:linje, bruger, tidspunkt — nyeste øverst
+- 🧪 Test-knap til at verificere at logningen virker
+- 🗑️ Tøm log-knap (som login-loggen)
+- Max 200 entries i Firestore
+
+### Diagnose ("Hvad fejler den?")
+- **Foto-valg:** Fjernet `capture="environment"` → iOS viser nu native picker (Tag foto / Fotoarkiv / Gennemse)
+- **iOS fix:** Input-element tilføjes DOM før klik (ellers fyrer `onchange` ikke ved fotoarkiv-valg)
+- **Hints-felt:** Efter foto-valg vises sheet med preview + textarea til kontekst
+  - Placeholder: "Eks: jorden er meget våd · det var frost i nat · ved siden af står en..."
+- **Hint sendes til API** som ekstra kontekst i prompten
+
+### Identificer
+- **Prøv igen:** Beholder billede, viser korrektionsfelt i stedet for at nulstille alt
+  - Placeholder: "Eks: det er ikke meldug · bladene er runde, ikke spidse"
+- **Svar på brugerens tekst:** `response`-felt i JSON — Claude svarer direkte på hint eller korrektion
+  - Vises som 💬-boks øverst i resultatkort (kun når bruger har skrevet noget)
+- **Links:** 📖 Wikipedia (latinsk navn) + 🔎 Google — vises under resultat
+- **Knap-feedback:** "Analysér igen" viser "⏳ Analyserer..." ved klik
+
+### Retry ved Anthropic 529/503
+- Alle fire Netlify-funktioner (plant-info, recommendations, identify-plant, diagnose-plant) venter 1 sek og prøver automatisk igen ved 529/503
+
+### Jordbund-slider
+- Ny care-indikator på elementsiden mellem Lys og Levetid
+- 3 segmenter: `🏜️` velafdrænet ← → `🌊` fugtig/leret
+- Værdier: `'well-drained'` / `'normal'` / `'moist'`
+- Returneres af `identify-plant.js` og `plant-info.js`
+- Migrations-funktion i ☰ → "🔄 Opdater jordbundsdata" (kør én gang for at populere eksisterende planter)
+
+### Burgermenu
+- Komprimeret: padding `1rem` → `0.6rem`, ikon `1.5rem` → `1.15rem`, label `1rem` → `0.88rem`
+
+### Påmindelsesbanner
+- Maks 5 påmindelser vist
+- Header: "Påmindelser (3)" ved ≤5, "Påmindelser (+5)" ved >5
+- Link "→ Se alle i kalenderen" vises under de 5 hvis der er flere
 
 ---
 
@@ -271,6 +316,7 @@ Firestore:
   voreshave/pins     ← gammel PIN-struktur (beholdes til migration, rør ikke)
   voreshave/users    ← brugerstruktur med roller (oprettet automatisk v1.21)
   voreshave/loginlog ← login-historik
+  voreshave/errorlog ← fejl-log (max 200 entries)
   voreshave/settings ← app-indstillinger inkl. vejr-lokation (oprettet v1.22)
 
 Storage:
@@ -330,6 +376,7 @@ Kræver Firebase Cloud Messaging + opdateret service worker.
 - **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8766` — Safari åbner automatisk og placeres i højre 33% (Terminal i venstre 67%) via System Events
 - **Safari auto-reload:** Deaktiveret — tryk Cmd+R manuelt når index.html ændres
 - **Lokal server understøtter IKKE POST** - Netlify-funktioner testes kun på live
+- **Jordbund-migration:** ☰ → "🔄 Opdater jordbundsdata" — kør én gang efter deploy for at populere `drainage`-feltet på eksisterende planter
 - **Deploy:** `git push` → GitHub → Netlify auto-deploy. Spørg ALTID inden push
 - **PWA cache:** SW bruger network-first for HTML — luk og genåbn app for at få seneste version
 - **Cache-bump:** Kun nødvendigt når `SHELL`-listen i `sw.js` ændres (nye ikoner e.l.)
