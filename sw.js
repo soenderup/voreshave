@@ -4,8 +4,7 @@ const HTML = ['/', '/index.html'];
 
 self.addEventListener('install', e => {
     e.waitUntil(caches.open(CACHE).then(c => c.addAll([...SHELL, ...HTML])));
-    // Ingen skipWaiting — ny SW venter til næste gang appen åbnes,
-    // så igangværende uploads ikke afbrydes midt i
+    self.skipWaiting(); // Overtag med det samme så nye ikoner/filer ikke venter
 });
 
 self.addEventListener('activate', e => {
