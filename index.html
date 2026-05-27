@@ -1690,7 +1690,7 @@ function renderPlant(pid) {
                 ${p.latinName ? `<div class="info-row"><span class="label">Latinsk navn</span><span class="val"><em>${p.latinName}</em></span></div>` : ''}
                 ${p.type ? `<div class="info-row"><span class="label">Type</span><span class="val">${p.type}</span></div>` : ''}
                 ${p.quantity > 1 ? `<div class="info-row"><span class="label">Antal</span><span class="val">${p.quantity} stk.</span></div>` : ''}
-                ${p.plantedDate ? `<div class="info-row"><span class="label">Plantet</span><span class="val">${formatDate(p.plantedDate)}</span></div>` : ''}
+                <div class="info-row"><span class="label">Plantet</span><span class="val">${p.plantedDate ? formatDate(p.plantedDate) : '<span style="color:var(--muted);font-style:italic">Ukendt</span>'}</span></div>
                 ${p.infoLink ? `<div class="info-row"><span class="label">Info-link</span><span class="val"><a href="${p.infoLink}" target="_blank" style="color:var(--green-mid)">Åbn →</a></span></div>` : ''}
             </div>
             ${p.note ? `<div class="info-note"><div class="info-note-label">Egne noter</div>${p.note}</div>` : ''}
@@ -2437,7 +2437,7 @@ function openAddPlantFromIdentify() {
             <div class="field-row">
                 <div class="field"><label>Type</label><select id="f-type">${types}</select></div>
                 <div class="field" style="max-width:80px"><label>Antal</label><input id="f-qty" type="number" min="1" value="1"></div>
-                <div class="field"><label>Plantet</label><input id="f-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+                <div class="field"><label>Plantet</label><div style="display:flex;align-items:center;gap:0.6rem"><input id="f-date" type="date" value="" style="flex:1;display:none"><label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;color:var(--muted);white-space:nowrap;font-weight:normal"><input type="checkbox" id="f-date-unknown" onchange="togglePlantedDate(this)" checked> Ukendt</label></div></div>
             </div>
             <div class="field"><label>Egne noter</label><textarea id="f-note" placeholder="Observationer, tips...">${r.description||''}</textarea></div>
             <div class="field"><label>Info-link (valgfrit)</label><input id="f-link" value="" placeholder="https://..."></div>
@@ -3130,7 +3130,7 @@ function plantFormHTML(p = {}, prefixHTML = '') {
             <div class="field-row">
                 <div class="field"><label>Type</label><select id="f-type">${types}</select></div>
                 <div class="field" style="max-width:80px"><label>Antal</label><input id="f-qty" type="number" min="1" value="${p.quantity||1}"></div>
-                <div class="field"><label>Plantet</label><input id="f-date" type="date" value="${p.plantedDate||new Date().toISOString().slice(0,10)}"></div>
+                <div class="field"><label>Plantet</label><div style="display:flex;align-items:center;gap:0.6rem"><input id="f-date" type="date" value="${p.plantedDate||''}" style="flex:1;${p.plantedDate ? '' : 'display:none'}"><label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;color:var(--muted);white-space:nowrap;font-weight:normal"><input type="checkbox" id="f-date-unknown" onchange="togglePlantedDate(this)" ${p.plantedDate ? '' : 'checked'}> Ukendt</label></div></div>
             </div>
             <div class="field"><label>Egne noter</label><textarea id="f-note" placeholder="Observationer, tips...">${p.note||''}</textarea></div>
             <div class="field"><label>Info-link (valgfrit)</label><input id="f-link" value="${p.infoLink||''}" placeholder="https://..."></div>
@@ -3182,6 +3182,18 @@ function submitAddDirectPlant(areaKey) {
     saveDB(); closeSheet();
     goTo('plant', newZone.id, newPlant.id);
     fetchPlantInfo(newPlant.id);
+}
+
+function togglePlantedDate(cb) {
+    const dateInput = document.getElementById('f-date');
+    if (!dateInput) return;
+    if (cb.checked) {
+        dateInput.value = '';
+        dateInput.style.display = 'none';
+    } else {
+        dateInput.style.display = '';
+        if (!dateInput.value) dateInput.value = new Date().toISOString().slice(0,10);
+    }
 }
 
 function openEditPlant(pid) {
@@ -4011,7 +4023,7 @@ async function runAICheck() {
             ? '<div style="font-size:0.84rem;color:var(--muted);text-align:center;padding:1rem 0">Claude fandt ingen mistænkelige typeregistreringer 🎉</div>'
             : aiIssues.map(issue => {
                 const p = db.plants.find(x => x.name === issue.name);
-                const retBtn = p ? `<button onclick="openEditPlant('${p.id}')" style="font-size:0.72rem;padding:0.25rem 0.65rem;border:1px solid var(--border);border-radius:6px;background:var(--white);color:var(--green-dark);cursor:pointer;white-space:nowrap;flex-shrink:0">Ret</button>` : '';
+                const retBtn = (p && issue.suggestedType) ? `<button onclick="applyAISuggestion('${p.id}','${issue.suggestedType}',this)" style="font-size:0.72rem;padding:0.25rem 0.65rem;border:1px solid var(--border);border-radius:6px;background:var(--white);color:var(--green-dark);cursor:pointer;white-space:nowrap;flex-shrink:0">Ret</button>` : '';
                 const forslag = issue.suggestedType ? ` → foreslår: <strong>${issue.suggestedType}</strong>` : '';
                 return `<div style="padding:0.55rem 0;border-bottom:1px solid var(--border);display:flex;gap:0.5rem;align-items:flex-start">
                     <span style="font-size:0.88rem;flex-shrink:0;margin-top:0.1rem">🤖</span>
@@ -4032,6 +4044,16 @@ async function runAICheck() {
         if (btn) { btn.disabled = false; btn.textContent = '🤖 Kør AI-tjek (fejl — prøv igen)'; }
         logError('runAICheck: ' + e.message, 'check-plants', 0, e);
     }
+}
+
+async function applyAISuggestion(pid, suggestedType, btn) {
+    const p = plant(pid);
+    if (!p) return;
+    p.type = suggestedType;
+    await saveDB();
+    btn.textContent = '✓';
+    btn.disabled = true;
+    btn.style.color = 'var(--muted)';
 }
 
 function lockApp() {
