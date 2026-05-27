@@ -2123,9 +2123,9 @@ function renderIdentify() {
             const confPct = Math.round(conf * 100);
             resultHTML = `
                 <div class="identify-result-card">
-                    ${result.correctionResponse ? `
+                    ${result.response ? `
                     <div style="background:var(--cream);border-bottom:1px solid var(--border);padding:0.85rem 1.2rem;font-size:0.88rem;color:var(--text);line-height:1.5;font-style:italic">
-                        💬 ${result.correctionResponse}
+                        💬 ${result.response}
                     </div>` : ''}
                     <div class="identify-result-header">
                         <div class="identify-result-name">${result.name || 'Ukendt plante'}</div>
