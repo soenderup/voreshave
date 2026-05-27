@@ -1,13 +1,45 @@
 # Handoff — Vores Have
-*Opdateret: 27. maj 2026 (session 9)*
+*Opdateret: 27. maj 2026 (session 10)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.25 + tjek-registreringer + drainage-normalisering på `https://voreshave.soenderup.dk`
-- **Seneste:** Admin-funktion "Tjek registreringer", `parseDrainage()` normalisering
+- **Live version:** v1.25 + swipe-navigation + forbedret fejl-log på `https://voreshave.soenderup.dk`
+- **Seneste:** Svip-navigation mellem planter, forbedret fejl-log (stack trace), slet zone tilgængelig
 - **Næste:** Firestore sikkerhedsregler (deadline ~24. juni!), se idé-listen
+
+---
+
+## Seneste arbejde (27. maj — session 10)
+
+### Svip-navigation mellem planter i samme zone
+
+- Svip venstre = næste plante i zonen, svip højre = forrige (eller tilbage hvis første)
+- Pile `‹` og `›` i hero-området flankerer plantenavnet
+- Breadcrumb øverst: `‹ Rosenhaven` - klikbar, går altid tilbage til zonen
+- Counter: `2 af 5` under plantenavnet
+- Planter uden zone uændret (kun ‹ tilbage-knap)
+- Swipe-listener registreres kun én gang ved app-start (IIFE) - ikke i `bindEvents()` som kørte ved hvert `render()`
+- Ignorerer lodrette bevægelser og korte svip (< 60px)
+
+### Forbedret fejl-log
+
+- `window.onerror` bruger nu 5. parameter (Error-objektet med stack)
+- `window.onunhandledrejection` sender stack trace hvis tilgængeligt
+- Alle `catch`-blokke sender nu `e` som 4. parameter i stedet for kun `e.message`
+- App-kontekst (view, plantId, zoneId) logges per fejl
+- UI viser stack trace i scrollbar `<pre>`-boks, 📄 fil:linje, 📍 kontekst, 👤 bruger
+
+### Slet zone - nu tilgængeligt
+
+- **⚙️-ikon** på alle zone-foldout-headers (kun admin) - åbner "Rediger zone" direkte
+- **Hamburger ☰** på element-siden viser nu "Rediger zone · [zonenavn]" som kontekst-handling
+- Tidligere var `openEditZone()` kun tilgængeligt via "Tjek registreringer" for tomme zoner
+
+### Bugfixes
+
+- **Gem som note (diagnose):** `JSON.stringify` satte dobbelte anførselstegn i onclick-attributten og brød knappen. Fikset ved at gemme `noteText` i `diagnoseState` i stedet.
 
 ---
 
