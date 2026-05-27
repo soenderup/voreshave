@@ -883,6 +883,16 @@ const AREAS = {
 
 const REPEAT_LABELS = { none: 'Ingen', yearly: 'Hvert år', monthly: 'Hver måned' };
 
+// Normalisér drainage-værdier — håndterer dansk, forkert casing og varianter
+function parseDrainage(val) {
+    if (!val || typeof val !== 'string') return null;
+    const v = val.toLowerCase().trim().replace(/_/g, '-');
+    if (v === 'well-drained' || v.startsWith('well') || v.includes('drained') || v.includes('velafd') || v.includes('sandet') || v.includes('let jord')) return 'well-drained';
+    if (v === 'moist' || v.includes('fugtig') || v.includes('leret') || v.includes('våd')) return 'moist';
+    if (v === 'normal' || v.includes('normal')) return 'normal';
+    return null;
+}
+
 function mergeLocalPhotos() {
     (db.zones || []).forEach(z => {
         if (!z.photo && photoCache.has('zone-' + z.id)) z.photo = photoCache.get('zone-' + z.id);
@@ -1564,7 +1574,7 @@ function renderHome() {
 function careIconsHTML(p) {
     const wVal = { dry: 1, normal: 2, moist: 3 }[p.water] || 0;
     const lVal = { shade: 1, 'partial-shade': 2, partial: 3, 'full-partial': 4, full: 5 }[p.light] || 0;
-    const dVal = { 'well-drained': 1, normal: 2, moist: 3 }[p.drainage] || 0;
+    const dVal = { 'well-drained': 1, normal: 2, moist: 3 }[parseDrainage(p.drainage) ?? ''] || 0;
     if (!wVal && !lVal && !dVal && p.perennial == null) return '';
     const segs = (n, total) => Array.from({length: total}, (_, i) =>
         `<div class="care-seg${i < n ? ' on' : ''}"></div>`).join('');
@@ -2823,6 +2833,9 @@ function openMainMenu() {
         <button class="choice-btn" onclick="openErrorLog()">
             <span class="choice-icon">🐛</span><div><div class="choice-label">Fejl-log</div></div>
         </button>
+        <button class="choice-btn" onclick="showRegistrationCheck()">
+            <span class="choice-icon">🔍</span><div><div class="choice-label">Tjek registreringer</div><div class="choice-desc">Fejl, mangler og type-mismatch</div></div>
+        </button>
         <button class="choice-btn" onclick="migrateAllDrainage()">
             <span class="choice-icon">🔄</span><div><div class="choice-label">Opdater jordbundsdata</div><div class="choice-desc">Én gang — henter for alle planter</div></div>
         </button>` : ''}
@@ -3247,7 +3260,7 @@ async function fetchPlantInfo(pid) {
             if (data.info) fresh.aiInfo = data.info;
             if (data.water) fresh.water = data.water;
             if (data.light) fresh.light = data.light;
-            if (data.drainage) fresh.drainage = data.drainage;
+            const _dn = parseDrainage(data.drainage); if (_dn) fresh.drainage = _dn;
             if (data.perennial != null) fresh.perennial = data.perennial;
             saveDB();
         }
@@ -3280,7 +3293,7 @@ async function fetchCareData(pid) {
         if (fresh) {
             if (data.water) fresh.water = data.water;
             if (data.light) fresh.light = data.light;
-            if (data.drainage) fresh.drainage = data.drainage;
+            const _dn = parseDrainage(data.drainage); if (_dn) fresh.drainage = _dn;
             if (data.perennial != null) fresh.perennial = data.perennial;
             saveDB(); render();
         }
@@ -3746,7 +3759,7 @@ async function migrateAllDrainage() {
                 const data = await res.json();
                 const fresh = db.plants.find(x => x.id === p.id);
                 if (fresh) {
-                    if (data.drainage) fresh.drainage = data.drainage;
+                    const _dn = parseDrainage(data.drainage); if (_dn) fresh.drainage = _dn;
                     if (status) status.textContent = `${done + 1}/${plants.length}: ${p.name} → ${data.drainage || '(ingen drainage)'}`;
                 }
             }
@@ -3764,6 +3777,208 @@ async function testErrorLog() {
     logError('Test-fejl — bekræfter at fejl-loggen virker', 'test', 0);
     await new Promise(r => setTimeout(r, 800));
     openErrorLog();
+}
+
+// ── REGISTRERINGSTJEK ──
+function runLocalChecks() {
+    const issues = [];
+
+    // 1. Forældreløse planter (zoneId peger ingen steder)
+    db.plants.forEach(p => {
+        if (!db.zones.find(z => z.id === p.zoneId)) {
+            issues.push({ severity: 'error', message: `"${p.name}" peger på en zone der ikke findes`, detail: `Zone-id: ${p.zoneId}`, action: `openEditPlant('${p.id}')` });
+        }
+    });
+
+    // 2. Forældreløse påmindelser
+    db.reminders.forEach(r => {
+        const exists = r.entityType === 'plant' ? db.plants.find(p => p.id === r.entityId) : db.zones.find(z => z.id === r.entityId);
+        if (!exists) issues.push({ severity: 'error', message: `Påmindelsen "${r.text}" peger på element der ikke findes`, detail: `Id: ${r.entityId}`, action: null });
+    });
+
+    // 3. Forældreløse historik-noter
+    db.history.forEach(h => {
+        const exists = h.entityType === 'plant' ? db.plants.find(p => p.id === h.entityId) : db.zones.find(z => z.id === h.entityId);
+        if (!exists) issues.push({ severity: 'error', message: `En note fra ${h.date || 'ukendt dato'} peger på element der ikke findes`, detail: `Id: ${h.entityId}`, action: null });
+    });
+
+    // 4. Stor plante i lille beholder (Træ/Busk i krukke/kasse/højbed)
+    db.plants.forEach(p => {
+        const z = db.zones.find(z => z.id === p.zoneId);
+        if (!z || !p.type) return;
+        if (['Træ', 'Busk'].includes(p.type) && ['krukke', 'kasse', 'højbed'].includes(z.type)) {
+            issues.push({ severity: 'warning', message: `"${p.name}" er registreret som ${p.type} men er i "${z.name}" (${ZONE_TYPES[z.type]?.label})`, detail: 'Træer og buske er sjældent i krukker — er typen korrekt?', action: `openEditPlant('${p.id}')` });
+        }
+    });
+
+    // 5. Hæk-plante ikke i hæk-zone
+    db.plants.forEach(p => {
+        const z = db.zones.find(z => z.id === p.zoneId);
+        if (!z || p.type !== 'Hæk') return;
+        if (z.type !== 'hæk') issues.push({ severity: 'warning', message: `"${p.name}" er type Hæk men er i "${z.name}" (${ZONE_TYPES[z.type]?.label || z.type})`, action: `openEditPlant('${p.id}')` });
+    });
+
+    // 6. Plante i træ-zone der ikke er Træ/Busk
+    db.plants.forEach(p => {
+        const z = db.zones.find(z => z.id === p.zoneId);
+        if (!z || z.type !== 'træ' || !p.type) return;
+        if (!['Træ', 'Busk'].includes(p.type)) {
+            issues.push({ severity: 'warning', message: `"${p.name}" er i en Træ-zone men registreret som "${p.type}"`, action: `openEditPlant('${p.id}')` });
+        }
+    });
+
+    // 7. Perennial/type-modstrid
+    const altidFlerårig = ['Stauder', 'Træ', 'Busk', 'Hæk', 'Klatrer', 'Græs'];
+    db.plants.forEach(p => {
+        if (!p.type || p.perennial === undefined || p.perennial === null) return;
+        if (p.perennial === true && p.type === 'Etårig') {
+            issues.push({ severity: 'warning', message: `"${p.name}": type er "Etårig" men trivseldata siger "Flerårig"`, action: `openEditPlant('${p.id}')` });
+        }
+        if (p.perennial === false && altidFlerårig.includes(p.type)) {
+            issues.push({ severity: 'warning', message: `"${p.name}": type er "${p.type}" (flerårig) men trivseldata siger "Etårig"`, action: `openEditPlant('${p.id}')` });
+        }
+    });
+
+    // 8. Mangler plantetypen
+    db.plants.forEach(p => {
+        if (!p.type) issues.push({ severity: 'info', message: `"${p.name}" mangler plantetypen`, action: `openEditPlant('${p.id}')` });
+    });
+
+    // 9. Mangler latinsk navn
+    db.plants.forEach(p => {
+        if (!p.latinName) issues.push({ severity: 'info', message: `"${p.name}" mangler latinsk navn`, action: `openEditPlant('${p.id}')` });
+    });
+
+    // 10. Mangler al trivseldata
+    db.plants.forEach(p => {
+        const hasCare = p.water || p.light || p.drainage || p.perennial !== undefined;
+        if (!hasCare) issues.push({ severity: 'info', message: `"${p.name}" mangler trivseldata (vand, lys, jord)`, detail: 'Kan udfyldes via Identificér eller Viden om', action: `closeSheet();goTo('plant','${p.zoneId}','${p.id}')` });
+    });
+
+    // 11. Dubletter — samme navn i samme zone
+    const seen = new Map();
+    db.plants.forEach(p => {
+        const key = `${p.zoneId}::${(p.name || '').toLowerCase().trim()}`;
+        if (seen.has(key)) {
+            issues.push({ severity: 'info', message: `"${p.name}" er registreret to gange i samme zone`, detail: 'Mulig dobbeltregistrering', action: `openEditPlant('${p.id}')` });
+        } else { seen.set(key, p); }
+    });
+
+    // 12. Tomme zoner (ingen planter, ingen underzoner) — skip isDirect
+    db.zones.forEach(z => {
+        if (isDirectZone(z.id)) return;
+        const harPlanter = db.plants.some(p => p.zoneId === z.id);
+        const harSubs    = db.zones.some(s => s.parentZoneId === z.id);
+        if (!harPlanter && !harSubs) issues.push({ severity: 'info', message: `Zonen "${z.name}" er tom — ingen planter eller underzoner`, action: `openEditZone('${z.id}')` });
+    });
+
+    return issues;
+}
+
+function showRegistrationCheck() {
+    const issues = runLocalChecks();
+    const errors   = issues.filter(i => i.severity === 'error');
+    const warnings = issues.filter(i => i.severity === 'warning');
+    const infos    = issues.filter(i => i.severity === 'info');
+
+    const renderIssue = issue => {
+        const icon = issue.severity === 'error' ? '🔴' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
+        const retBtn = issue.action
+            ? `<button onclick="${issue.action}" style="font-size:0.72rem;padding:0.25rem 0.65rem;border:1px solid var(--border);border-radius:6px;background:var(--white);color:var(--green-dark);cursor:pointer;white-space:nowrap;flex-shrink:0">Ret</button>`
+            : '';
+        return `<div style="padding:0.55rem 0;border-bottom:1px solid var(--border);display:flex;gap:0.5rem;align-items:flex-start">
+            <span style="font-size:0.88rem;flex-shrink:0;margin-top:0.1rem">${icon}</span>
+            <div style="flex:1;min-width:0">
+                <div style="font-size:0.82rem;color:var(--text)">${issue.message}</div>
+                ${issue.detail ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:0.1rem">${issue.detail}</div>` : ''}
+            </div>
+            ${retBtn}
+        </div>`;
+    };
+
+    const renderGroup = (title, items) => {
+        if (!items.length) return '';
+        return `<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin:0.9rem 0 0.2rem">${title}</div>
+            ${items.map(renderIssue).join('')}`;
+    };
+
+    const okColor = issues.length === 0;
+    const summaryBg = okColor ? 'var(--green-light)' : errors.length > 0 ? '#fee2e2' : '#fef3c7';
+    const summaryColor = okColor ? 'var(--green-dark)' : errors.length > 0 ? '#b91c1c' : '#92400e';
+    const summaryIcon  = okColor ? '✅' : errors.length > 0 ? '🔴' : '⚠️';
+    const summaryText  = issues.length === 0 ? 'Ingen problemer fundet' : `${issues.length} ${issues.length === 1 ? 'problem' : 'problemer'} fundet`;
+
+    openSheet('🔍 Tjek registreringer', `
+        <div style="padding:0 1.2rem 1rem">
+            <div style="background:${summaryBg};border-radius:10px;padding:0.75rem 1rem;margin-bottom:0.6rem">
+                <div style="font-size:0.92rem;font-weight:700;color:${summaryColor}">${summaryIcon} ${summaryText}</div>
+                ${issues.length > 0 ? `<div style="font-size:0.76rem;color:var(--muted);margin-top:0.2rem">🔴 ${errors.length} fejl &nbsp;·&nbsp; ⚠️ ${warnings.length} advarsler &nbsp;·&nbsp; ℹ️ ${infos.length} info</div>` : ''}
+            </div>
+            ${issues.length === 0 ? '<div style="font-size:0.85rem;color:var(--muted);text-align:center;padding:1.2rem 0">Alt ser korrekt ud 🎉</div>' :
+                renderGroup('🔴 Dataintegretiet', errors) +
+                renderGroup('⚠️ Type-advarsler', warnings) +
+                renderGroup('ℹ️ Manglende data &amp; info', infos)
+            }
+            <div style="margin-top:1rem">
+                <button id="ai-check-btn" onclick="runAICheck()" style="width:100%;padding:0.75rem;border:1px solid var(--border);border-radius:12px;background:var(--white);color:var(--green-dark);font-size:0.85rem;cursor:pointer">
+                    🤖 Kør AI-tjek af plantetyper
+                </button>
+                <div style="font-size:0.7rem;color:var(--muted);text-align:center;margin-top:0.35rem">Claude vurderer om plantetypen matcher navn og latinsk navn · koster øre</div>
+            </div>
+        </div>`);
+}
+
+async function runAICheck() {
+    const btn = document.getElementById('ai-check-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Spørger Claude...'; }
+
+    const plantsToCheck = db.plants
+        .filter(p => p.name && (p.latinName || p.type))
+        .map(p => {
+            const z = db.zones.find(z => z.id === p.zoneId);
+            return { id: p.id, name: p.name, latinName: p.latinName || '', type: p.type || '', zoneType: z?.type || '' };
+        });
+
+    if (!plantsToCheck.length) {
+        if (btn) { btn.disabled = false; btn.textContent = '🤖 Kør AI-tjek af plantetyper'; }
+        return;
+    }
+
+    try {
+        const res = await fetch('/.netlify/functions/check-plants', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plants: plantsToCheck }),
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const aiIssues = data.issues || [];
+
+        const rows = !aiIssues.length
+            ? '<div style="font-size:0.84rem;color:var(--muted);text-align:center;padding:1rem 0">Claude fandt ingen mistænkelige typeregistreringer 🎉</div>'
+            : aiIssues.map(issue => {
+                const p = db.plants.find(x => x.name === issue.name);
+                const retBtn = p ? `<button onclick="openEditPlant('${p.id}')" style="font-size:0.72rem;padding:0.25rem 0.65rem;border:1px solid var(--border);border-radius:6px;background:var(--white);color:var(--green-dark);cursor:pointer;white-space:nowrap;flex-shrink:0">Ret</button>` : '';
+                const forslag = issue.suggestedType ? ` → foreslår: <strong>${issue.suggestedType}</strong>` : '';
+                return `<div style="padding:0.55rem 0;border-bottom:1px solid var(--border);display:flex;gap:0.5rem;align-items:flex-start">
+                    <span style="font-size:0.88rem;flex-shrink:0;margin-top:0.1rem">🤖</span>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-size:0.82rem;color:var(--text)">"${issue.name}": <em>${issue.currentType}</em>${forslag}</div>
+                        <div style="font-size:0.7rem;color:var(--muted);margin-top:0.1rem">${issue.reason}</div>
+                    </div>
+                    ${retBtn}
+                </div>`;
+            }).join('');
+
+        const aiSection = document.createElement('div');
+        aiSection.style.cssText = 'margin-top:0.9rem';
+        aiSection.innerHTML = `<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:0.2rem">🤖 AI-tjek — ${aiIssues.length} ${aiIssues.length === 1 ? 'mistænkelig registrering' : 'mistænkelige registreringer'}</div>${rows}`;
+        btn?.parentElement?.replaceWith(aiSection);
+
+    } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = '🤖 Kør AI-tjek (fejl — prøv igen)'; }
+        logError('runAICheck: ' + e.message, 'check-plants', 0);
+    }
 }
 
 function lockApp() {
