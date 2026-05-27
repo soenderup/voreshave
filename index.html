@@ -3745,7 +3745,10 @@ async function migrateAllDrainage() {
             if (res.ok) {
                 const data = await res.json();
                 const fresh = db.plants.find(x => x.id === p.id);
-                if (fresh && data.drainage) fresh.drainage = data.drainage;
+                if (fresh) {
+                    if (data.drainage) fresh.drainage = data.drainage;
+                    if (status) status.textContent = `${done + 1}/${plants.length}: ${p.name} → ${data.drainage || '(ingen drainage)'}`;
+                }
             }
         } catch (e) { errors++; }
         done++;
