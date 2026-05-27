@@ -53,18 +53,26 @@ Hvis billedet ikke viser en plante eller problemet er utydeligt: { "notRecognize
         }],
     });
 
+    const apiOptions = {
+        hostname: 'api.anthropic.com',
+        path: '/v1/messages',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Length': Buffer.byteLength(requestBody),
+        },
+    };
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
     try {
-        const result = await httpsPost({
-            hostname: 'api.anthropic.com',
-            path: '/v1/messages',
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
-                'Content-Length': Buffer.byteLength(requestBody),
-            },
-        }, requestBody);
+        let result = await httpsPost(apiOptions, requestBody);
+
+        if (result.status === 529 || result.status === 503) {
+            await sleep(1000);
+            result = await httpsPost(apiOptions, requestBody);
+        }
 
         if (result.status !== 200) {
             console.error('Anthropic API fejl:', result.status, result.body);
