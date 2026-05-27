@@ -1517,8 +1517,9 @@ function renderHome() {
                     <div class="zone-name">${z.name}</div>
                     <div class="zone-meta">${meta}</div>
                 </div>
-                <div style="display:flex;align-items:center">
+                <div style="display:flex;align-items:center;gap:0.2rem">
                     ${badge}
+                    ${canEdit() ? `<button onclick="event.stopPropagation();openEditZone('${z.id}')" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0.2rem 0.3rem;line-height:1" title="Rediger zone">⚙️</button>` : ''}
                     <span class="zone-chevron${collapsed ? ' closed' : ''}">▾</span>
                 </div>
             </div>
@@ -2835,11 +2836,15 @@ function openMainMenu() {
     if (nav.view === 'plant') {
         const pid = nav.plantId;
         const p = plant(pid);
+        const pZone = p?.zoneId ? zone(p.zoneId) : null;
         if (canEdit()) contextSection = `
             <div class="menu-section-label">${p?.name || 'Element'}</div>
             <button class="choice-btn" onclick="closeSheet();openEditPlant('${pid}')">
                 <span class="choice-icon">✏️</span><div><div class="choice-label">Rediger element</div></div>
-            </button>`;
+            </button>
+            ${pZone ? `<button class="choice-btn" onclick="closeSheet();openEditZone('${pZone.id}')">
+                <span class="choice-icon">⚙️</span><div><div class="choice-label">Rediger zone</div><div class="choice-desc">${pZone.name}</div></div>
+            </button>` : ''}`;
         if (canLog()) contextSection += `
             <button class="choice-btn" onclick="closeSheet();openAddReminder('plant','${pid}')">
                 <span class="choice-icon">🔔</span><div><div class="choice-label">Tilføj påmindelse</div></div>
