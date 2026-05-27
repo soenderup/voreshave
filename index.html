@@ -193,6 +193,8 @@
         .detail-hero { background: var(--green-light); padding: 1rem; border-bottom: 1px solid var(--border); }
         .detail-hero-name { color: var(--green-dark); font-size: 1.3rem; font-weight: 700; }
         .detail-hero-sub { color: var(--muted); font-size: 0.8rem; margin-top: 0.2rem; }
+        .hero-nav-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: none; border: none; color: var(--green-dark); font-size: 1.5rem; font-weight: 300; cursor: pointer; flex-shrink: 0; padding: 0; line-height: 1; }
+        .hero-nav-btn.dim { color: var(--border); cursor: default; }
         .detail-hero-photo { width: 100%; height: 140px; object-fit: cover; display: block; border-radius: 10px; margin-top: 0.8rem; }
         .detail-hero-photo-placeholder { width: 100%; height: 90px; background: rgba(0,0,0,0.05); border-radius: 10px; margin-top: 0.8rem; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.78rem; cursor: pointer; border: 1.5px dashed var(--border); }
         /* Zone hero med foto og titel-overlay */
@@ -1361,6 +1363,15 @@ function goTo(view, zoneId = null, plantId = null, tab = 'main') {
 function goBack() {
     goTo('home');
 }
+function navToPlantSibling(dir) {
+    const p = plant(nav.plantId);
+    if (!p || !p.zoneId) return;
+    const siblings = zonePlants(p.zoneId);
+    const idx = siblings.findIndex(pl => pl.id === nav.plantId);
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= siblings.length) return;
+    goTo('plant', nav.zoneId, siblings[newIdx].id);
+}
 
 // ── RENDER ──
 function render() {
@@ -1623,13 +1634,32 @@ function renderPlant(pid) {
         ? `<div class="empty-state"><span class="empty-icon">📖</span>Ingen historik endnu</div>`
         : history.map(renderHistoryItem).join('');
 
+    const heroSiblings = p.zoneId ? zonePlants(p.zoneId) : null;
+    const heroIdx = heroSiblings ? heroSiblings.findIndex(pl => pl.id === pid) : -1;
+    const heroHasNav = heroSiblings && heroSiblings.length > 1;
+    const heroZone = heroHasNav ? zone(p.zoneId) : null;
+
     return `
         <div class="detail-hero" style="padding-bottom:0.8rem">
+            ${heroHasNav ? `
+            <div style="display:flex;align-items:center;gap:0.2rem;margin-bottom:0.1rem">
+                <button class="hero-nav-btn${heroIdx === 0 ? ' dim' : ''}"
+                    onclick="${heroIdx > 0 ? 'navToPlantSibling(-1)' : 'goBack()'}">‹</button>
+                <div style="flex:1;min-width:0;padding:0 0.1rem">
+                    <div style="font-size:1.25rem;font-weight:700;color:var(--green-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+                    ${p.latinName ? `<div class="detail-hero-sub">${p.latinName}</div>` : ''}
+                    <div style="font-size:0.68rem;color:var(--muted);font-weight:600;margin-top:0.12rem;letter-spacing:0.02em">${heroIdx + 1} af ${heroSiblings.length}${heroZone ? ` · ${heroZone.name}` : ''}</div>
+                </div>
+                <button class="hero-nav-btn${heroIdx === heroSiblings.length - 1 ? ' dim' : ''}"
+                    onclick="navToPlantSibling(1)">›</button>
+            </div>
+            ` : `
             <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:0.15rem">
                 <button onclick="goBack()" style="background:none;border:none;color:var(--green-dark);font-size:1.6rem;line-height:1;padding:0;cursor:pointer;flex-shrink:0;margin-left:-0.2rem">‹</button>
                 <div style="font-size:1.25rem;font-weight:700;color:var(--green-dark)">${p.name}</div>
             </div>
             ${p.latinName ? `<div class="detail-hero-sub" style="padding-left:2.6rem">${p.latinName}</div>` : ''}
+            `}
         </div>
         ${plantAttentionFlag(pid) ? `<div class="attention-badge">⚑ Kræver opmærksomhed</div>` : ''}
         <div class="tabs">
@@ -1681,6 +1711,34 @@ function bindEvents() {
         el.addEventListener('click', () => goTo('plant', nav.zoneId, el.dataset.plant)));
     document.querySelectorAll('[data-complete]').forEach(el =>
         el.addEventListener('click', () => completeReminder(el.dataset.complete)));
+
+    if (nav.view === 'plant') {
+        let swipeStartX = 0;
+        let swipeStartY = 0;
+        const appEl = document.getElementById('app');
+        appEl.addEventListener('touchstart', e => {
+            swipeStartX = e.touches[0].clientX;
+            swipeStartY = e.touches[0].clientY;
+        }, { passive: true });
+        appEl.addEventListener('touchend', e => {
+            const dx = e.changedTouches[0].clientX - swipeStartX;
+            const dy = e.changedTouches[0].clientY - swipeStartY;
+            if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return; // for lidt eller mere lodret end vandret
+            if (dx > 0) {
+                // Svip højre → forrige plante (eller tilbage hvis første)
+                const p = plant(nav.plantId);
+                if (p && p.zoneId) {
+                    const siblings = zonePlants(p.zoneId);
+                    const idx = siblings.findIndex(pl => pl.id === nav.plantId);
+                    if (idx > 0) { navToPlantSibling(-1); return; }
+                }
+                goBack();
+            } else {
+                // Svip venstre → næste plante
+                navToPlantSibling(1);
+            }
+        }, { passive: true });
+    }
 }
 
 function setTab(t) {
