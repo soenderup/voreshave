@@ -1713,33 +1713,6 @@ function bindEvents() {
     document.querySelectorAll('[data-complete]').forEach(el =>
         el.addEventListener('click', () => completeReminder(el.dataset.complete)));
 
-    if (nav.view === 'plant') {
-        let swipeStartX = 0;
-        let swipeStartY = 0;
-        const appEl = document.getElementById('app');
-        appEl.addEventListener('touchstart', e => {
-            swipeStartX = e.touches[0].clientX;
-            swipeStartY = e.touches[0].clientY;
-        }, { passive: true });
-        appEl.addEventListener('touchend', e => {
-            const dx = e.changedTouches[0].clientX - swipeStartX;
-            const dy = e.changedTouches[0].clientY - swipeStartY;
-            if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return; // for lidt eller mere lodret end vandret
-            if (dx > 0) {
-                // Svip højre → forrige plante (eller tilbage hvis første)
-                const p = plant(nav.plantId);
-                if (p && p.zoneId) {
-                    const siblings = zonePlants(p.zoneId);
-                    const idx = siblings.findIndex(pl => pl.id === nav.plantId);
-                    if (idx > 0) { navToPlantSibling(-1); return; }
-                }
-                goBack();
-            } else {
-                // Svip venstre → næste plante
-                navToPlantSibling(1);
-            }
-        }, { passive: true });
-    }
 }
 
 function setTab(t) {
@@ -4194,6 +4167,34 @@ loadPhotoCache().then(() => Promise.all([loadDB(), loadUsers(), loadSettings()])
     if (checkAccess()) render();
     fetchWeatherIfNeeded();
 });
+
+// ── SWIPE-NAVIGATION (én gang, aldrig genregistreret) ──
+(function() {
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+    const appEl = document.getElementById('app');
+    appEl.addEventListener('touchstart', e => {
+        swipeStartX = e.touches[0].clientX;
+        swipeStartY = e.touches[0].clientY;
+    }, { passive: true });
+    appEl.addEventListener('touchend', e => {
+        if (nav.view !== 'plant') return;
+        const dx = e.changedTouches[0].clientX - swipeStartX;
+        const dy = e.changedTouches[0].clientY - swipeStartY;
+        if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
+        if (dx > 0) {
+            const p = plant(nav.plantId);
+            if (p && p.zoneId) {
+                const siblings = zonePlants(p.zoneId);
+                const idx = siblings.findIndex(pl => pl.id === nav.plantId);
+                if (idx > 0) { navToPlantSibling(-1); return; }
+            }
+            goBack();
+        } else {
+            navToPlantSibling(1);
+        }
+    }, { passive: true });
+})();
 </script>
 </body>
 </html>
