@@ -794,7 +794,7 @@ let weatherOpen = false;
 let pins = {};
 let users = [];
 let appSettings = {};
-let identifyState = { imageDataUrl: null, result: null };
+let identifyState = { imageDataUrl: null, result: null, hint: '', correcting: false, correction: '' };
 let diagnoseState = { imageDataUrl: null, plantId: null };
 
 // ── DATA ──
@@ -2089,7 +2089,19 @@ function renderIdentify() {
         </button>`;
 
     let resultHTML = '';
-    if (result) {
+    if (identifyState.correcting) {
+        resultHTML = `
+            <div class="identify-result-card" style="padding:1.2rem">
+                <div style="font-size:0.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem">Hvad er forkert?</div>
+                <textarea id="identify-correction" rows="3"
+                    style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:0.7rem;font-size:0.9rem;line-height:1.45;resize:none;font-family:inherit;color:var(--text);background:var(--cream)"
+                    placeholder="Eks: det er ikke meldug · det er en buske, ikke en klatreplante · bladene er runde, ikke spidse"
+                    oninput="identifyState.correction=this.value"
+                >${identifyState.correction || ''}</textarea>
+                <button class="btn-primary" style="margin-top:0.9rem" onclick="identifyPlant()">Analysér igen</button>
+                <button class="btn-secondary" style="margin-top:0.5rem" onclick="cancelCorrection()">Annuller</button>
+            </div>`;
+    } else if (result) {
         if (result.notRecognized) {
             resultHTML = `
                 <div class="identify-result-card" style="padding:1.2rem;text-align:center">
@@ -2115,7 +2127,7 @@ function renderIdentify() {
                     ${result.description ? `<div class="identify-result-desc">${result.description}</div>` : ''}
                     <div class="identify-actions">
                         ${canEdit() ? `<button class="btn-primary" onclick="openAddPlantFromIdentify()">+ Opret element</button>` : ''}
-                        <button class="btn-secondary" onclick="resetIdentify()">↩ Prøv igen</button>
+                        <button class="btn-secondary" onclick="startCorrection()">↩ Prøv igen</button>
                     </div>
                 </div>`;
         }
@@ -2177,6 +2189,7 @@ async function identifyPlant() {
             body: JSON.stringify({
                 imageBase64: identifyState.imageDataUrl,
                 hint: identifyState.hint || '',
+                correction: identifyState.correction || '',
             }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2184,15 +2197,29 @@ async function identifyPlant() {
     } catch (e) {
         identifyState.result = { notRecognized: true };
     }
+    identifyState.correcting = false;
+    identifyState.correction = '';
 
     const app = document.getElementById('app');
     app.innerHTML = renderIdentify();
 }
 
 function resetIdentify() {
-    identifyState = { imageDataUrl: null, result: null, hint: '' };
+    identifyState = { imageDataUrl: null, result: null, hint: '', correcting: false, correction: '' };
     const app = document.getElementById('app');
     app.innerHTML = renderIdentify();
+}
+
+function startCorrection() {
+    identifyState.correcting = true;
+    identifyState.correction = '';
+    document.getElementById('app').innerHTML = renderIdentify();
+}
+
+function cancelCorrection() {
+    identifyState.correcting = false;
+    identifyState.correction = '';
+    document.getElementById('app').innerHTML = renderIdentify();
 }
 
 // ── DIAGNOSE ──
