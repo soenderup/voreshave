@@ -3867,7 +3867,7 @@ function runLocalChecks() {
     // 5. Hæk-plante ikke i hæk-zone
     db.plants.forEach(p => {
         const z = db.zones.find(z => z.id === p.zoneId);
-        if (!z || p.type !== 'Hæk') return;
+        if (!z || p.type !== 'Hæk' || z.isDirect) return;
         if (z.type !== 'hæk') issues.push({ severity: 'warning', message: `"${p.name}" er type Hæk men er i "${z.name}" (${ZONE_TYPES[z.type]?.label || z.type})`, action: `openEditPlant('${p.id}')` });
     });
 
