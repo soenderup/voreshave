@@ -520,6 +520,7 @@ service cloud.firestore {
       <tr><td>Samliv-guide</td><td>Mellem</td><td>Vælg en plante → AI svarer hvad den trives/ikke trives med som nabo</td></tr>
       <tr><td>Havens årskalender</td><td>Mellem</td><td>Månedsoversigt: hvad blomstrer, høstes, beskæres — genereret pr. plante</td></tr>
       <tr><td>Havens årsberetning</td><td>Stor</td><td>Dashboard: antal planter, noter logget, årets plante</td></tr>
+      <tr><td><s>Billedoptimering</s></td><td>✓ Bygget</td><td>Thumbnail-upload (150px) + lazy loading — se changelog</td></tr>
     </table>
   </div>
 </details>
@@ -563,7 +564,8 @@ service cloud.firestore {
   <div class="indhold">
     <table class="tabel">
       <tr><th>Version</th><th>Dato</th><th>Hvad er nyt</th></tr>
-      <tr><td>—</td><td>Maj 2026</td><td>Firebase Anonymous Auth + Firestore sikkerhedsregler. Dokumentationsside oprettet.</td></tr>
+      <tr><td>—</td><td>28. maj 2026</td><td>Billedoptimering: ved upload gemmes nu også 150px thumbnail. Plantelister og søgeresultater henter thumbnail i stedet for fuld opløsning. loading="lazy" på liste-billeder.</td></tr>
+      <tr><td>—</td><td>28. maj 2026</td><td>Firebase Anonymous Auth + Firestore sikkerhedsregler. Dokumentationsside oprettet.</td></tr>
       <tr><td>v1.25</td><td>27. maj 2026</td><td>Vækst-tidslinje med op til 15 fotos pr. plante, thumbnails, lightbox og primærfoto.</td></tr>
       <tr><td>v1.25</td><td>27. maj 2026</td><td>Nye plantetyper: Stueplante og Krydderurt. Staude (tidligere Stauder). Plantedato kan sættes til "Ukendt". App-ikon opdateret (grøn baggrund). Tjek registreringer forbedret: AI flip-flop fix, perennial auto-fix, busk-i-krukke fjernet fra advarsler.</td></tr>
       <tr><td>v1.24</td><td>27. maj 2026</td><td>Søgefunktion (4. fane). Svip-navigation mellem planter i zone. Slet zone tilgængeligt fra ⚙️-ikon. Forbedret fejl-log med stack trace.</td></tr>
