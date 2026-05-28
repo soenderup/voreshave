@@ -1,13 +1,42 @@
 # Handoff — Vores Have
-*Opdateret: 27. maj 2026 (session 11)*
+*Opdateret: 28. maj 2026 (session 12)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.25 + diverse fixes på `https://voreshave.soenderup.dk`
-- **Seneste:** Tjek registreringer forbedret, nye plantetyper, app-ikon opdateret
-- **Næste:** Firestore sikkerhedsregler (deadline ~24. juni!), Cloudflare Workers migration (Netlify koster), se idé-listen
+- **Live version:** v1.25 + sikkerhedsregler på `https://voreshave.soenderup.dk`
+- **Seneste:** Firebase Auth + Firestore sikkerhedsregler, dokumentationsside oprettet
+- **Næste:** Cloudflare Workers migration (Netlify koster), se idé-listen
+
+---
+
+## Seneste arbejde (28. maj — session 12)
+
+### Firebase Anonymous Auth + Firestore sikkerhedsregler
+
+- Firestore kørte i "test mode" — alle kunne læse/skrive uden login
+- Firebase Auth SDK tilføjet (`firebase-auth-compat.js`)
+- `signInAnonymously()` kaldes ved app-start — usynligt for brugere
+- Sikkerhedsregler deployet via Firebase CLI: `allow read, write: if request.auth != null`
+- `firestore.rules` og `firebase.json` tilføjet til projektet
+- Firebase CLI installeret globalt (`npm install -g firebase-tools`)
+- Firebase-konto til Console: `appsstorage081@gmail.com`
+- Deploy-kommando: `firebase deploy --only firestore:rules --project voreshave-5e7de`
+
+### Dokumentationsside
+
+- `dokumentation.html` oprettet — komplet projektbeskrivelse med fold-ud sektioner
+- Adgangskodebeskyttet via SHA-256-hash hardkodet i filen (ingen setup-flow)
+- Tilgængelig på `voreshave.soenderup.dk/dokumentation.html`
+- Adgangskode gemt i Steens kodeordsarkiv
+- Indeholder: projektbeskrivelse, funktioner, brugere, teknisk arkitektur, Firebase, Netlify, GitHub, Claude API, dev-miljø, problemer, fremtidsplaner, vigtige noter, changelog
+- Regel gemt: Claude spørger altid om dokumentationen skal opdateres ved større ændringer
+
+### Diverse
+
+- VERSION rettet til 1.25 (var fejlagtigt stadig 1.23 i koden)
+- Billedoptimering tilføjet til idé-listen (loading="lazy" + thumbnail-resize ved upload)
 
 ---
 
