@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoresHave — Dokumentation</title>
+<style>
+  :root {
+    --groen: #2d6a4f;
+    --groen-lys: #40916c;
+    --groen-meget-lys: #d8f3dc;
+    --tekst: #1b4332;
+    --muted: #6b8f71;
+    --bg: #f8fdf9;
+    --hvid: #ffffff;
+    --advarsel: #e9c46a;
+    --fejl: #e76f51;
+    --kort-bg: #ffffff;
+    --border: #b7e4c7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--tekst); line-height: 1.6; }
+
+  /* ── OVERLAY ── */
+  #overlay {
+    position: fixed; inset: 0; background: var(--groen);
+    display: flex; align-items: center; justify-content: center; z-index: 9999;
+  }
+  .auth-boks {
+    background: white; border-radius: 16px; padding: 2rem; width: min(360px, 90vw);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3); text-align: center;
+  }
+  .auth-boks h1 { font-size: 1.4rem; color: var(--groen); margin-bottom: 0.25rem; }
+  .auth-boks p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .auth-boks input {
+    width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--border);
+    border-radius: 10px; font-size: 1rem; margin-bottom: 0.75rem;
+    outline: none; transition: border-color 0.2s;
+  }
+  .auth-boks input:focus { border-color: var(--groen-lys); }
+  .auth-boks button {
+    width: 100%; padding: 0.75rem; background: var(--groen); color: white;
+    border: none; border-radius: 10px; font-size: 1rem; font-weight: 600;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .auth-boks button:hover { background: var(--groen-lys); }
+  #auth-fejl { color: var(--fejl); font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2em; }
+  .auth-ikon { font-size: 3rem; margin-bottom: 0.75rem; display: block; }
+  #reset-link { margin-top: 1rem; font-size: 0.75rem; color: var(--muted); cursor: pointer; text-decoration: underline; }
+
+  /* ── INDHOLD ── */
+  #indhold { display: none; max-width: 800px; margin: 0 auto; padding: 1rem; }
+  header {
+    background: var(--groen); color: white; border-radius: 16px;
+    padding: 1.5rem; margin-bottom: 1.5rem; text-align: center;
+  }
+  header h1 { font-size: 1.6rem; }
+  header p { opacity: 0.8; font-size: 0.9rem; margin-top: 0.25rem; }
+  .meta { display: flex; gap: 1rem; justify-content: center; margin-top: 0.75rem; flex-wrap: wrap; }
+  .meta span { background: rgba(255,255,255,0.2); padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; }
+
+  .vigtigt-banner {
+    background: #fff3cd; border: 1px solid var(--advarsel); border-radius: 12px;
+    padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.9rem; color: #664d03;
+  }
+  .vigtigt-banner strong { display: block; margin-bottom: 0.25rem; }
+
+  /* ── ACCORDION ── */
+  details {
+    background: var(--kort-bg); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 0.75rem; overflow: hidden;
+  }
+  summary {
+    padding: 1rem 1.25rem; font-weight: 600; font-size: 1rem;
+    cursor: pointer; list-style: none; display: flex; align-items: center; gap: 0.6rem;
+    color: var(--groen); user-select: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: '▼'; margin-left: auto; font-size: 0.7rem; opacity: 0.5; transition: transform 0.2s; }
+  details[open] summary::after { transform: rotate(180deg); }
+  details[open] summary { border-bottom: 1px solid var(--border); }
+  .indhold { padding: 1.25rem; }
+
+  h3 { color: var(--groen); margin: 1rem 0 0.4rem; font-size: 0.95rem; }
+  h3:first-child { margin-top: 0; }
+  p { margin-bottom: 0.75rem; font-size: 0.9rem; }
+  ul, ol { margin: 0.25rem 0 0.75rem 1.2rem; font-size: 0.9rem; }
+  li { margin-bottom: 0.25rem; }
+
+  .kort-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.5rem; }
+  @media (max-width: 500px) { .kort-grid { grid-template-columns: 1fr; } }
+  .mini-kort {
+    background: var(--groen-meget-lys); border-radius: 10px;
+    padding: 0.75rem; font-size: 0.85rem;
+  }
+  .mini-kort strong { display: block; color: var(--groen); margin-bottom: 0.25rem; }
+
+  .tabel { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 0.5rem 0 0.75rem; }
+  .tabel th { background: var(--groen-meget-lys); color: var(--groen); padding: 0.5rem 0.75rem; text-align: left; }
+  .tabel td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .tabel tr:last-child td { border-bottom: none; }
+
+  code {
+    background: var(--groen-meget-lys); padding: 0.1rem 0.4rem;
+    border-radius: 4px; font-family: monospace; font-size: 0.82rem; color: var(--groen);
+  }
+  pre {
+    background: #1b4332; color: #d8f3dc; padding: 1rem; border-radius: 10px;
+    overflow-x: auto; font-size: 0.8rem; margin: 0.5rem 0 0.75rem; line-height: 1.5;
+  }
+
+  .advarsel { background: #fff3cd; border-left: 3px solid var(--advarsel); padding: 0.6rem 0.75rem; border-radius: 0 8px 8px 0; margin: 0.5rem 0; font-size: 0.85rem; }
+  .info { background: var(--groen-meget-lys); border-left: 3px solid var(--groen-lys); padding: 0.6rem 0.75rem; border-radius: 0 8px 8px 0; margin: 0.5rem 0; font-size: 0.85rem; }
+
+  .sektion-ikon { font-size: 1.1rem; }
+  footer { text-align: center; color: var(--muted); font-size: 0.75rem; padding: 2rem 1rem; }
+  #lås-knap { position: fixed; bottom: 1rem; right: 1rem; background: var(--groen); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 1.1rem; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+</style>
+</head>
+<body>
+
+<!-- ── OVERLAY ── -->
+<div id="overlay">
+  <div class="auth-boks" id="setup-boks" style="display:none">
+    <span class="auth-ikon">🌿</span>
+    <h1>Opret adgangskode</h1>
+    <p>Første gang på denne enhed. Vælg en adgangskode til dokumentationen og gem den i dit kodeordsarkiv.</p>
+    <input type="password" id="setup-kode1" placeholder="Vælg adgangskode" autocomplete="new-password">
+    <input type="password" id="setup-kode2" placeholder="Gentag adgangskode" autocomplete="new-password">
+    <button onclick="opretKode()">Gem adgangskode</button>
+    <div id="setup-fejl"></div>
+  </div>
+  <div class="auth-boks" id="login-boks" style="display:none">
+    <span class="auth-ikon">🌿</span>
+    <h1>VoresHave</h1>
+    <p>Dokumentation — indtast adgangskode</p>
+    <input type="password" id="login-kode" placeholder="Adgangskode" autocomplete="current-password">
+    <button onclick="tjekKode()">Åbn</button>
+    <div id="auth-fejl"></div>
+    <div id="reset-link" onclick="nulstilKode()">Glemt adgangskode? Nulstil her</div>
+  </div>
+</div>
+
+<!-- ── INDHOLD ── -->
+<div id="indhold">
+
+<header>
+  <h1>🌿 VoresHave — Dokumentation</h1>
+  <p>Komplet projektbeskrivelse til fremtidig reference</p>
+  <div class="meta">
+    <span>Sidst opdateret: maj 2026</span>
+    <span>Version: 1.25</span>
+    <span>Fortroligt</span>
+  </div>
+</header>
+
+<div class="vigtigt-banner">
+  <strong>Vigtig deadline</strong>
+  Firebase Firestore kører i "Blaze"-plan. Firestore-regler er nu sat op (maj 2026). Firebase Authentication er Anonymous Auth — alle app-brugere får automatisk et token ved opstart.
+</div>
+
+<!-- 1. OM DOKUMENTET -->
+<details open>
+  <summary><span class="sektion-ikon">📖</span> Om dette dokument</summary>
+  <div class="indhold">
+    <p>Dette dokument er lavet fordi projektet er vokset til et punkt, hvor det er svært at huske alle detaljer. Det er skrevet, så en person der ikke kender projektet — eller en person der har glemt det — kan sætte sig ind i det fra bunden.</p>
+    <p>Dokumentet beskriver: hvad appen er, hvad den kan, hvem der bruger den, hvilke externa services den er koblet til, og hvad der er planer for fremtiden.</p>
+    <div class="info">Adgangskoden til denne side er gemt i dit kodeordsarkiv. Siden er tilgængelig på: <code>voreshave.soenderup.dk/dokumentation.html</code></div>
+    <h3>Hvem har lavet det?</h3>
+    <p>Appen er bygget af Steen Søndrup i samarbejde med Claude (Anthropic AI) i en serie af arbejdssessioner startende maj 2026. Al kode er skrevet af Claude baseret på Steens idéer og krav.</p>
+  </div>
+</details>
+
+<!-- 2. HVAD ER VORESHAVE -->
+<details>
+  <summary><span class="sektion-ikon">🏡</span> Hvad er VoresHave?</summary>
+  <div class="indhold">
+    <h3>Formål</h3>
+    <p>VoresHave er en digital havedagbog og have-app til privat familierug. Formålet er at holde styr på alle planter i haven — hvor de er, hvad de hedder, hvordan de trives, hvornår de skal passes, og hvordan de har udviklet sig over tid.</p>
+    <h3>Baggrund</h3>
+    <p>Projektet startede som et simpelt registreringsværktøj og er gradvist vokset til en fuldt udstyret have-app med AI-funktioner, foto-tidslinje, vejrudsigt og brugerstyring.</p>
+    <h3>Målgruppe</h3>
+    <p>Privat brug — primært Steen (admin) og Linda (member). Gæster kan se haven uden at ændre noget.</p>
+    <h3>Adresse</h3>
+    <ul>
+      <li>Live: <code>voreshave.soenderup.dk</code></li>
+      <li>Backup-adresse: <code>voreshave.netlify.app</code></li>
+      <li>Lokalt (dev): <code>http://localhost:8766</code></li>
+    </ul>
+    <h3>Platform</h3>
+    <p>Appen er en PWA (Progressive Web App) — den kan installeres på iPhone og Mac som en rigtig app. Den virker offline (begrænset) takket være en Service Worker der cacher app-skallen.</p>
+    <div class="info">Installer på iPhone: Åbn i Safari → tryk Del-knap → "Føj til hjemmeskærm"</div>
+  </div>
+</details>
+
+<!-- 3. FUNKTIONER -->
+<details>
+  <summary><span class="sektion-ikon">⚙️</span> Hvad kan appen?</summary>
+  <div class="indhold">
+    <h3>Havestruktur</h3>
+    <ul>
+      <li><strong>Områder:</strong> Forhave, Baghave osv. — øverste niveau</li>
+      <li><strong>Zoner:</strong> Rosenhaven, Terrassen, Krukker osv. — kan have underzoner</li>
+      <li><strong>Planter/elementer:</strong> Individuelle planter registreret i zoner</li>
+    </ul>
+    <h3>Plantregistrering</h3>
+    <ul>
+      <li>Navn, latinsk navn, beskrivelse, type (Træ, Busk, Staude, Etårig, Hæk, Stueplante, Krydderurt)</li>
+      <li>Plantedato (eller "Ukendt")</li>
+      <li>Trivseldata: vandbehov (3 trin), lysbehov (5 trin), jordbund (3 trin), levetid (etårig/flerårig)</li>
+      <li>Fotos: op til 15 stk. pr. plante med dato — sorteret som vækst-tidslinje</li>
+    </ul>
+    <h3>AI-funktioner (kræver internet)</h3>
+    <ul>
+      <li><strong>Identificer plante:</strong> Tag foto → AI gætter hvad det er, returnerer navn, type og trivseldata</li>
+      <li><strong>Diagnose:</strong> "Hvad fejler den?" → foto + valgfri kontekst → AI diagnosticerer symptomer og foreslår behandling</li>
+      <li><strong>Anbefalinger:</strong> AI genererer sæsonspecifikke plejeråd pr. plante</li>
+      <li><strong>Viden om:</strong> AI genererer fakta-tekst om planten</li>
+      <li><strong>Tjek registreringer:</strong> AI-scanning af alle planter for fejlregistreringer (forkert type m.m.)</li>
+    </ul>
+    <h3>Søgning og navigation</h3>
+    <ul>
+      <li>Søg i plantenavne, latinnavne, beskrivelser og zonenavne</li>
+      <li>Svip-navigation mellem planter i samme zone</li>
+      <li>Zoner folder ind/ud — kun én åben ad gangen</li>
+    </ul>
+    <h3>Påmindelser og historik</h3>
+    <ul>
+      <li>Påmindelser med dato og valgfri tildeling til bruger</li>
+      <li>Historik-noter pr. plante (kan genereres automatisk af AI-diagnose)</li>
+      <li>Kalender-oversigt over påmindelser</li>
+    </ul>
+    <h3>Vejrudsigt</h3>
+    <ul>
+      <li>Kompakt vejr-widget på forsiden</li>
+      <li>Viser aktuel temperatur + 4-dages prognose</li>
+      <li>Kilde: Open-Meteo (gratis, ingen API-nøgle nødvendig)</li>
+      <li>Lokation sættes af admin under ☰ → Vejr & lokation</li>
+    </ul>
+    <h3>Brugerstyring</h3>
+    <ul>
+      <li>PIN-login (4-6 cifre) pr. bruger</li>
+      <li>"Husk mig" på enheden</li>
+      <li>3 roller: admin, member, guest</li>
+      <li>Login-log: hvem har logget ind hvornår</li>
+    </ul>
+    <h3>Admin-funktioner</h3>
+    <ul>
+      <li>Rediger/slet zoner og planter</li>
+      <li>Brugerstyring (opret, rediger, slet brugere — maks 5)</li>
+      <li>Tjek registreringer (lokal + AI)</li>
+      <li>Fejl-log (se app-fejl i realtid)</li>
+      <li>Jordbundsmigration (genopfrisk trivseldata fra AI)</li>
+    </ul>
+  </div>
+</details>
+
+<!-- 4. BRUGERE -->
+<details>
+  <summary><span class="sektion-ikon">👥</span> Brugere og login</summary>
+  <div class="indhold">
+    <h3>Nuværende brugere</h3>
+    <table class="tabel">
+      <tr><th>Navn</th><th>Rolle</th><th>Adgang</th></tr>
+      <tr><td>Steen</td><td>admin</td><td>Alt — inkl. brugerstyring, rediger zoner/planter</td></tr>
+      <tr><td>Linda</td><td>member</td><td>Log noter, påmindelser, anbefalinger</td></tr>
+      <tr><td>Gæst</td><td>guest</td><td>Kun læse</td></tr>
+    </table>
+    <div class="advarsel">PIN-koder er IKKE dokumenteret her. De er gemt i dit kodeordsarkiv.</div>
+    <h3>Login-flow</h3>
+    <p>Appen viser en lockscreen ved opstart. Bruger vælger sit navn og taster PIN. Ved korrekt PIN logges der ind. "Husk mig"-funktion gemmer brugernavnet i localStorage så næste gang er der ingen lockscreen.</p>
+    <h3>Firebase Anonymous Auth</h3>
+    <p>Udover PIN-login (som er app-niveau) sker der en usynlig Firebase Anonymous Auth ved opstart. Dette er et teknisk krav for at Firestore-databasen ikke er åben for alle. Brugerne oplever ingenting — det sker automatisk i baggrunden.</p>
+    <h3>Glem enhed</h3>
+    <p>Hvis du er logget ind som "husket" og vil skifte bruger: ☰ → "Glem denne enhed".</p>
+  </div>
+</details>
+
+<!-- 5. TEKNISK ARKITEKTUR -->
+<details>
+  <summary><span class="sektion-ikon">🔧</span> Teknisk arkitektur</summary>
+  <div class="indhold">
+    <h3>Teknologistack</h3>
+    <div class="info">Appen er bevidst enkelt bygget: ren HTML, CSS og JavaScript. Ingen frameworks, ingen build-trin. Hele appen er én fil: <code>index.html</code>.</div>
+    <h3>Fil-struktur</h3>
+    <pre>voreshave/
+├── index.html              ← HELE appen (al kode, CSS, JS)
+├── manifest.json           ← PWA-manifest (app-navn, ikoner)
+├── sw.js                   ← Service Worker (offline/cache)
+├── firebase.json           ← Firebase CLI-konfiguration
+├── firestore.rules         ← Firestore sikkerhedsregler
+├── netlify.toml            ← Netlify-konfiguration
+├── netlify/functions/      ← Serverless API-funktioner
+│   ├── plant-info.js       ← Genererer "Viden om"-tekst
+│   ├── recommendations.js  ← Plejeråd pr. plante
+│   ├── identify-plant.js   ← Identificer plante via foto
+│   ├── diagnose-plant.js   ← Diagnosticer sygdom via foto
+│   └── check-plants.js     ← Tjek registreringer (AI)
+├── icons/                  ← App-ikoner (hjemmeskærm)
+├── scripts/                ← Dev-miljø (ikke deployed)
+│   ├── dev-start.sh        ← Start lokal server + Safari
+│   ├── dev-reload.sh       ← Auto-reload ved filændring
+│   └── dev-stop.sh         ← Ryd op ved session-stop
+└── dokumentation.html      ← Dette dokument</pre>
+    <h3>Dataflow</h3>
+    <p>Al havedata ligger i Firebase Firestore (cloud-database). Appen henter data ved opstart og lytter løbende på ændringer (realtid). Fotos gemmes i Firebase Storage. AI-kald går via Netlify Functions (serverless) som proxy til Claude API — API-nøglen er aldrig i klientkode.</p>
+    <h3>Service Worker og cache</h3>
+    <p>En Service Worker cacher app-skallen (HTML, ikoner) så appen virker offline. Data fra Firestore caches også automatisk af Firebase SDK.</p>
+    <div class="advarsel">Ved ændringer til ikoner eller andre cachede filer: bump <code>CACHE_VERSION</code> i <code>sw.js</code>. Ellers ser brugere den gamle version.</div>
+  </div>
+</details>
+
+<!-- 6. FIREBASE -->
+<details>
+  <summary><span class="sektion-ikon">🔥</span> Firebase</summary>
+  <div class="indhold">
+    <h3>Om Firebase</h3>
+    <p>Firebase er Googles cloud-platform. VoresHave bruger tre Firebase-services: Firestore (database), Storage (filhosting til fotos) og Authentication (usynlig anonym login).</p>
+    <h3>Adgang til Firebase Console</h3>
+    <ul>
+      <li>URL: <code>console.firebase.google.com</code></li>
+      <li>Login: Google-konto <code>appsstorage081@gmail.com</code></li>
+      <li>Projekt: <code>voreshave-5e7de</code> (hedder "voreshave" i listen)</li>
+    </ul>
+    <div class="advarsel">Der er to Google-konti. Brug <code>appsstorage081@gmail.com</code> til Firebase — ikke den private konto.</div>
+    <h3>Firebase-plan</h3>
+    <p>Blaze-plan (Pay-as-you-go). Generøs gratis kvote — vi betaler normalt ingenting. Men vær opmærksom på Netlify-funktionskald (se Netlify-sektionen).</p>
+    <h3>Firestore — databasestruktur</h3>
+    <p>Al data ligger i samlingen <code>voreshave</code> som individuelle dokumenter:</p>
+    <table class="tabel">
+      <tr><th>Dokument</th><th>Indhold</th><th>Vigtigt</th></tr>
+      <tr><td><code>voreshave/data</code></td><td>Al havedata: zoner, planter, påmindelser, historik</td><td>Kernedata — rør ikke manuelt</td></tr>
+      <tr><td><code>voreshave/users</code></td><td>Brugerliste med navne, PIN-koder (hash), roller</td><td>Redigeres via app-UI</td></tr>
+      <tr><td><code>voreshave/pins</code></td><td>Gammel PIN-struktur fra v1.20</td><td>Rør ikke — bruges til migration</td></tr>
+      <tr><td><code>voreshave/loginlog</code></td><td>Log over login-hændelser</td><td>Maks 200 entries, renses via app</td></tr>
+      <tr><td><code>voreshave/errorlog</code></td><td>App-fejl logget automatisk</td><td>Maks 200 entries, renses via app</td></tr>
+      <tr><td><code>voreshave/settings</code></td><td>App-indstillinger inkl. vejr-lokation</td><td>Sættes via ☰ → Vejr & lokation</td></tr>
+    </table>
+    <h3>Firebase Storage</h3>
+    <p>Fotos gemmes som <code>photos/{uuid}.jpg</code>. Bruges til zone-fotos, element-fotos og vækst-tidslinje. Maks 15 fotos pr. plante.</p>
+    <h3>Firebase Authentication</h3>
+    <p>Anonymous Auth er aktiveret. Alle der åbner appen får automatisk et anonymt token — kræves for at Firestore-reglerne accepterer dem. Det er usynligt for brugerne.</p>
+    <h3>Sikkerhedsregler</h3>
+    <p>Firestore-reglerne er sat til: "tillad læse/skrive hvis du har et Firebase Auth-token". Det betyder: ingen kan tilgå databasen uden at have åbnet appen. Reglerne deployes via Firebase CLI (ikke via Console).</p>
+    <pre>rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /voreshave/{document} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}</pre>
+    <h3>Deploy sikkerhedsregler</h3>
+    <p>Kræver Firebase CLI installeret og login. Kør i Terminal:</p>
+    <pre>firebase deploy --only firestore:rules --project voreshave-5e7de</pre>
+  </div>
+</details>
+
+<!-- 7. NETLIFY -->
+<details>
+  <summary><span class="sektion-ikon">▲</span> Netlify</summary>
+  <div class="indhold">
+    <h3>Om Netlify</h3>
+    <p>Netlify hoster appen (den statiske HTML-fil) og kører de serverless API-funktioner der laver kald til Claude AI. Netlify er koblet til GitHub — et push til <code>main</code>-branchen udløser automatisk et nyt deploy.</p>
+    <h3>Adgang</h3>
+    <ul>
+      <li>URL: <code>app.netlify.com</code></li>
+      <li>Site-navn: <code>voreshave</code> (voreshave.netlify.app)</li>
+      <li>Custom domæne: <code>voreshave.soenderup.dk</code></li>
+    </ul>
+    <h3>Deploy-flow</h3>
+    <pre>Rediger index.html lokalt
+    → git commit
+    → git push origin main
+    → GitHub modtager push
+    → Netlify bygger automatisk (få sekunder)
+    → voreshave.soenderup.dk er opdateret</pre>
+    <div class="advarsel">Spørg ALTID Claude inden git push — et push udløser live deploy med det samme.</div>
+    <h3>Environment variables</h3>
+    <table class="tabel">
+      <tr><th>Variabel</th><th>Værdi</th><th>Bruges til</th></tr>
+      <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Hemmelig (i dit kodeordsarkiv)</td><td>Alle AI-kald til Claude</td></tr>
+      <tr><td><code>NODE_VERSION</code></td><td>18</td><td>Netlify functions runtime</td></tr>
+    </table>
+    <h3>Netlify Functions (serverless API)</h3>
+    <p>Funktionerne er Node.js-scripts der kører i skyen. De modtager en forespørgsel fra appen, kalder Claude API og returnerer svaret. API-nøglen er kun i Netlify-miljøet — aldrig i klientkode.</p>
+    <table class="tabel">
+      <tr><th>Funktion</th><th>Model</th><th>Hvad den gør</th></tr>
+      <tr><td><code>plant-info.js</code></td><td>Claude Haiku</td><td>Genererer "Viden om"-faktatekst for en plante</td></tr>
+      <tr><td><code>recommendations.js</code></td><td>Claude Haiku</td><td>Sæsonspecifikke plejeråd pr. plante</td></tr>
+      <tr><td><code>identify-plant.js</code></td><td>Claude Sonnet 4.6</td><td>Identificerer plante fra foto (vision)</td></tr>
+      <tr><td><code>diagnose-plant.js</code></td><td>Claude Sonnet 4.6</td><td>Diagnosticerer sygdom/problem fra foto</td></tr>
+      <tr><td><code>check-plants.js</code></td><td>Claude Haiku</td><td>Scanner alle planter for fejlregistreringer</td></tr>
+    </table>
+    <h3>Gratis-plan begrænsninger</h3>
+    <div class="advarsel">Netlify gratis-plan: 125.000 function-kald/måned. Vi har overskredet dette og betalt 100 kr. for ekstra kald. Overvej at migrere til Cloudflare Workers (100.000 kald/dag gratis). Timeout: 10 sekunder pr. kald.</div>
+    <h3>netlify.toml</h3>
+    <p>Konfigurationsfil i roden af projektet. Sætter Node 18 og slår Netlify secrets scanner fra (Firebase API-nøgle gav en false positive advarsel).</p>
+  </div>
+</details>
+
+<!-- 8. GITHUB -->
+<details>
+  <summary><span class="sektion-ikon">🐙</span> GitHub</summary>
+  <div class="indhold">
+    <h3>Repository</h3>
+    <ul>
+      <li>URL: <code>github.com/soenderup/voreshave</code></li>
+      <li>Branch: <code>main</code> (eneste branch i brug)</li>
+      <li>Synlighed: Privat</li>
+    </ul>
+    <h3>Kobling til Netlify</h3>
+    <p>GitHub og Netlify er forbundet. Netlify lytter på <code>main</code>-branchen. Hvert push udløser automatisk et deploy til <code>voreshave.soenderup.dk</code>.</p>
+    <h3>Git-konto</h3>
+    <p>Git-bruger: Steen Søndrup. Commits laves lokalt og pushes via Terminal eller Claude Code.</p>
+  </div>
+</details>
+
+<!-- 9. CLAUDE / ANTHROPIC -->
+<details>
+  <summary><span class="sektion-ikon">🤖</span> Claude AI (Anthropic)</summary>
+  <div class="indhold">
+    <h3>Hvad er Claude?</h3>
+    <p>Claude er en AI-assistent lavet af Anthropic. VoresHave bruger Claude til to ting: (1) som kodningsassistent i udviklingsprocessen via Claude Code, og (2) som AI-motor i selve appen via API-kald.</p>
+    <h3>Claude i appen</h3>
+    <p>Fem Netlify Functions kalder Claude API. Kaldene koster penge pr. styk (øre-beløb per kald):</p>
+    <ul>
+      <li>Identificer plante: bruger Claude Sonnet (dyrere, bedre vision)</li>
+      <li>Diagnosticer plante: bruger Claude Sonnet</li>
+      <li>Anbefalinger: bruger Claude Haiku (billigere)</li>
+      <li>Viden om: bruger Claude Haiku</li>
+      <li>Tjek registreringer: bruger Claude Haiku</li>
+    </ul>
+    <h3>API-nøgle</h3>
+    <p>Anthropic API-nøglen er gemt som environment variable i Netlify (<code>ANTHROPIC_API_KEY</code>). Den er aldrig i selve app-koden. Find den i Netlify Console under Site settings → Environment variables, eller i dit kodeordsarkiv.</p>
+    <h3>Claude Code</h3>
+    <p>Claude Code er det CLI-værktøj (terminal-program) der bruges til at skrive og redigere selve app-koden. Det er Steens primære udviklingsværktøj. Startes ved at åbne projektet: skriv <code>kode</code> i Terminal og vælg VoresHave.</p>
+  </div>
+</details>
+
+<!-- 10. OPEN-METEO -->
+<details>
+  <summary><span class="sektion-ikon">⛅</span> Vejrudsigt (Open-Meteo)</summary>
+  <div class="indhold">
+    <h3>Om Open-Meteo</h3>
+    <p>Open-Meteo er en gratis vejr-API uden API-nøgle. Appen henter vejrdata direkte fra browseren (ingen server-mellemled).</p>
+    <h3>Hvad der vises</h3>
+    <ul>
+      <li>Aktuel temperatur, nedbørschance, vindstyrke og -retning</li>
+      <li>4-dages prognose med min/max temperatur</li>
+    </ul>
+    <h3>Opsætning</h3>
+    <p>Admin skal sætte lokation: ☰ → "Vejr & lokation" → søg på bynavn → vælg fra liste → gem. Lokationen gemmes i Firestore (<code>voreshave/settings</code>) så alle brugere ser samme vejr.</p>
+    <h3>Cache</h3>
+    <p>Vejrdata caches i <code>localStorage</code> i op til 1 time. Invalideres automatisk ved lokationsskift.</p>
+  </div>
+</details>
+
+<!-- 11. DEV-MILJØ -->
+<details>
+  <summary><span class="sektion-ikon">💻</span> Udviklingsmiljø (lokalt)</summary>
+  <div class="indhold">
+    <h3>Hvad er dev-miljøet?</h3>
+    <p>Til udvikling køres appen lokalt på Mac. Et sæt scripts (i <code>scripts/</code>-mappen) styrer miljøet automatisk via Claude Code.</p>
+    <h3>Start udviklingsession</h3>
+    <ol>
+      <li>Åbn Terminal</li>
+      <li>Skriv <code>kode</code> og tryk Enter</li>
+      <li>Vælg <code>VoresHave</code> fra listen</li>
+      <li>Claude Code starter — scripts kører automatisk:
+        <ul>
+          <li>HTTP-server startes på port 8766</li>
+          <li>Safari åbner og placeres i højre 33% af skærmen</li>
+          <li>Terminal fylder venstre 67%</li>
+        </ul>
+      </li>
+    </ol>
+    <h3>Lokalt vs. live</h3>
+    <div class="advarsel">Lokalt kan ikke teste Netlify Functions (AI-kald). AI-funktioner testes kun på det live site. Jordbunds-migration skal altid køres fra live-sitet.</div>
+    <h3>Auto-reload</h3>
+    <p>Safari opdateres IKKE automatisk ved filændringer. Tryk <strong>Cmd+R</strong> manuelt i Safari for at se ændringer.</p>
+    <h3>Scripts (ikke deployed)</h3>
+    <ul>
+      <li><code>dev-start.sh</code>: Startes automatisk ved session-start</li>
+      <li><code>dev-reload.sh</code>: Kører ved filændringer (printer bare besked)</li>
+      <li><code>dev-stop.sh</code>: Rydder op når Claude Code lukkes</li>
+    </ul>
+  </div>
+</details>
+
+<!-- 12. PROBLEMER DER HAR VÆRET -->
+<details>
+  <summary><span class="sektion-ikon">🔴</span> Problemer der har været</summary>
+  <div class="indhold">
+    <h3>Netlify function-overforbrug (maj 2026)</h3>
+    <p>Sitet var nede fordi vi overskred Netlify gratis-planens 125.000 function-kald/måned. Betalt 100 kr. for ekstra kald. AI-kald (identificer, diagnose, anbefalinger) tæller som function-kald.</p>
+    <p><strong>Mulig løsning:</strong> Migrere til Cloudflare Workers (100.000 kald/dag gratis).</p>
+    <h3>Firebase test mode var åbent (maj 2026)</h3>
+    <p>Firestore kørte i "test mode" — alle kunne læse og skrive til databasen uden login. Løst ved at implementere Firebase Anonymous Auth og sikkerhedsregler.</p>
+    <h3>Safari AppleScript crash (maj 2026)</h3>
+    <p>Dev-scripts brugte AppleScript til at styre Safari — det crashede konsekvent. Løst ved at droppe AppleScript og bruge macOS Accessibility API i stedet.</p>
+    <h3>Service Worker cache-problemer</h3>
+    <p>Brugere så gammel version af appen fordi SW cachede for aggressivt. Løst ved at bruge network-first strategi for HTML og bump af cache-version ved deploy.</p>
+    <h3>Netlify secrets scanner false positive</h3>
+    <p>Netlify blokerede deploy pga. Firebase API-nøgle i koden (false positive — Firebase web-nøgler må gerne være offentlige). Løst ved at slå secrets scanning fra i <code>netlify.toml</code>.</p>
+    <h3>parseDrainage — inkonsistente værdier</h3>
+    <p>Claude API returnerede drainage-værdier i mange formater (dansk, engelsk, forkert casing, underscore). Løst med <code>parseDrainage()</code>-funktion der normaliserer alle varianter.</p>
+    <h3>Firestore onSnapshot race condition</h3>
+    <p>Jordbundsmigration virkede ikke fordi onSnapshot overskrev de netop gemte data. Løst — migration virker nu korrekt på live-sitet.</p>
+  </div>
+</details>
+
+<!-- 13. FREMTIDSPLANER -->
+<details>
+  <summary><span class="sektion-ikon">🚀</span> Fremtidsplaner</summary>
+  <div class="indhold">
+    <h3>Prioriteret</h3>
+    <table class="tabel">
+      <tr><th>Opgave</th><th>Prioritet</th><th>Beskrivelse</th></tr>
+      <tr><td>Cloudflare Workers migration</td><td>Høj</td><td>Flyt Netlify Functions til Cloudflare for 100k kald/dag gratis i stedet for 125k/måned</td></tr>
+      <tr><td>Push-notifikationer (iPhone)</td><td>Mellem</td><td>Kræver Firebase Cloud Messaging + opdateret Service Worker</td></tr>
+    </table>
+    <h3>Idéer</h3>
+    <table class="tabel">
+      <tr><th>Idé</th><th>Sværhed</th><th>Beskrivelse</th></tr>
+      <tr><td>"Hvad kan jeg plante nu?"</td><td>Lille</td><td>AI foreslår hvad der er sæson til baseret på dato</td></tr>
+      <tr><td>Ønskeliste / frøbank</td><td>Lille</td><td>Liste over planter man vil købe eller frø man har</td></tr>
+      <tr><td>Samliv-guide</td><td>Mellem</td><td>Vælg en plante → AI svarer hvad den trives/ikke trives med som nabo</td></tr>
+      <tr><td>Havens årskalender</td><td>Mellem</td><td>Månedsoversigt: hvad blomstrer, høstes, beskæres — genereret pr. plante</td></tr>
+      <tr><td>Havens årsberetning</td><td>Stor</td><td>Dashboard: antal planter, noter logget, årets plante</td></tr>
+    </table>
+  </div>
+</details>
+
+<!-- 14. VIGTIGE NOTER -->
+<details>
+  <summary><span class="sektion-ikon">📌</span> Vigtige noter og huskeliste</summary>
+  <div class="indhold">
+    <h3>Deploy-procedure</h3>
+    <ol>
+      <li>Test altid lokalt på <code>http://localhost:8766</code> inden commit</li>
+      <li>Commit med en beskrivende besked</li>
+      <li>Spørg Claude inden push — push = live deploy</li>
+      <li>Kør INGEN build-test (der er ingen build — bare HTML)</li>
+    </ol>
+    <h3>Version og cache</h3>
+    <ul>
+      <li><code>VERSION</code> i <code>index.html</code>: bump ved større funktionsændringer</li>
+      <li><code>CACHE_VERSION</code> i <code>sw.js</code>: bump KUN når SHELL-listen (ikoner m.m.) ændres</li>
+      <li>Begge bumps sker inden commit — aldrig som efterskrift</li>
+    </ul>
+    <h3>Firestore-regler</h3>
+    <p>Deployes via Firebase CLI — ikke via Firebase Console. Kræver Firebase CLI logget ind:</p>
+    <pre>firebase deploy --only firestore:rules --project voreshave-5e7de</pre>
+    <h3>voreshave/pins</h3>
+    <p>Det gamle PIN-dokument i Firestore. Rør ikke. Det bruges til migration for brugere der endnu ikke har fået det nye <code>voreshave/users</code>-dokument.</p>
+    <h3>Jordbundsmigration</h3>
+    <p>☰ → "Opdater jordbundsdata" skal altid køres fra live-sitet (ikke localhost). Migrations-knappen beholdes til genopfriskning af data.</p>
+    <h3>PWA og cache</h3>
+    <p>Luk og genåbn app på iPhone for at hente seneste version. Service Worker er network-first for HTML.</p>
+    <h3>Lokal server understøtter ikke POST</h3>
+    <p>Netlify Functions (AI-kald) kan ikke testes lokalt. Test altid på live-sitet.</p>
+    <h3>Firebase-konto</h3>
+    <div class="advarsel">Firebase Console: brug <code>appsstorage081@gmail.com</code> — ikke din private Google-konto.</div>
+  </div>
+</details>
+
+<footer>
+  VoresHave Dokumentation — Fortroligt — Kun til intern brug<br>
+  Genereret med Claude Code (Anthropic) · Sidst opdateret maj 2026
+</footer>
+
+</div><!-- /indhold -->
+
+<button id="lås-knap" onclick="lås()" title="Lås dokumentet">🔒</button>
+
+<script>
+const STORAGE_KEY = 'voreshave-doc-hash';
+
+async function sha256(tekst) {
+  const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tekst));
+  return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function visSetup() {
+  document.getElementById('setup-boks').style.display = 'block';
+  document.getElementById('login-boks').style.display = 'none';
+  setTimeout(() => document.getElementById('setup-kode1').focus(), 100);
+}
+
+function visLogin() {
+  document.getElementById('setup-boks').style.display = 'none';
+  document.getElementById('login-boks').style.display = 'block';
+  setTimeout(() => document.getElementById('login-kode').focus(), 100);
+}
+
+function lås() {
+  document.getElementById('indhold').style.display = 'none';
+  document.getElementById('overlay').style.display = 'flex';
+  document.getElementById('login-kode').value = '';
+  document.getElementById('auth-fejl').textContent = '';
+  visLogin();
+}
+
+async function opretKode() {
+  const k1 = document.getElementById('setup-kode1').value;
+  const k2 = document.getElementById('setup-kode2').value;
+  const fejl = document.getElementById('setup-fejl');
+  if (k1.length < 4) { fejl.textContent = 'Adgangskoden skal være mindst 4 tegn.'; return; }
+  if (k1 !== k2) { fejl.textContent = 'Adgangskoderne er ikke ens.'; return; }
+  const hash = await sha256(k1);
+  localStorage.setItem(STORAGE_KEY, hash);
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('indhold').style.display = 'block';
+}
+
+async function tjekKode() {
+  const kode = document.getElementById('login-kode').value;
+  const gemt = localStorage.getItem(STORAGE_KEY);
+  const hash = await sha256(kode);
+  if (hash === gemt) {
+    document.getElementById('overlay').style.display = 'none';
+    document.getElementById('indhold').style.display = 'block';
+  } else {
+    const fejl = document.getElementById('auth-fejl');
+    fejl.textContent = 'Forkert adgangskode.';
+    setTimeout(() => fejl.textContent = '', 2000);
+  }
+}
+
+function nulstilKode() {
+  if (confirm('Nulstil adgangskode til dette dokument? Du skal oprette en ny adgangskode.')) {
+    localStorage.removeItem(STORAGE_KEY);
+    visSetup();
+  }
+}
+
+// Enter-tast support
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('login-boks').style.display !== 'none') tjekKode();
+  else if (document.getElementById('setup-boks').style.display !== 'none') opretKode();
+});
+
+// Init
+window.addEventListener('load', () => {
+  if (localStorage.getItem(STORAGE_KEY)) visLogin();
+  else visSetup();
+});
+</script>
+
+</body>
+</html>
