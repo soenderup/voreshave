@@ -66,6 +66,16 @@ tell application "System Events"
     end tell
 end tell' 2>/dev/null || true
 
+# Åbn dokumentation som baggrundsfaneblad (appen forbliver i fokus)
+sleep 0.3
+osascript -e "
+tell application \"Safari\"
+    tell window 1
+        set newTab to make new tab with properties {URL:\"http://localhost:$PORT/dokumentation.html?key=fFKqvN687VDqCye6kxoD\"}
+        set current tab of window 1 to tab 1 of window 1
+    end tell
+end tell" 2>/dev/null || true
+
 # Giv fokus tilbage til Terminal
 osascript -e 'tell application "Terminal" to activate'
 

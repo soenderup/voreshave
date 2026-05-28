@@ -622,8 +622,18 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter') tjekKode();
 });
 
-// Init
-window.addEventListener('load', () => {
+// Init — auto-login via URL-parameter ?key=... (bruges af dev-start.sh)
+window.addEventListener('load', async () => {
+  const key = new URLSearchParams(window.location.search).get('key');
+  if (key) {
+    history.replaceState({}, '', window.location.pathname); // fjern key fra URL
+    const hash = await sha256(key);
+    if (hash === CORRECT_HASH) {
+      document.getElementById('overlay').style.display = 'none';
+      document.getElementById('indhold').style.display = 'block';
+      return;
+    }
+  }
   setTimeout(() => document.getElementById('login-kode').focus(), 100);
 });
 </script>
