@@ -121,23 +121,13 @@
 
 <!-- ── OVERLAY ── -->
 <div id="overlay">
-  <div class="auth-boks" id="setup-boks" style="display:none">
-    <span class="auth-ikon">🌿</span>
-    <h1>Opret adgangskode</h1>
-    <p>Første gang på denne enhed. Vælg en adgangskode til dokumentationen og gem den i dit kodeordsarkiv.</p>
-    <input type="password" id="setup-kode1" placeholder="Vælg adgangskode" autocomplete="new-password">
-    <input type="password" id="setup-kode2" placeholder="Gentag adgangskode" autocomplete="new-password">
-    <button onclick="opretKode()">Gem adgangskode</button>
-    <div id="setup-fejl"></div>
-  </div>
-  <div class="auth-boks" id="login-boks" style="display:none">
+  <div class="auth-boks">
     <span class="auth-ikon">🌿</span>
     <h1>VoresHave</h1>
     <p>Dokumentation — indtast adgangskode</p>
     <input type="password" id="login-kode" placeholder="Adgangskode" autocomplete="current-password">
     <button onclick="tjekKode()">Åbn</button>
     <div id="auth-fejl"></div>
-    <div id="reset-link" onclick="nulstilKode()">Glemt adgangskode? Nulstil her</div>
   </div>
 </div>
 
@@ -575,23 +565,11 @@ service cloud.firestore {
 <button id="lås-knap" onclick="lås()" title="Lås dokumentet">🔒</button>
 
 <script>
-const STORAGE_KEY = 'voreshave-doc-hash';
+const CORRECT_HASH = '6ee0d2497b3fbc95975617d22850bad1e1b72723d71d7952a06b4c9f175e6e01';
 
 async function sha256(tekst) {
   const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tekst));
   return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function visSetup() {
-  document.getElementById('setup-boks').style.display = 'block';
-  document.getElementById('login-boks').style.display = 'none';
-  setTimeout(() => document.getElementById('setup-kode1').focus(), 100);
-}
-
-function visLogin() {
-  document.getElementById('setup-boks').style.display = 'none';
-  document.getElementById('login-boks').style.display = 'block';
-  setTimeout(() => document.getElementById('login-kode').focus(), 100);
 }
 
 function lås() {
@@ -599,26 +577,13 @@ function lås() {
   document.getElementById('overlay').style.display = 'flex';
   document.getElementById('login-kode').value = '';
   document.getElementById('auth-fejl').textContent = '';
-  visLogin();
-}
-
-async function opretKode() {
-  const k1 = document.getElementById('setup-kode1').value;
-  const k2 = document.getElementById('setup-kode2').value;
-  const fejl = document.getElementById('setup-fejl');
-  if (k1.length < 4) { fejl.textContent = 'Adgangskoden skal være mindst 4 tegn.'; return; }
-  if (k1 !== k2) { fejl.textContent = 'Adgangskoderne er ikke ens.'; return; }
-  const hash = await sha256(k1);
-  localStorage.setItem(STORAGE_KEY, hash);
-  document.getElementById('overlay').style.display = 'none';
-  document.getElementById('indhold').style.display = 'block';
+  setTimeout(() => document.getElementById('login-kode').focus(), 100);
 }
 
 async function tjekKode() {
   const kode = document.getElementById('login-kode').value;
-  const gemt = localStorage.getItem(STORAGE_KEY);
   const hash = await sha256(kode);
-  if (hash === gemt) {
+  if (hash === CORRECT_HASH) {
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('indhold').style.display = 'block';
   } else {
@@ -628,24 +593,14 @@ async function tjekKode() {
   }
 }
 
-function nulstilKode() {
-  if (confirm('Nulstil adgangskode til dette dokument? Du skal oprette en ny adgangskode.')) {
-    localStorage.removeItem(STORAGE_KEY);
-    visSetup();
-  }
-}
-
 // Enter-tast support
 document.addEventListener('keydown', e => {
-  if (e.key !== 'Enter') return;
-  if (document.getElementById('login-boks').style.display !== 'none') tjekKode();
-  else if (document.getElementById('setup-boks').style.display !== 'none') opretKode();
+  if (e.key === 'Enter') tjekKode();
 });
 
 // Init
 window.addEventListener('load', () => {
-  if (localStorage.getItem(STORAGE_KEY)) visLogin();
-  else visSetup();
+  setTimeout(() => document.getElementById('login-kode').focus(), 100);
 });
 </script>
 
