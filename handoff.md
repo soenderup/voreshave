@@ -1,13 +1,32 @@
 # Handoff — Vores Have
-*Opdateret: 28. maj 2026 (session 12)*
+*Opdateret: 28. maj 2026 (session 13)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
-- **Live version:** v1.25 + sikkerhedsregler på `https://voreshave.soenderup.dk`
-- **Seneste:** Firebase Auth + Firestore sikkerhedsregler, dokumentationsside oprettet
+- **Live version:** v1.25 på `https://voreshave.soenderup.dk`
+- **Seneste:** Billedoptimering — thumbnail-upload og lazy loading
 - **Næste:** Cloudflare Workers migration (Netlify koster), se idé-listen
+
+---
+
+## Seneste arbejde (28. maj — session 13)
+
+### Billedoptimering — thumbnail-upload og lazy loading
+
+- `uploadPhoto()` og `uploadBase64Photo()` uploader nu **to** filer til Firebase Storage:
+  - `photos/{id}.jpg` — fuld opløsning (1200px, 0.78 quality)
+  - `photos/{id}_thumb.jpg` — thumbnail (150px, 0.7 quality)
+- Begge returnerer `{ url, thumbUrl }`
+- `p.photoThumb` tilføjet som felt på planter — gemmer thumbnail-URL for primærfoto
+- Tidslinje-fotos (`p.photos[i]`) får `thumbUrl` på hvert entry
+- Plantelisten (38px) og søgeresultater (36px) bruger nu `p.photoThumb || p.photo`
+- `loading="lazy"` tilføjet på liste-thumbnails
+- Sletning rydder også thumbnail fra Firebase Storage
+- `setPrimaryTimelinePhoto` og `deleteTimelinePhoto` syncer `p.photoThumb` korrekt
+- Eksisterende fotos (ingen `photoThumb`) falder automatisk tilbage til fuld URL
+- **Gevinst:** Ca. 10-20x mindre data i plantelister (5-15 KB vs 200-500 KB pr. billede)
 
 ---
 
@@ -491,7 +510,7 @@ Brainstormet 26. maj — ingen rækkefølge, ingen deadline:
 | **Havens årskalender** | Månedsoversigt: hvad blomstrer, høstes, beskæres hvornår — genereret pr. plante | Mellem |
 | **Vækst-tidslinje** | ~~Se fotos over tid pr. plante~~ | ✓ Bygget (v1.25) |
 | **Havens årsberetning** | Dashboard: antal planter, noter logget, årets plante — mest for hyggens skyld | Stor |
-| **Billedoptimering** | Fuld opløsning bruges som thumbnails (38px) — gem lille thumbnail ved upload (client-side resize). Tilføj også `loading="lazy"` på liste-billeder. Gevinst: hurtigere indlæsning i plantelister og søgeresultater | Mellem |
+| **~~Billedoptimering~~** | ~~Fuld opløsning bruges som thumbnails (38px) — gem lille thumbnail ved upload (client-side resize). Tilføj også `loading="lazy"` på liste-billeder.~~ | ✓ Bygget (session 13) |
 
 ---
 
