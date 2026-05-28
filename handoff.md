@@ -462,6 +462,7 @@ Brainstormet 26. maj — ingen rækkefølge, ingen deadline:
 | **Havens årskalender** | Månedsoversigt: hvad blomstrer, høstes, beskæres hvornår — genereret pr. plante | Mellem |
 | **Vækst-tidslinje** | ~~Se fotos over tid pr. plante~~ | ✓ Bygget (v1.25) |
 | **Havens årsberetning** | Dashboard: antal planter, noter logget, årets plante — mest for hyggens skyld | Stor |
+| **Billedoptimering** | Fuld opløsning bruges som thumbnails (38px) — gem lille thumbnail ved upload (client-side resize). Tilføj også `loading="lazy"` på liste-billeder. Gevinst: hurtigere indlæsning i plantelister og søgeresultater | Mellem |
 
 ---
 
