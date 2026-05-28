@@ -1489,7 +1489,7 @@ function renderHome() {
 
         const plantsHTML = plants.map(p => {
             const thumb = p.photo
-                ? `<img src="${p.photo}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0">`
+                ? `<img src="${p.photoThumb || p.photo}" loading="lazy" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0">`
                 : `<span style="font-size:1.1rem;flex-shrink:0">🌱</span>`;
             const latin = p.latinName ? `<div class="zone-element-meta">${p.latinName}</div>` : '';
             const qty = p.quantity > 1 ? ` <span style="color:var(--muted);font-weight:400;font-size:0.85em">× ${p.quantity}</span>` : '';
@@ -1542,7 +1542,7 @@ function renderHome() {
             : `<span class="zone-badge ok">OK</span>`;
         const meta = [p.latinName, p.type].filter(Boolean).join(' · ');
         const thumb = p.photo
-            ? `<img src="${p.photo}" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0">`
+            ? `<img src="${p.photoThumb || p.photo}" loading="lazy" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0">`
             : `<span class="zone-icon">🌱</span>`;
         return `<div class="zone-card" onclick="goTo('plant','${z.id}','${p.id}')">
             <div class="zone-card-header">
@@ -1770,18 +1770,26 @@ function base64ToBlob(base64) {
 }
 
 async function uploadPhoto(file) {
-    const base64 = await compressImage(file, 1200, 0.78);
-    const blob = base64ToBlob(base64);
-    const ref = fsStorage.ref(`photos/${uuid()}.jpg`);
-    await ref.put(blob);
-    return await ref.getDownloadURL();
+    const id = uuid();
+    const [base64Full, base64Thumb] = await Promise.all([
+        compressImage(file, 1200, 0.78),
+        compressImage(file, 150, 0.7)
+    ]);
+    const refFull = fsStorage.ref(`photos/${id}.jpg`);
+    const refThumb = fsStorage.ref(`photos/${id}_thumb.jpg`);
+    await Promise.all([refFull.put(base64ToBlob(base64Full)), refThumb.put(base64ToBlob(base64Thumb))]);
+    const [url, thumbUrl] = await Promise.all([refFull.getDownloadURL(), refThumb.getDownloadURL()]);
+    return { url, thumbUrl };
 }
 
 async function uploadBase64Photo(base64) {
-    const blob = base64ToBlob(base64);
-    const ref = fsStorage.ref(`photos/${uuid()}.jpg`);
-    await ref.put(blob);
-    return await ref.getDownloadURL();
+    const id = uuid();
+    const thumbBase64 = await resizeImageForAPI(base64, 150);
+    const refFull = fsStorage.ref(`photos/${id}.jpg`);
+    const refThumb = fsStorage.ref(`photos/${id}_thumb.jpg`);
+    await Promise.all([refFull.put(base64ToBlob(base64)), refThumb.put(base64ToBlob(thumbBase64))]);
+    const [url, thumbUrl] = await Promise.all([refFull.getDownloadURL(), refThumb.getDownloadURL()]);
+    return { url, thumbUrl };
 }
 
 async function deleteStoragePhoto(url) {
@@ -1820,7 +1828,7 @@ async function doPickZonePhoto(zid, source) {
         savePhotoToIDB('zone-' + zid, base64);
         deleteStoragePhoto(oldPhoto);
         try {
-            const url = await uploadPhoto(file);
+            const { url } = await uploadPhoto(file);
             const zFresh = zone(zid);
             if (zFresh) { zFresh.photo = url; saveDB(); }
         } catch (err) {
@@ -1853,15 +1861,17 @@ async function doPickElementPhoto(pid, source) {
         const file = e.target.files[0];
         if (!file) return;
         const oldPhoto = plant(pid)?.photo;
+        const oldPhotoThumb = plant(pid)?.photoThumb;
         const base64 = await compressImage(file, 1200, 0.78);
         plant(pid).photo = base64;
         render();
         savePhotoToIDB('plant-' + pid, base64);
         deleteStoragePhoto(oldPhoto);
+        deleteStoragePhoto(oldPhotoThumb);
         try {
-            const url = await uploadPhoto(file);
+            const { url, thumbUrl } = await uploadPhoto(file);
             const pFresh = plant(pid);
-            if (pFresh) { pFresh.photo = url; saveDB(); }
+            if (pFresh) { pFresh.photo = url; pFresh.photoThumb = thumbUrl; saveDB(); }
         } catch (err) {
             logError('Foto-upload (element) fejlede: ' + err.message, 'uploadPlantPhoto', '');
         }
@@ -1874,8 +1884,10 @@ async function deleteElementPhoto(pid, e) {
     if (!confirm('Slet elementfoto?')) return;
     const p = plant(pid);
     await deleteStoragePhoto(p.photo);
+    deleteStoragePhoto(p.photoThumb);
     deletePhotoFromIDB('plant-' + pid);
     p.photo = null;
+    p.photoThumb = null;
     saveDB(); render();
 }
 
@@ -1951,13 +1963,14 @@ async function doPickTimelinePhoto(pid, source) {
         if (isFirst) p.photo = base64;
         render();
         try {
-            const url = await uploadPhoto(file);
+            const { url, thumbUrl } = await uploadPhoto(file);
             const pFresh = plant(pid);
             if (pFresh) {
                 const ph = (pFresh.photos || []).find(x => x.id === photoId);
                 if (ph) {
                     ph.url = url;
-                    if (ph.primary) pFresh.photo = url;
+                    ph.thumbUrl = thumbUrl;
+                    if (ph.primary) { pFresh.photo = url; pFresh.photoThumb = thumbUrl; }
                     saveDB();
                 }
             }
@@ -1991,7 +2004,7 @@ function setPrimaryTimelinePhoto(pid, photoId) {
     if (!p) return;
     (p.photos || []).forEach(ph => { ph.primary = (ph.id === photoId); });
     const primary = (p.photos || []).find(ph => ph.id === photoId);
-    if (primary) p.photo = primary.url;
+    if (primary) { p.photo = primary.url; p.photoThumb = primary.thumbUrl || null; }
     saveDB(); render();
 }
 
@@ -2004,13 +2017,16 @@ async function deleteTimelinePhoto(pid, photoId) {
     if (!confirm('Slet dette foto?')) return;
     const wasPrimary = ph.primary;
     await deleteStoragePhoto(ph.url);
+    deleteStoragePhoto(ph.thumbUrl);
     p.photos = (p.photos || []).filter(x => x.id !== photoId);
     if (wasPrimary && p.photos.length > 0) {
         const newest = [...p.photos].sort((a, b) => b.date.localeCompare(a.date))[0];
         newest.primary = true;
         p.photo = newest.url;
+        p.photoThumb = newest.thumbUrl || null;
     } else if (p.photos.length === 0) {
         p.photo = null;
+        p.photoThumb = null;
     }
     saveDB(); render();
 }
@@ -2496,9 +2512,9 @@ function submitAddPlantFromIdentify() {
     // Upload foto til Firebase Storage i baggrunden
     if (photoBase64) {
         savePhotoToIDB('plant-' + newPlant.id, photoBase64);
-        uploadBase64Photo(photoBase64).then(url => {
+        uploadBase64Photo(photoBase64).then(({ url, thumbUrl }) => {
             const pFresh = plant(newPlant.id);
-            if (pFresh) { pFresh.photo = url; saveDB(); }
+            if (pFresh) { pFresh.photo = url; pFresh.photoThumb = thumbUrl; saveDB(); }
         }).catch(err => logError('Identify-foto upload fejlede: ' + err.message, 'uploadIdentifyPhoto', ''));
     }
 }
