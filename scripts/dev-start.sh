@@ -12,12 +12,12 @@ if [ -f "$TMP_DIR/watcher.pid" ]; then
 fi
 
 # Stop eksisterende server (matcher både "python3" og "Python" med fuld sti)
-pkill -f "http.server $PORT" 2>/dev/null || true
+lsof -ti tcp:$PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
 sleep 0.3
 
 # Start HTTP server
 cd "$PROJECT_DIR"
-python3 -m http.server $PORT &>/dev/null &
+python3 "$PROJECT_DIR/scripts/devserver.py" $PORT &>/dev/null &
 echo $! > "$TMP_DIR/server.pid"
 sleep 0.5
 

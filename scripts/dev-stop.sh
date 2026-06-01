@@ -17,7 +17,7 @@ if [ -n "$EXPECTED_TOKEN" ]; then
 fi
 
 # Stop HTTP server
-pkill -f "http.server $PORT" 2>/dev/null || true
+lsof -ti tcp:$PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
 
 # Stop baggrundsvagt (sig selv — men det er OK)
 if [ -f "$TMP_DIR/watcher.pid" ]; then

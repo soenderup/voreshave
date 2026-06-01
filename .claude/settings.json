@@ -18,13 +18,12 @@
         ]
       }
     ],
-    "PostToolUse": [
+    "Stop": [
       {
-        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/steensonderup/Documents/udvikling/VoresHave/scripts/dev-reload.sh"
+            "command": "/Users/steensonderup/Documents/udvikling/VoresHave/scripts/reload-safari.sh"
           }
         ]
       }
