@@ -2,7 +2,7 @@
 # Starter dev-miljø: server, vinduer og branch-info
 
 PROJECT_DIR="/Users/steensonderup/Documents/udvikling/VoresHave"
-PORT=8766
+PORT=8080
 TMP_DIR="/tmp/voreshave_dev"
 mkdir -p "$TMP_DIR"
 

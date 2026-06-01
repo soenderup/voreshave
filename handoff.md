@@ -532,7 +532,7 @@ Kræver Firebase Cloud Messaging + opdateret service worker.
 - **Firestore test mode udløber ~24. juni 2026** - husk sikkerhedsregler!
 - **Firebase plan:** Blaze (Pay-as-you-go)
 - **Viden om + Anbefalinger + Identificer:** Koster øre pr. opslag via Anthropic API
-- **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8766` — Safari åbner automatisk og placeres i højre 33% (Terminal i venstre 67%) via System Events
+- **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8080` — Safari åbner automatisk og placeres i højre 33% (Terminal i venstre 67%) via System Events
 - **Safari auto-reload:** Deaktiveret — tryk Cmd+R manuelt når index.html ændres
 - **Lokal server understøtter IKKE POST** - Netlify-funktioner testes kun på live
 - **Jord-migration:** Kør altid fra **live-sitet** (ikke localhost). Migrations-knappen kan beholdes til genopfriskning
