@@ -121,6 +121,7 @@
         .zone-meta { font-size: 0.74rem; color: var(--muted); margin-top: 0.05rem; }
         .zone-badge { font-size: 0.68rem; background: var(--terra-light); color: var(--terra); padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 600; white-space: nowrap; }
         .zone-badge.ok { background: var(--green-light); color: var(--green-mid); }
+        .flag-attention, .flag-overdue { font-size: 0.95rem; line-height: 1; flex-shrink: 0; margin-left: 0.15rem; }
         .zone-arrow { color: var(--muted); font-size: 0.9rem; margin-left: 0.3rem; }
         .sub-zone-list { padding: 0.8rem 1rem 0; }
         .sub-zone-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.5rem; padding: 0 1rem; }
@@ -1355,6 +1356,13 @@ function daysUntil(iso) {
     return `Om ${diff} dage`;
 }
 
+function plantUrgent(pid) {
+    return db.reminders.some(r => r.entityType === 'plant' && r.entityId === pid && new Date(r.date) <= new Date());
+}
+function zoneAttention(zid) {
+    return db.plants.some(p => p.zoneId === zid && plantAttentionFlag(p.id));
+}
+
 function zoneStatus(zid) {
     const urgent = db.reminders.filter(r => {
         if (r.entityType === 'zone' && r.entityId === zid) return new Date(r.date) <= new Date();
@@ -1480,7 +1488,7 @@ function renderHome() {
         const subs = subZones(z.id);
         const status = zoneStatus(z.id);
         const icon = ZONE_TYPES[z.type]?.icon || '🏡';
-        const badge = status === 'urgent' ? `<span class="zone-badge" style="margin-right:0.2rem">⚠️</span>` : '';
+        const badge = `${zoneAttention(z.id) ? `<span class="flag-attention" title="Kræver opmærksomhed">🚩</span>` : ''}${status === 'urgent' ? `<span class="flag-overdue" title="Overskredet påmindelse">⚠️</span>` : ''}`;
         const collapsed = collapsedZones.has(z.id);
         const parts = [];
         if (subs.length > 0) parts.push(`${subs.length} zone${subs.length !== 1 ? 'r' : ''}`);
@@ -1493,12 +1501,15 @@ function renderHome() {
                 : `<span style="font-size:1.1rem;flex-shrink:0">🌱</span>`;
             const latin = p.latinName ? `<div class="zone-element-meta">${p.latinName}</div>` : '';
             const qty = p.quantity > 1 ? ` <span style="color:var(--muted);font-weight:400;font-size:0.85em">× ${p.quantity}</span>` : '';
+            const overdueBadge = plantUrgent(p.id) ? `<span class="flag-overdue" title="Overskredet påmindelse">⚠️</span>` : '';
+            const attnBadge = plantAttentionFlag(p.id) ? `<span class="flag-attention" title="Kræver opmærksomhed">🚩</span>` : '';
             return `<div class="zone-element-row" onclick="goTo('plant','${z.id}','${p.id}')">
                 ${thumb}
                 <div class="zone-element-info">
                     <div class="zone-element-name">${p.name}${qty}</div>
                     ${latin}
                 </div>
+                ${attnBadge}${overdueBadge}
                 <span class="zone-arrow">›</span>
             </div>`;
         }).join('');
@@ -1537,9 +1548,10 @@ function renderHome() {
 
     function directElementCard(z, p) {
         const status = zoneStatus(z.id);
-        const badge = status === 'urgent'
+        const attnBadge = plantAttentionFlag(p.id) ? `<span class="flag-attention" title="Kræver opmærksomhed">🚩</span>` : '';
+        const badge = attnBadge + (status === 'urgent'
             ? `<span class="zone-badge">Handling krævet</span>`
-            : `<span class="zone-badge ok">OK</span>`;
+            : `<span class="zone-badge ok">OK</span>`);
         const meta = [p.latinName, p.type].filter(Boolean).join(' · ');
         const thumb = p.photo
             ? `<img src="${p.photoThumb || p.photo}" loading="lazy" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0">`
@@ -1563,9 +1575,10 @@ function renderHome() {
         if (zones.length === 0) return '';
         const collapsed = collapsedAreas.has(areaKey);
         const urgentInArea = zones.some(z => zoneStatus(z.id) === 'urgent');
+        const attnInArea = zones.some(z => zoneAttention(z.id));
         const regularZones = zones.filter(z => !isDirectZone(z.id));
         const directZones  = zones.filter(z => isDirectZone(z.id));
-        const countStr = urgentInArea ? '⚠️' : '';
+        const countStr = `${attnInArea ? '🚩' : ''}${urgentInArea ? '⚠️' : ''}`;
         const zonesHTML = zones.map(z => {
             if (isDirectZone(z.id)) {
                 const p = zonePlants(z.id)[0];
