@@ -1549,9 +1549,8 @@ function renderHome() {
     function directElementCard(z, p) {
         const status = zoneStatus(z.id);
         const attnBadge = plantAttentionFlag(p.id) ? `<span class="flag-attention" title="Kræver opmærksomhed">🚩</span>` : '';
-        const badge = attnBadge + (status === 'urgent'
-            ? `<span class="zone-badge">Handling krævet</span>`
-            : `<span class="zone-badge ok">OK</span>`);
+        const overdueBadge = status === 'urgent' ? `<span class="flag-overdue" title="Overskredet påmindelse">⚠️</span>` : '';
+        const badge = attnBadge + overdueBadge;
         const meta = [p.latinName, p.type].filter(Boolean).join(' · ');
         const thumb = p.photo
             ? `<img src="${p.photoThumb || p.photo}" loading="lazy" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0">`
