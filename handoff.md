@@ -1,13 +1,24 @@
 # Handoff — Vores Have
-*Opdateret: 28. maj 2026 (session 13)*
+*Opdateret: 9. juni 2026 (session 14)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
 - **Live version:** v1.25 på `https://voreshave.soenderup.dk`
-- **Seneste:** Billedoptimering — thumbnail-upload og lazy loading
+- **Seneste:** Dokumentation krypteret med AES-256-GCM + `?key=` auto-login; dev-server ensrettet til port 8080 (no-cache + auto Safari-reload)
 - **Næste:** Cloudflare Workers migration (Netlify koster), se idé-listen
+
+---
+
+## Seneste arbejde (juni — session 14)
+
+### Dokumentation krypteret + dev-server oprydning
+
+- `dokumentation.html` konverteret fra adgangskode-overlay til **AES-256-GCM kryptering** — selve indholdet er nu krypteret, ikke bare skjult bag et overlay
+- `?key=` query-param giver auto-login (dekrypterer direkte ved åbning med nøgle i URL'en)
+- Dev-server ensrettet til fast **port 8080** (jf. global regel)
+- No-cache på dev-serveren + automatisk Safari-reload genindført
 
 ---
 
@@ -516,20 +527,23 @@ Brainstormet 26. maj — ingen rækkefølge, ingen deadline:
 
 ## Hvad mangler — prioriteret
 
-### 1. Firestore sikkerhedsregler (deadline ~24. juni 2026)
-Firestore kører i "test mode" - alle kan læse/skrive uden login. Kræver Firebase Authentication for at kunne skrive ordentlige regler. Firebase Auth er et større projekt (2-3 dage) og løses separat fra brugerstyring.
+### 1. Cloudflare Workers-migration
+Netlify-functions overskredet (125k/md gratis, betalt 100 kr.). Flyt: plant-info, recommendations, identify-plant, diagnose-plant, check-plants. Cloudflare Workers giver 100k kald/dag gratis.
 
 ### 2. Push-notifikationer på iPhone
-Kræver Firebase Cloud Messaging + opdateret service worker.
+Kræver Firebase Cloud Messaging + opdateret service worker. (Kun `messagingSenderId` står i config pt. — intet FCM endnu.)
 
-### 3. ~~Søgefunktion~~ ✓ Bygget (v1.24)
-### 4. ~~Vækst-tidslinje~~ ✓ Bygget (v1.25)
+### ~~Firestore sikkerhedsregler~~ ✓ Løst (session 12)
+Anonymous Auth + regler deployet: `allow read, write: if request.auth != null`. `signInAnonymously()` kaldes ved app-start. Ikke længere "test mode".
+
+### ~~Søgefunktion~~ ✓ Bygget (v1.24)
+### ~~Vækst-tidslinje~~ ✓ Bygget (v1.25)
 
 ---
 
 ## Ting der skal huskes
 
-- **Firestore test mode udløber ~24. juni 2026** - husk sikkerhedsregler!
+- **Firestore sikkerhedsregler:** Deployet (session 12) — `allow read, write: if request.auth != null` + Anonymous Auth. Ikke længere test mode.
 - **Firebase plan:** Blaze (Pay-as-you-go)
 - **Viden om + Anbefalinger + Identificer:** Koster øre pr. opslag via Anthropic API
 - **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8080` — Safari åbner automatisk og placeres i højre 33% (Terminal i venstre 67%) via System Events
