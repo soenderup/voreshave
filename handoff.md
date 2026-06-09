@@ -1,13 +1,30 @@
 # Handoff — Vores Have
-*Opdateret: 9. juni 2026 (session 15)*
+*Opdateret: 9. juni 2026 (session 16)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
 - **Live version:** v1.25 på `https://voreshave.soenderup.dk`
-- **Seneste:** Opmærksomheds-flag på oversigten (gult ⚠️ overskredet + rødt 🚩 kræver opmærksomhed) på element-, zone- og områdeniveau; port-fejl i dokumentation rettet (8766 → 8081)
+- **Seneste:** Huskeliste — personlig samling af elementer (📌 ny 5. fane i bund-nav). Markér på element-siden, find igen i huskeliste-fanen, fjern med ✕. Personlig pr. bruger, synker via Firebase, skjult for gæst
 - **Næste:** Cloudflare Workers migration (Netlify koster), se idé-listen
+
+---
+
+## Seneste arbejde (9. juni — session 16)
+
+### Huskeliste
+
+- **Ny 5. fane** 📌 Huskeliste i bund-navigationen (ved siden af Søg) — skjult for gæst (`isGuest()`)
+- **Formål:** samle de elementer man vil kigge på (fx når man planlægger indendørs), så man slipper for at lede efter dem i haven
+- **Toggle på element-siden** (`renderPlant`, synlig på alle faner, vises for `!isGuest()`): "📌 Føj til huskeliste" ↔ "📌 På huskelisten ✓"
+- **Huskeliste-visning** (`renderBookmarks`): genbruger søgeresultat-stilen — foto/navn/zone, klik → element, ✕ fjerner direkte fra listen. Tom state med vejledning
+- **Personlig pr. bruger:** gemt som felt `bookmarkedBy` (array af brugernavne) på selve planten → synker via Firestore + localStorage, virker på tværs af enheder. Steen og Linda har hver deres liste (identificeret via `currentUser()` = brugernavn)
+- **Ingen migration nødvendig:** `bookmarkedBy === undefined` behandles som tom. Sletning af en plante fjerner den naturligt fra alle huskelister
+- Helpers: `isBookmarked(pid)`, `myBookmarks()`, `toggleBookmark(pid)` (nær `canManageUsers`)
+- CSS: `.bookmark-toggle` (+`.on`) og `.bookmark-remove`. Bund-nav-knapper komprimeret (font 0.58rem, mindre padding) så 5 ikoner passer
+- **Alle rettelser sker fortsat på elementet selv** — huskelisten er kun en samling
+- Dokumentation (`dokumentation.html`) opdateret med beskrivelse + dato → juni 2026
 
 ---
 
