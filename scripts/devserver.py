@@ -2,13 +2,12 @@
 """Lokal dev-server uden caching.
 
 Sender Cache-Control: no-store på alle svar, så browseren aldrig cacher
-localhost-ressourcer. Det forhindrer at projekter der deler samme faste
-port (8081) viser hinandens cachede filer (logo, CSS, JS m.m.).
+localhost-ressourcer. Hvert projekt har sin egen unikke port (= egen origin),
+men no-store er stadig et bælte-og-seler-værn mod at browseren serverer en
+forældet udgave af en netop redigeret fil.
 
 Serverer fra current working directory - dev-start.sh cd'er til projektmappen
-før start, præcis som 'python3 -m http.server' gjorde.
-
-Brug: devserver.py [PORT]   (default 8081)
+før start. Brug: devserver.py [PORT]
 """
 import sys
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -23,5 +22,5 @@ class NoCacheHandler(SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8081
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
     HTTPServer(('', port), NoCacheHandler).serve_forever()

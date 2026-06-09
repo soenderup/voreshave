@@ -1,73 +1,60 @@
 #!/bin/bash
-# Oprydning: stop server, luk Terminal-vindue
-# Kaldes KUN fra baggrundsvagten (watcher) — IKKE fra Stop-hook
-# Stop-hook er fjernet da den fyrer efter hvert svar, ikke kun ved exit
+# Oprydning: stop server, luk Safari og Terminal
 
 TMP_DIR="/tmp/voreshave_dev"
 PORT=8081
 
-# Tjek session-token hvis givet — forhindrer gammel watcher i at rydde ny session op
-EXPECTED_TOKEN="$1"
-if [ -n "$EXPECTED_TOKEN" ]; then
-    STORED_TOKEN=$(cat "$TMP_DIR/session.token" 2>/dev/null)
-    if [ "$STORED_TOKEN" != "$EXPECTED_TOKEN" ]; then
-        # En nyere session er startet — vi rydder ikke op
-        exit 0
-    fi
-fi
-
-# Stop HTTP server
+# Stop HTTP server (fast port - uanset servertype)
 lsof -ti tcp:$PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
 
-# Stop baggrundsvagt (sig selv — men det er OK)
-if [ -f "$TMP_DIR/watcher.pid" ]; then
-    kill "$(cat "$TMP_DIR/watcher.pid")" 2>/dev/null || true
-fi
-
-# Luk Terminal-vinduet med forsinkelse så caffeinate og claude når at stoppe
-# (caffeinate køres af Claude Code og lukkes når Claude lukker — giv 4 sek.)
-TERM_WIN_ID=$(cat "$TMP_DIR/terminal_win_id.txt" 2>/dev/null | tr -d '[:space:]')
-
-if [ -n "$TERM_WIN_ID" ] && [[ "$TERM_WIN_ID" =~ ^[0-9]+$ ]]; then
-    nohup bash -c "
-        sleep 4
-        osascript -e \"
-        tell application \\\"Terminal\\\"
-            try
-                close (first window whose id is $TERM_WIN_ID)
-            on error
-                try
-                    if (count of windows) > 0 then
-                        close front window
-                    end if
-                end try
-            end try
-            delay 0.3
-            if (count of windows) is 0 then
-                quit
-            end if
-        end tell
-        \"
-    " &>/dev/null &
-    disown
-fi
-
-# Luk Safari-vinduet med localhost:8081
-osascript -e "
-tell application \"Safari\"
-    try
-        set wins to every window
-        repeat with w in wins
-            try
-                if URL of current tab of w contains \"localhost:8081\" then
-                    close w
-                end if
-            end try
-        end repeat
-        if (count of windows) is 0 then quit
-    end try
+# Luk Safari localhost-vinduer og nulstil størrelse
+osascript << 'APPLESCRIPT'
+tell application "Finder"
+    set screenBounds to bounds of window of desktop
+    set screenW to item 3 of screenBounds
+    set screenH to item 4 of screenBounds
 end tell
-" 2>/dev/null || true
 
-# Ryd op
-rm -f "$TMP_DIR/terminal_win_id.txt" "$TMP_DIR/server.pid" "$TMP_DIR/claude.pid" "$TMP_DIR/watcher.pid" "$TMP_DIR/session.token"
+set winW to round (screenW * 0.8)
+set winH to round (screenH * 0.8)
+set winX to round ((screenW - winW) / 2)
+set winY to round ((screenH - winH) / 2)
+
+tell application "Safari"
+    set toClose to {}
+    repeat with w in every window
+        try
+            if URL of current tab of w contains "localhost:" then
+                set end of toClose to w
+            end if
+        end try
+    end repeat
+    repeat with w in toClose
+        close w
+    end repeat
+
+    if (count of windows) is 0 then
+        make new document
+        set bounds of front window to {winX, winY, winX + winW, winY + winH}
+        delay 0.3
+        quit
+    end if
+end tell
+APPLESCRIPT
+
+# Luk Terminal-vinduet
+TERM_WIN_ID=$(cat "$TMP_DIR/terminal_win_id.txt" 2>/dev/null)
+if [ -n "$TERM_WIN_ID" ] && [ "$TERM_WIN_ID" -gt 0 ] 2>/dev/null; then
+    osascript -e "
+    tell application \"Terminal\"
+        try
+            close (first window whose id is $TERM_WIN_ID)
+        end try
+        if (count of windows) is 0 then
+            quit
+        end if
+    end tell
+    "
+fi
+
+rm -f "$TMP_DIR/terminal_win_id.txt" "$TMP_DIR/server.pid" "$TMP_DIR/claude.pid" "$TMP_DIR/watcher.pid"
