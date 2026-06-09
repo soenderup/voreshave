@@ -506,10 +506,10 @@
         }
         .nav-btn {
             flex: 1; display: flex; flex-direction: column; align-items: center;
-            gap: 0.2rem; padding: 0.55rem 0.5rem 0.65rem;
+            gap: 0.2rem; padding: 0.55rem 0.25rem 0.65rem;
             background: none; border: none; cursor: pointer;
-            font-size: 0.62rem; font-weight: 600; color: var(--muted);
-            letter-spacing: 0.04em; text-transform: uppercase;
+            font-size: 0.58rem; font-weight: 600; color: var(--muted);
+            letter-spacing: 0.02em; text-transform: uppercase;
         }
         .nav-btn .nav-icon { font-size: 1.2rem; line-height: 1; }
 
@@ -565,6 +565,23 @@
         .search-result-name { font-size: 0.9rem; font-weight: 600; color: var(--text); }
         .search-result-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
         .search-result-arrow { margin-left: auto; color: var(--muted); font-size: 1rem; }
+        .bookmark-remove {
+            margin-left: auto; flex-shrink: 0;
+            width: 30px; height: 30px; border-radius: 50%;
+            background: var(--cream); border: 1px solid var(--border);
+            color: var(--muted); font-size: 0.85rem; line-height: 1;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .bookmark-remove:active { background: var(--green-light); color: var(--green-dark); }
+        /* ── HUSKELISTE-TOGGLE (element-side) ── */
+        .bookmark-toggle {
+            display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+            width: 100%; padding: 0.6rem; margin: 0 0 0.2rem;
+            background: var(--cream); border: 1.5px solid var(--border);
+            border-radius: 10px; color: var(--green-dark);
+            font-size: 0.85rem; font-weight: 600; cursor: pointer;
+        }
+        .bookmark-toggle.on { background: var(--green-light); border-color: var(--green-mid); }
 
         /* ── KALENDER ── */
         .cal-month-nav {
@@ -716,6 +733,10 @@
 
     <button class="nav-btn" id="nav-search" onclick="goTo('search')">
         <span class="nav-icon">🔍</span>Søg
+    </button>
+
+    <button class="nav-btn" id="nav-bookmarks" onclick="goTo('bookmarks')">
+        <span class="nav-icon">📌</span>Huskeliste
     </button>
 </nav>
 
@@ -1407,10 +1428,12 @@ function render() {
     const sub = document.getElementById('header-sub');
 
     // Bottom nav active state
-    document.getElementById('nav-home').classList.toggle('active', nav.view !== 'calendar' && nav.view !== 'identify' && nav.view !== 'search');
+    document.getElementById('nav-home').classList.toggle('active', nav.view !== 'calendar' && nav.view !== 'identify' && nav.view !== 'search' && nav.view !== 'bookmarks');
     document.getElementById('nav-identify').classList.toggle('active', nav.view === 'identify');
     document.getElementById('nav-calendar').classList.toggle('active', nav.view === 'calendar');
     document.getElementById('nav-search').classList.toggle('active', nav.view === 'search');
+    document.getElementById('nav-bookmarks').classList.toggle('active', nav.view === 'bookmarks');
+    document.getElementById('nav-bookmarks').style.display = isGuest() ? 'none' : '';
 
     // Header viser altid det samme
     title.innerHTML = 'Vores Have';
@@ -1428,6 +1451,8 @@ function render() {
         app.innerHTML = renderSearch();
         const inp = document.getElementById('search-input');
         if (inp) { inp.focus(); inp.addEventListener('input', updateSearch); }
+    } else if (nav.view === 'bookmarks') {
+        app.innerHTML = renderBookmarks();
     }
 
     bindEvents();
@@ -1695,6 +1720,11 @@ function renderPlant(pid) {
             `}
         </div>
         ${plantAttentionFlag(pid) ? `<div class="attention-badge">⚑ Kræver opmærksomhed</div>` : ''}
+        ${!isGuest() ? `<div style="padding:0.5rem 1rem 0">
+            <button class="bookmark-toggle${isBookmarked(pid) ? ' on' : ''}" onclick="toggleBookmark('${pid}')">
+                ${isBookmarked(pid) ? '📌 På huskelisten ✓' : '📌 Føj til huskeliste'}
+            </button>
+        </div>` : ''}
         <div class="tabs">
             <button class="tab-btn${tab==='main'?' active':''}" onclick="setTab('main')">Info</button>
             <button class="tab-btn${tab==='reminders'?' active':''}" onclick="setTab('reminders')">Påmindelser (${reminders.length})</button>
@@ -2670,6 +2700,34 @@ function expandZone(zid) {
     render();
 }
 
+function renderBookmarks() {
+    const items = myBookmarks();
+    if (items.length === 0) {
+        return `<div class="search-empty">
+            <div class="search-empty-icon">📌</div>
+            <div>Din huskeliste er tom.<br>Åbn et element og tryk <strong>📌 Føj til huskeliste</strong><br>for at samle det her.</div>
+        </div>`;
+    }
+    let html = `<div class="search-section-label">På din huskeliste (${items.length})</div>`;
+    html += items.map(p => {
+        const z = zone(p.zoneId);
+        const thumb = p.photo
+            ? `<img class="search-result-thumb" src="${p.photoThumb || p.photo}" loading="lazy" alt="">`
+            : `<div class="search-result-icon">🌱</div>`;
+        const meta = [p.latinName, z ? z.name : null].filter(Boolean).join(' · ');
+        return `<div class="search-result-row" onclick="goTo('plant','${p.zoneId}','${p.id}')">
+            ${thumb}
+            <div>
+                <div class="search-result-name">${p.name}</div>
+                ${meta ? `<div class="search-result-meta">${meta}</div>` : ''}
+            </div>
+            <button class="bookmark-remove" title="Fjern fra huskeliste"
+                onclick="event.stopPropagation();toggleBookmark('${p.id}')">✕</button>
+        </div>`;
+    }).join('');
+    return html;
+}
+
 function renderCalendar() {
     const year = nav.calYear, month = nav.calMonth;
     const monthName = new Date(year, month, 1).toLocaleDateString('da-DK', { month: 'long', year: 'numeric' });
@@ -3620,6 +3678,28 @@ function isGuest()        { return currentUserObj()?.role === 'guest'; }
 function canEdit()        { return currentUserObj()?.role === 'admin'; }
 function canLog()         { return ['admin','member'].includes(currentUserObj()?.role); }
 function canManageUsers() { return currentUserObj()?.role === 'admin'; }
+
+// ── HUSKELISTE (personlig pr. bruger, gemt som array af brugernavne på planten) ──
+function isBookmarked(pid) {
+    const p = plant(pid);
+    return !!(p && Array.isArray(p.bookmarkedBy) && p.bookmarkedBy.includes(currentUser()));
+}
+function myBookmarks() {
+    const me = currentUser();
+    return db.plants.filter(p => Array.isArray(p.bookmarkedBy) && p.bookmarkedBy.includes(me));
+}
+function toggleBookmark(pid) {
+    const p = plant(pid);
+    if (!p) return;
+    const me = currentUser();
+    if (!me) return;
+    if (!Array.isArray(p.bookmarkedBy)) p.bookmarkedBy = [];
+    const i = p.bookmarkedBy.indexOf(me);
+    if (i === -1) p.bookmarkedBy.push(me);
+    else p.bookmarkedBy.splice(i, 1);
+    saveDB();
+    render();
+}
 
 function checkAccess() {
     if (sessionStorage.getItem('voreshave-unlocked') === '1') return true;
