@@ -1,13 +1,31 @@
 # Handoff — Vores Have
-*Opdateret: 9. juni 2026 (session 16)*
+*Opdateret: 9. juni 2026 (session 17)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
 - **Live version:** v1.25 på `https://voreshave.soenderup.dk`
-- **Seneste:** Huskeliste — personlig samling af elementer (📌 ny 5. fane i bund-nav). Markér på element-siden, find igen i huskeliste-fanen, fjern med ✕. Personlig pr. bruger, synker via Firebase, skjult for gæst
+- **Seneste:** Print haveoversigt (🖨️ i burgermenuen) — print-dialog med til/fravalg af felter, områder og zoner, ender i browserens print/PDF
 - **Næste:** Cloudflare Workers migration (Netlify koster), se idé-listen
+
+---
+
+## Seneste arbejde (9. juni — session 17)
+
+### Print haveoversigt
+
+- **Ny knap** 🖨️ "Print haveoversigt" i burgermenuen under ny sektion "Oversigt" (synlig for alle, også gæst — funktionen er read-only)
+- **Print-dialog** (`openPrintDialog`) lader brugeren vælge:
+  - **Felter pr. element:** Type+antal · Plantedato · Trivseldata · Noter+viden · Fotos (latinsk navn + zone-gruppering er altid med). Defaults: noter og fotos FRA (fylder meget)
+  - **Ekstra:** Status-flag (⚠️ forfalden / 🚩 opmærksomhed) · Plads til håndnoter (tom skrivelinje pr. element)
+  - **Områder & zoner:** hierarkisk afkrydsning. Område-flueben er master-toggle der slår alle dets top-zoner til/fra (`printToggleArea`). Inklusion afgøres pr. zone (zone-cb), ikke pr. område
+- **Valg huskes** i `localStorage['voreshave-print-opts']` (felter + fravalgte id'er i `off`-array). Nye zoner defaulter til valgt
+- **Output:** `buildPrintHTML(o)` genererer rent sort/hvidt hierarki (område → zone → underzone → planter, rekursivt via `zoneBlock`). Direkte-elementer (isDirect-zoner) renderes som planter direkte under området. Trivseldata vises som dansk tekst (Vand/Lys/Levetid/Jord), ikke segment-barer
+- **Teknisk print-mekanik:** skjult `<div id="print-root">` (sidst i body) fyldes med print-HTML; `@media print` sætter `body > *:not(#print-root){display:none}` så kun print-indholdet vises. `doPrint()` lader menuen blive åben (skjules af @media print) → ingen flash til forsiden; rydder op via `afterprint`-event (+ 1,5s fallback der KUN lukker menuen, rører ikke print-indholdet mens dialogen kan være åben)
+- **Ny helper:** `escapeHTML()` (tilføjet til print-fladen, fandtes ikke før)
+- CSS: `.pr-*`-klasser til dialog (på skærm) + `@media print`-blok. Husk `.pr-dialog` har 1.2rem vandret padding (rettet — manglede først)
+- Dokumentation (`dokumentation.html`) opdateret med beskrivelse under "Øvrige funktioner"
 
 ---
 
