@@ -687,6 +687,51 @@
         .wwd-hi   { font-size: 0.78rem; font-weight: 600; color: white; }
         .wwd-lo   { font-size: 0.63rem; color: rgba(255,255,255,0.5); }
         .wwd-rain { font-size: 0.6rem; color: rgba(170,220,255,0.9); min-height: 0.75rem; }
+
+        /* ── Print-dialog (på skærm) ── */
+        .pr-dialog { padding: 0.3rem 1.2rem 1rem; }
+        .pr-sec-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 0.4rem; }
+        .pr-frow, .pr-arow, .pr-zrow { display: flex; align-items: flex-start; gap: 0.55rem; padding: 0.35rem 0.1rem; cursor: pointer; font-size: 0.9rem; color: var(--green-dark); }
+        .pr-frow input, .pr-arow input, .pr-zrow input { width: 18px; height: 18px; flex-shrink: 0; margin-top: 0.05rem; accent-color: var(--green-mid); }
+        .pr-fdesc { color: var(--muted); font-weight: 400; font-size: 0.82rem; }
+        .pr-tree { border: 1px solid var(--border); border-radius: 10px; padding: 0.4rem 0.6rem; max-height: 230px; overflow-y: auto; background: var(--cream); }
+        .pr-area-grp { padding: 0.2rem 0; }
+        .pr-area-grp + .pr-area-grp { border-top: 1px solid var(--border); }
+        .pr-arow { font-weight: 600; }
+        .pr-zlist { padding-left: 1.7rem; }
+        .pr-zrow { font-size: 0.85rem; padding: 0.25rem 0.1rem; }
+        .pr-empty2 { color: var(--muted); font-size: 0.85rem; padding: 0.5rem; }
+        .pr-print-btn { width: 100%; margin-top: 1rem; padding: 0.85rem; background: var(--green-dark); color: #fff; border: none; border-radius: 10px; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+        .pr-hint { font-size: 0.72rem; color: var(--muted); text-align: center; margin-top: 0.5rem; line-height: 1.4; }
+
+        /* ── Print-output ── */
+        #print-root { display: none; }
+        @media print {
+            html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+            body { display: block !important; max-width: none !important; }
+            body > *:not(#print-root) { display: none !important; }
+            #print-root { display: block !important; color: #000; font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 11pt; line-height: 1.4; }
+            @page { margin: 1.4cm; }
+            .pr-head { border-bottom: 2px solid #2d5a27; padding-bottom: 0.4rem; margin-bottom: 1rem; }
+            .pr-head h1 { font-size: 18pt; color: #2d5a27; margin: 0; }
+            .pr-date { font-size: 9pt; color: #555; margin-top: 0.2rem; }
+            .pr-area { margin-bottom: 1.1rem; }
+            .pr-area > h2 { font-size: 14pt; color: #2d5a27; border-bottom: 1px solid #bbb; padding-bottom: 0.15rem; margin: 0 0 0.45rem; }
+            .pr-zone { margin: 0 0 0.6rem; }
+            .pr-zone > h3 { font-size: 11.5pt; margin: 0.45rem 0 0.25rem; color: #1a3a17; }
+            .pr-zone.sub { margin-left: 0.8rem; }
+            .pr-zone.sub > h3 { font-size: 10.5pt; color: #444; }
+            .pr-plant { break-inside: avoid; page-break-inside: avoid; padding: 0.3rem 0; border-bottom: 1px dotted #ccc; display: flex; gap: 0.5rem; }
+            .pr-plant img { width: 42px; height: 42px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+            .pr-body { flex: 1; min-width: 0; }
+            .pr-name { font-weight: 700; font-size: 11pt; }
+            .pr-latin { font-style: italic; color: #555; font-size: 9.5pt; }
+            .pr-meta, .pr-care { font-size: 9.5pt; color: #333; margin-top: 0.08rem; }
+            .pr-note { font-size: 9.5pt; color: #222; margin-top: 0.12rem; }
+            .pr-note b { font-weight: 600; }
+            .pr-write { border-bottom: 1px solid #999; height: 1rem; margin: 0.4rem 0.5rem 0.1rem 0; }
+            .pr-empty { font-size: 9.5pt; color: #888; font-style: italic; }
+        }
     </style>
 </head>
 <body>
@@ -2958,9 +3003,16 @@ function openMainMenu() {
             <div><div class="choice-label">Nyt element</div></div>
         </button>`;
 
+    // Værktøjer (altid synlig)
+    const toolsSection = `
+        <div class="menu-section-label" style="margin-top:${contextSection ? '1rem' : '0'}">Oversigt</div>
+        <button class="choice-btn" onclick="closeSheet();openPrintDialog()">
+            <span class="choice-icon">🖨️</span><div><div class="choice-label">Print haveoversigt</div><div class="choice-desc">Vælg områder og felter</div></div>
+        </button>`;
+
     // Bruger-sektion (altid)
     const userSection = `
-        <div class="menu-section-label" style="margin-top:${contextSection ? '1rem' : '0'}">${user || 'Bruger'}</div>
+        <div class="menu-section-label" style="margin-top:1rem">${user || 'Bruger'}</div>
         <button class="choice-btn" onclick="closeSheet();startChangePinFor('${user}')">
             <span class="choice-icon">🔑</span><div><div class="choice-label">Skift min PIN</div></div>
         </button>
@@ -2993,9 +3045,186 @@ function openMainMenu() {
 
     openSheet('Menu', `
         <div style="display:flex;flex-direction:column;gap:0.35rem;padding:0.5rem 0 1rem">
-            ${contextSection}${userSection}
+            ${contextSection}${toolsSection}${userSection}
         </div>
         <div style="padding:0 1.2rem 0.5rem;text-align:center;font-size:0.65rem;color:var(--muted);opacity:0.6">Vores Have v${VERSION}</div>`);
+}
+
+// ── PRINT HAVEOVERSIGT ──
+const PRINT_DEFAULTS = { typeQty: true, planted: true, care: true, notes: false, photos: false, status: true, writeline: false, off: [] };
+
+function escapeHTML(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function loadPrintOpts() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('voreshave-print-opts') || '{}');
+        return { ...PRINT_DEFAULTS, ...saved, off: Array.isArray(saved.off) ? saved.off : [] };
+    } catch (e) { return { ...PRINT_DEFAULTS, off: [] }; }
+}
+
+function savePrintOpts(o) {
+    try { localStorage.setItem('voreshave-print-opts', JSON.stringify(o)); } catch (e) {}
+}
+
+function openPrintDialog() {
+    const o = loadPrintOpts();
+    const off = new Set(o.off);
+
+    let treeHTML = '';
+    Object.entries(AREAS).forEach(([areaKey, area]) => {
+        const topZones = db.zones.filter(z => (z.area || 'baghave') === areaKey && !z.parentZoneId);
+        if (topZones.length === 0) return;
+        const areaChecked = !off.has('area:' + areaKey);
+        const zoneRows = topZones.map(z => {
+            const direct = isDirectZone(z.id);
+            const p = direct ? zonePlants(z.id)[0] : null;
+            const name = direct ? (p ? p.name : z.name) : z.name;
+            const icon = direct ? '🌱' : (ZONE_TYPES[z.type]?.icon || '🏡');
+            return `<label class="pr-zrow">
+                <input type="checkbox" class="pr-zone-cb" data-area="${areaKey}" value="zone:${z.id}" ${off.has('zone:' + z.id) ? '' : 'checked'}>
+                <span>${icon} ${escapeHTML(name)}</span>
+            </label>`;
+        }).join('');
+        treeHTML += `<div class="pr-area-grp">
+            <label class="pr-arow">
+                <input type="checkbox" class="pr-area-cb" data-area="${areaKey}" value="area:${areaKey}" ${areaChecked ? 'checked' : ''} onchange="printToggleArea('${areaKey}', this.checked)">
+                <span>${area.icon} <b>${area.label}</b></span>
+            </label>
+            <div class="pr-zlist">${zoneRows}</div>
+        </div>`;
+    });
+
+    const fieldCb = (key, label, desc) => `<label class="pr-frow">
+        <input type="checkbox" id="pr-f-${key}" ${o[key] ? 'checked' : ''}>
+        <span><b>${label}</b>${desc ? `<span class="pr-fdesc"> · ${desc}</span>` : ''}</span>
+    </label>`;
+
+    openSheet('Print haveoversigt', `
+        <div class="pr-dialog">
+            <div class="pr-sec-label">Felter pr. element</div>
+            ${fieldCb('typeQty', 'Type + antal')}
+            ${fieldCb('planted', 'Plantedato')}
+            ${fieldCb('care', 'Trivseldata', 'vand, lys, levetid, jord')}
+            ${fieldCb('notes', 'Noter + viden', 'kan fylde en del')}
+            ${fieldCb('photos', 'Fotos', 'lille billede')}
+            <div class="pr-sec-label" style="margin-top:0.8rem">Ekstra</div>
+            ${fieldCb('status', 'Status-flag', '⚠️ forfalden · 🚩 opmærksomhed')}
+            ${fieldCb('writeline', 'Plads til håndnoter', 'tom linje pr. element')}
+            <div class="pr-sec-label" style="margin-top:0.8rem">Områder &amp; zoner</div>
+            <div class="pr-tree">${treeHTML || '<div class="pr-empty2">Ingen zoner endnu</div>'}</div>
+            <button class="pr-print-btn" id="pr-print-btn" onclick="doPrint(this)">🖨️ Print / Gem som PDF</button>
+            <div class="pr-hint">Åbner systemets print-dialog. Vælg printer, eller "Gem som PDF".</div>
+        </div>`);
+}
+
+function printToggleArea(areaKey, checked) {
+    document.querySelectorAll(`.pr-zone-cb[data-area="${areaKey}"]`).forEach(cb => { cb.checked = checked; });
+}
+
+function collectPrintOpts() {
+    const o = loadPrintOpts();
+    ['typeQty', 'planted', 'care', 'notes', 'photos', 'status', 'writeline'].forEach(k => {
+        const el = document.getElementById('pr-f-' + k);
+        if (el) o[k] = el.checked;
+    });
+    const off = [];
+    document.querySelectorAll('.pr-area-cb, .pr-zone-cb').forEach(cb => { if (!cb.checked) off.push(cb.value); });
+    o.off = off;
+    return o;
+}
+
+function buildPrintHTML(o) {
+    const off = new Set(o.off);
+    const today = formatDate(new Date().toISOString().slice(0, 10));
+
+    const careText = (p) => {
+        const parts = [];
+        const wl = { dry: 'Tør', normal: 'Normal', moist: 'Fugtig' }[p.water];
+        const ll = { shade: 'Skygge', 'partial-shade': 'Mest skygge', partial: 'Halvskygge', 'full-partial': 'Mest sol', full: 'Fuld sol' }[p.light];
+        const dl = { 'well-drained': 'Veldrænet', normal: 'Normal', moist: 'Fugtig' }[parseDrainage(p.drainage)];
+        if (wl) parts.push('Vand: ' + wl);
+        if (ll) parts.push('Lys: ' + ll);
+        if (p.perennial != null) parts.push('Levetid: ' + (p.perennial ? 'Flerårig' : 'Etårig'));
+        if (dl) parts.push('Jord: ' + dl);
+        return parts.join(' · ');
+    };
+
+    const plantBlock = (p) => {
+        const flags = o.status ? `${plantUrgent(p.id) ? ' ⚠️' : ''}${plantAttentionFlag(p.id) ? ' 🚩' : ''}` : '';
+        const qty = (o.typeQty && p.quantity > 1) ? ` × ${p.quantity}` : '';
+        const img = (o.photos && p.photo) ? `<img src="${p.photoThumb || p.photo}">` : '';
+        const meta = [];
+        if (o.typeQty && p.type) meta.push(escapeHTML(p.type));
+        if (o.planted) meta.push('Plantet: ' + (p.plantedDate ? formatDate(p.plantedDate) : 'Ukendt'));
+        const careLine = o.care ? careText(p) : '';
+        let notes = '';
+        if (o.notes && p.note) notes += `<div class="pr-note"><b>Note:</b> ${escapeHTML(p.note)}</div>`;
+        if (o.notes && p.aiInfo) notes += `<div class="pr-note"><b>Viden:</b> ${escapeHTML(p.aiInfo)}</div>`;
+        return `<div class="pr-plant">
+            ${img}
+            <div class="pr-body">
+                <div class="pr-name">${escapeHTML(p.name)}${qty}${flags}</div>
+                ${p.latinName ? `<div class="pr-latin">${escapeHTML(p.latinName)}</div>` : ''}
+                ${meta.length ? `<div class="pr-meta">${meta.join(' · ')}</div>` : ''}
+                ${careLine ? `<div class="pr-care">${careLine}</div>` : ''}
+                ${notes}
+                ${o.writeline ? `<div class="pr-write"></div>` : ''}
+            </div>
+        </div>`;
+    };
+
+    const zoneBlock = (z, depth) => {
+        const plants = zonePlants(z.id);
+        const subs = subZones(z.id);
+        const inner = plants.map(plantBlock).join('') + subs.map(sz => zoneBlock(sz, depth + 1)).join('');
+        const cls = depth ? 'pr-zone sub' : 'pr-zone';
+        return `<div class="${cls}"><h3>${escapeHTML(z.name)}</h3>${inner || '<div class="pr-empty">Ingen elementer</div>'}</div>`;
+    };
+
+    let body = '';
+    Object.entries(AREAS).forEach(([areaKey, area]) => {
+        const topZones = db.zones.filter(z => (z.area || 'baghave') === areaKey && !z.parentZoneId);
+        const visible = topZones.filter(z => !off.has('zone:' + z.id));
+        if (visible.length === 0) return;
+        let inner = '';
+        visible.forEach(z => {
+            if (isDirectZone(z.id)) {
+                const p = zonePlants(z.id)[0];
+                if (p) inner += plantBlock(p);
+            } else {
+                inner += zoneBlock(z, 0);
+            }
+        });
+        if (!inner) return;
+        body += `<div class="pr-area"><h2>${area.icon} ${area.label}</h2>${inner}</div>`;
+    });
+
+    if (!body) body = '<div class="pr-empty">Ingen områder valgt.</div>';
+    return `<div class="pr-head"><h1>🌿 Vores Have</h1><div class="pr-date">Printet ${today}</div></div>${body}`;
+}
+
+function doPrint(btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Forbereder print...'; }
+    const o = collectPrintOpts();
+    savePrintOpts(o);
+    // Menuen forbliver åben — @media print skjuler den under selve printet, så man
+    // hopper ikke ud på forsiden. Når print-dialogen lukkes, ryddes der op.
+    // afterprint fyrer når dialogen er væk → trygt at rydde print-indholdet.
+    const onAfter = () => {
+        closeSheet();
+        document.getElementById('print-root').innerHTML = '';
+        window.removeEventListener('afterprint', onAfter);
+    };
+    window.addEventListener('afterprint', onAfter);
+    // Fallback: luk kun menuen (rør IKKE print-indholdet — dialogen kan stadig være åben)
+    setTimeout(closeSheet, 1500);
+    // Vent en frame så knappens "arbejder"-tilstand når at tegnes inden den blokerende print
+    requestAnimationFrame(() => {
+        document.getElementById('print-root').innerHTML = buildPrintHTML(o);
+        setTimeout(() => window.print(), 60);
+    });
 }
 
 // ── COMPLETE REMINDER ──
@@ -4389,5 +4618,6 @@ fsAuth.signInAnonymously().catch(e => {
     }, { passive: true });
 })();
 </script>
+<div id="print-root"></div>
 </body>
 </html>
