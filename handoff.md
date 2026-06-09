@@ -1,13 +1,32 @@
 # Handoff — Vores Have
-*Opdateret: 9. juni 2026 (session 14)*
+*Opdateret: 9. juni 2026 (session 15)*
 
 ---
 
 ## STATUS LIGE NU (læs først)
 
 - **Live version:** v1.25 på `https://voreshave.soenderup.dk`
-- **Seneste:** Dokumentation krypteret med AES-256-GCM + `?key=` auto-login; dev-server ensrettet til port 8081 (no-cache + auto Safari-reload)
+- **Seneste:** Opmærksomheds-flag på oversigten (gult ⚠️ overskredet + rødt 🚩 kræver opmærksomhed) på element-, zone- og områdeniveau; port-fejl i dokumentation rettet (8766 → 8081)
 - **Næste:** Cloudflare Workers migration (Netlify koster), se idé-listen
+
+---
+
+## Seneste arbejde (9. juni — session 15)
+
+### Opmærksomheds-flag på oversigten
+
+- **To statustilstande** vises nu på forsidens oversigt, og kan optræde samtidig:
+  - Gult **⚠️** = overskredet påmindelse (forfalden reminder) — drevet af `plantUrgent(pid)` / `zoneStatus(zid)`
+  - Rødt **🚩** = "kræver opmærksomhed" (history-note med `needsAttention`) — drevet af `plantAttentionFlag(pid)` / ny `zoneAttention(zid)`
+- Flagene propagerer op gennem hierarkiet: **element → zone → område**, så man kan finde den rette plante uden at bladre alle igennem
+- Nye CSS-klasser `.flag-overdue` og `.flag-attention` (rene emoji-spans, ensartet størrelse)
+- `directElementCard` (planter der står direkte i et område) brugte tidligere et separat `OK`/`Handling krævet`-tag — **fjernet**. Bruger nu samme flag-sprog som zone-planter: intet når alt er fint, ⚠️/🚩 ved behov
+- Dokumentation (`dokumentation.html`) opdateret med beskrivelse af flagene
+
+### Dokumentation: port-fejl rettet
+
+- `dokumentation.html` (AES-256-GCM-krypteret) sagde dev-port **8766** tre steder → rettet til **8081**
+- Workflow ved redigering af krypteret doc: dekryptér med nøgle `fFKqvN687VDqCye6kxoD` (PBKDF2 100k iter, SHA-256, salt[0:32]+iv[32:44]+ciphertext+authTag[-16]) → rediger klartekst → genkryptér med frisk salt+iv → erstat `const D = '...'`
 
 ---
 
