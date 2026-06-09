@@ -4,7 +4,7 @@
 En have-app. Teknologistack er rent HTML/CSS/JS - ingen build-trin, ingen frameworks.
 
 ## Deploy
-- Lokalt: `http://localhost:8080` (startes automatisk ved sessionstart)
+- Lokalt: `http://localhost:8081` (startes automatisk ved sessionstart)
 - GitHub → Netlify: push til `main` udløser automatisk live deploy. Spørg **altid** inden push.
 
 ## Dev-miljø

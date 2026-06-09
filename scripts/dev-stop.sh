@@ -4,7 +4,7 @@
 # Stop-hook er fjernet da den fyrer efter hvert svar, ikke kun ved exit
 
 TMP_DIR="/tmp/voreshave_dev"
-PORT=8080
+PORT=8081
 
 # Tjek session-token hvis givet — forhindrer gammel watcher i at rydde ny session op
 EXPECTED_TOKEN="$1"
@@ -52,14 +52,14 @@ if [ -n "$TERM_WIN_ID" ] && [[ "$TERM_WIN_ID" =~ ^[0-9]+$ ]]; then
     disown
 fi
 
-# Luk Safari-vinduet med localhost:8080
+# Luk Safari-vinduet med localhost:8081
 osascript -e "
 tell application \"Safari\"
     try
         set wins to every window
         repeat with w in wins
             try
-                if URL of current tab of w contains \"localhost:8080\" then
+                if URL of current tab of w contains \"localhost:8081\" then
                     close w
                 end if
             end try

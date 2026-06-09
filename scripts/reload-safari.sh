@@ -4,7 +4,7 @@
 # Sætter fanens URL til sig selv = reload UDEN at aktivere Safari, så fokus
 # bliver i Terminal. Dokumentationsfanen (krypteret) røres ikke.
 
-PORT=8080
+PORT=8081
 
 osascript <<APPLESCRIPT 2>/dev/null
 tell application "Safari"

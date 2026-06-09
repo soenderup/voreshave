@@ -6,7 +6,7 @@
 ## STATUS LIGE NU (læs først)
 
 - **Live version:** v1.25 på `https://voreshave.soenderup.dk`
-- **Seneste:** Dokumentation krypteret med AES-256-GCM + `?key=` auto-login; dev-server ensrettet til port 8080 (no-cache + auto Safari-reload)
+- **Seneste:** Dokumentation krypteret med AES-256-GCM + `?key=` auto-login; dev-server ensrettet til port 8081 (no-cache + auto Safari-reload)
 - **Næste:** Cloudflare Workers migration (Netlify koster), se idé-listen
 
 ---
@@ -17,7 +17,7 @@
 
 - `dokumentation.html` konverteret fra adgangskode-overlay til **AES-256-GCM kryptering** — selve indholdet er nu krypteret, ikke bare skjult bag et overlay
 - `?key=` query-param giver auto-login (dekrypterer direkte ved åbning med nøgle i URL'en)
-- Dev-server ensrettet til fast **port 8080** (jf. global regel)
+- Dev-server ensrettet til fast **port 8081** (jf. global regel)
 - No-cache på dev-serveren + automatisk Safari-reload genindført
 
 ---
@@ -546,7 +546,7 @@ Anonymous Auth + regler deployet: `allow read, write: if request.auth != null`. 
 - **Firestore sikkerhedsregler:** Deployet (session 12) — `allow read, write: if request.auth != null` + Anonymous Auth. Ikke længere test mode.
 - **Firebase plan:** Blaze (Pay-as-you-go)
 - **Viden om + Anbefalinger + Identificer:** Koster øre pr. opslag via Anthropic API
-- **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8080` — Safari åbner automatisk og placeres i højre 33% (Terminal i venstre 67%) via System Events
+- **Dev-miljø:** `kode` → vælg `VoresHave` → server på `http://localhost:8081` — Safari åbner automatisk og placeres i højre 33% (Terminal i venstre 67%) via System Events
 - **Safari auto-reload:** Deaktiveret — tryk Cmd+R manuelt når index.html ændres
 - **Lokal server understøtter IKKE POST** - Netlify-funktioner testes kun på live
 - **Jord-migration:** Kør altid fra **live-sitet** (ikke localhost). Migrations-knappen kan beholdes til genopfriskning
