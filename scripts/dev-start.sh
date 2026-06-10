@@ -6,6 +6,35 @@ PORT=8081
 TMP_DIR="/tmp/voreshave_dev"
 mkdir -p "$TMP_DIR"
 
+# SessionStart-hooket sender JSON på stdin med et "source"-felt. Ved /clear og
+# /compact kører vi videre i SAMME proces - server, vinduer og faner findes allerede.
+# Genopbyg derfor ikke miljøet (det ville lukke alle Safari-vinduer, genåbne faner og
+# flytte rundt på vinduerne midt i en session). Kør kun fuld opsætning ved "startup"
+# og "resume" (ny proces -> intet miljø endnu).
+INPUT=""
+[ -t 0 ] || INPUT=$(cat 2>/dev/null)
+if printf '%s' "$INPUT" | grep -Eq '"source"[[:space:]]*:[[:space:]]*"(clear|compact)"'; then
+    exit 0
+fi
+
+# Ryd evt. stale oprydnings-lås (hvis en tidligere dev-stop blev dræbt før den
+# nåede at frigive den - ellers ville næste nedlukning tro en anden allerede kører)
+rmdir "$TMP_DIR/stop.lock" 2>/dev/null || true
+
+# Zombie-tjek: efterlod forrige nedlukning en Safari den burde have dræbt?
+# stop.log overskrives ved hver nedlukning, så den afspejler sidste session.
+# Linjen "Safari-PID efter=[...]" skrives kun i QUIT-grenen (OWNED=yes). Er den
+# ikke tom, overlevede en Safari vi ejede = en zombie der stadig kører nu.
+SAFARI_WARN=""
+SAFARI_ZOMBIE=""
+STOPLOG="$TMP_DIR/stop.log"
+if [ -f "$STOPLOG" ]; then
+    LEFTOVER=$(grep "Safari-PID efter=\[" "$STOPLOG" | tail -1 | sed -E 's/.*efter=\[(.*)\].*/\1/')
+    if [ -n "${LEFTOVER// /}" ]; then
+        SAFARI_ZOMBIE="$LEFTOVER"
+    fi
+fi
+
 # Slå eksisterende watcher ihjel
 if [ -f "$TMP_DIR/watcher.pid" ]; then
     kill "$(cat "$TMP_DIR/watcher.pid")" 2>/dev/null || true
@@ -40,6 +69,24 @@ tell application \"Terminal\"
 end tell")
 echo "$TERM_WIN_ID" > "$TMP_DIR/terminal_win_id.txt"
 
+# Ejerskab: kørte Safari FØR vi startede den? Skriv en flag-fil som dev-stop
+# læser. Ejer vi Safari (vi startede den), lukker dev-stop den helt - også hvis
+# vores localhost-vindue er forsvundet (ellers efterlades en skjult zombie-proces
+# uden vindue). Kørte Safari allerede, lukker dev-stop kun localhost-vinduerne.
+if ! pgrep -x Safari >/dev/null 2>&1; then
+    # Safari kørte ikke -> vi starter den -> vi ejer den.
+    echo "yes" > "$TMP_DIR/safari_owned.txt"
+elif [ -n "$SAFARI_ZOMBIE" ]; then
+    # Safari kører, OG forrige nedlukning efterlod en zombie vi ejede: den
+    # kørende Safari ER den zombie. Adoptér den, så DENNE sessions nedlukning
+    # rydder den op (ellers ville "no" gøre at den aldrig blev dræbt igen).
+    echo "yes" > "$TMP_DIR/safari_owned.txt"
+    SAFARI_WARN=" | Bemaerk: forrige nedlukning efterlod en Safari-zombie (PID $SAFARI_ZOMBIE) - den er nu adopteret og lukkes ved exit"
+else
+    # Safari kørte i forvejen (brugerens egen) -> vi ejer den ikke.
+    echo "no" > "$TMP_DIR/safari_owned.txt"
+fi
+
 # Åbn Safari (højre 33%) med app, dokumentation og produktion
 DOC_URL="http://localhost:8081/dokumentation.html?key=fFKqvN687VDqCye6kxoD"
 osascript << APPLESCRIPT
@@ -57,6 +104,30 @@ tell application "Safari"
     end tell
     activate
 end tell
+APPLESCRIPT
+
+# Gå i Responsiv Designfunktion (iPhone-visning) på app- og evt. live-fanen,
+# men IKKE dokumentationsfanen. Safari har ingen AppleScript-kommando til dette;
+# det udløses via tastetrykket Ctrl-Cmd-R gennem System Events. Kræver:
+#   1) Safaris Develop-menu (Indstillinger > Avanceret > "Vis funktioner for webudviklere")
+#   2) Tilgængeligheds-tilladelse til Terminal (Systemindstillinger > Anonymitet & sikkerhed)
+# Mangler en af delene, gør 'try' at dev-start ellers kører videre uforstyrret.
+osascript << 'APPLESCRIPT'
+try
+    tell application "Safari" to activate
+    delay 0.3
+    tell application "Safari" to set tabURLs to URL of every tab of front window
+    repeat with i from 1 to count of tabURLs
+        if (item i of tabURLs) does not contain "dokumentation" then
+            tell application "Safari" to set current tab of front window to tab i of front window
+            delay 0.3
+            tell application "System Events" to keystroke "r" using {control down, command down}
+            delay 0.5
+        end if
+    end repeat
+    -- Vis app-fanen (localhost) til sidst
+    tell application "Safari" to set current tab of front window to tab 1 of front window
+end try
 APPLESCRIPT
 
 # Giv fokus tilbage til Terminal
@@ -111,4 +182,4 @@ else
 fi
 echo ""
 
-echo "{\"systemMessage\": \"Dev klar: http://localhost:8081 | Safari: højre 33% | Terminal: venstre 67%\"}"
+echo "{\"systemMessage\": \"Dev klar: http://localhost:8081 | Safari: højre 33% | Terminal: venstre 67%$SAFARI_WARN\"}"
