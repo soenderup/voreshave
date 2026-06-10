@@ -58,16 +58,13 @@ tell application "Finder"
 end tell')
 SCREEN_W=$(echo "$SCREEN_INFO" | cut -d, -f1)
 SCREEN_H=$(echo "$SCREEN_INFO" | cut -d, -f2)
-TERM_W=$(python3 -c "print(int($SCREEN_W * 0.67))")
-SAFARI_X=$TERM_W
-
-# Placér Terminal (venstre 67%)
-TERM_WIN_ID=$(osascript -e "
-tell application \"Terminal\"
-    set bounds of front window to {0, 0, $TERM_W, $SCREEN_H}
-    return id of front window
-end tell")
-echo "$TERM_WIN_ID" > "$TMP_DIR/terminal_win_id.txt"
+# Ønsket: Safari = højre ~33%. MEN Safari har en minimumsbredde; bliver de 33%
+# smallere end den, klamper Safari sin egen bredde og skubber højre kant ud over
+# skærmen. Derfor placeres Terminal IKKE her - først åbner vi Safari på den
+# ønskede X, måler dens FAKTISKE bredde, flytter den flush mod højre kant, og
+# lader så Terminalen fylde resten (op til Safaris venstre kant). Splittet
+# tilpasser sig dermed automatisk til skærmstørrelse og Safaris minimum.
+WANT_SAFARI_X=$(python3 -c "print(int($SCREEN_W * 0.67))")
 
 # Ejerskab: kørte Safari FØR vi startede den? Skriv en flag-fil som dev-stop
 # læser. Ejer vi Safari (vi startede den), lukker dev-stop den helt - også hvis
@@ -89,12 +86,18 @@ fi
 
 # Åbn Safari (højre 33%) med app, dokumentation og produktion
 DOC_URL="http://localhost:8081/dokumentation.html?key=fFKqvN687VDqCye6kxoD"
-osascript << APPLESCRIPT
+SAFARI_LEFT=$(osascript << APPLESCRIPT
 tell application "Safari"
     close every window
     make new document with properties {URL:"http://localhost:8081"}
     delay 0.3
-    set bounds of front window to {$SAFARI_X, 0, $SCREEN_W, $SCREEN_H}
+    set bounds of front window to {$WANT_SAFARI_X, 0, $SCREEN_W, $SCREEN_H}
+    delay 0.1
+    set b to bounds of front window
+    set actualW to (item 3 of b) - (item 1 of b)
+    set newX to $SCREEN_W - actualW
+    if newX < 0 then set newX to 0
+    set bounds of front window to {newX, 0, $SCREEN_W, $SCREEN_H}
     tell front window
         make new tab with properties {URL:"$DOC_URL"}
         make new tab with properties {URL:"https://voreshave.soenderup.dk"}
@@ -103,8 +106,20 @@ tell application "Safari"
         set current tab to tab 1
     end tell
     activate
+    return newX as string
 end tell
 APPLESCRIPT
+)
+
+# Placér Terminal (venstre) op til Safaris faktiske venstre kant - intet overlap,
+# intet hul. Falder tilbage til 67% hvis målingen mod forventning fejlede.
+TERM_W=${SAFARI_LEFT:-$WANT_SAFARI_X}
+TERM_WIN_ID=$(osascript -e "
+tell application \"Terminal\"
+    set bounds of front window to {0, 0, $TERM_W, $SCREEN_H}
+    return id of front window
+end tell")
+echo "$TERM_WIN_ID" > "$TMP_DIR/terminal_win_id.txt"
 
 # Gå i Responsiv Designfunktion (iPhone-visning) på app- og evt. live-fanen,
 # men IKKE dokumentationsfanen. Safari har ingen AppleScript-kommando til dette;
