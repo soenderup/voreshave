@@ -2,3 +2,16 @@
 
 # Dokumentation er lokal-kun (ikke krypteret, ikke deployet)
 dokumentation.html
+
+# Interne filer - lokal-kun, ikke offentligt deploy
+.claude/
+CLAUDE.md
+IDEER.md
+fejl.md
+handoff.md
+design-1.html
+design-2.html
+design-3.html
+dummy-header-icons.html
+dummy-header.html
+dummy-zone-header.html
