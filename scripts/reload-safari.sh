@@ -2,7 +2,7 @@
 # Genindlæser localhost-fanen i Safari, så indholdet altid er friskt efter
 # hver ændring. Kaldes af Stop-hook (fyrer når Claude er færdig med et svar).
 # Sætter fanens URL til sig selv = reload UDEN at aktivere Safari, så fokus
-# bliver i Terminal. Dokumentationsfanen (krypteret) røres ikke.
+# bliver i Terminal. Dokumentationsfanen røres ikke.
 
 PORT=8081
 

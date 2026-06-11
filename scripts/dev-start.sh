@@ -85,7 +85,7 @@ else
 fi
 
 # Åbn Safari (højre 33%) med app, dokumentation og produktion
-DOC_URL="http://localhost:8081/dokumentation.html?key=fFKqvN687VDqCye6kxoD"
+DOC_URL="http://localhost:8081/dokumentation.html"
 SAFARI_LEFT=$(osascript << APPLESCRIPT
 tell application "Safari"
     close every window

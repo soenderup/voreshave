@@ -1,1 +1,4 @@
 .DS_Store
+
+# Dokumentation er lokal-kun (ikke krypteret, ikke deployet)
+dokumentation.html
