@@ -1022,6 +1022,10 @@ function parseDrainage(val) {
 
 function mergeLocalPhotos() {
     if (!Array.isArray(db.lawns)) db.lawns = [];   // plæne-migration: ældre db'er har ingen lawns
+    let needsLawnMigration = false;
+    db.lawns.forEach(l => {   // plæner uden oprettelsesdato: sæt til i dag, så de ikke flages forfaldne for sæsoner før de fandtes
+        if (!l.createdAt) { l.createdAt = today.toISOString().slice(0,10); needsLawnMigration = true; }
+    });
     (db.zones || []).forEach(z => {
         if (!z.photo && photoCache.has('zone-' + z.id)) z.photo = photoCache.get('zone-' + z.id);
         if (!zonesInitialized) collapsedZones.add(z.id);
@@ -1040,7 +1044,7 @@ function mergeLocalPhotos() {
     (db.plants || []).forEach(p => {
         if (p.type === 'Stauder') { p.type = 'Staude'; needsTypeMigration = true; }
     });
-    if (needsPhotoMigration || needsTypeMigration) saveDB();
+    if (needsPhotoMigration || needsTypeMigration || needsLawnMigration) saveDB();
 }
 
 async function loadDB() {
@@ -1494,11 +1498,21 @@ function lawnAttention(lawnId) {
 }
 // En opgave er forfalden hvis dens målmåned er passeret i år og den ikke er krydset af.
 // Opgaver uden targetMonth (egne tilføjelser) flages ikke - der er intet dato-grundlag.
+// Dæmpning: i plænens oprettelsesår flages kun opgaver hvis målmåned er efter oprettelsen -
+// en frisk plæne nager ikke om forårsgødning fra før den fandtes.
 function lawnOverdue(lawnId) {
     const l = lawn(lawnId);
     if (!l) return false;
-    const m = new Date().getMonth() + 1;
-    return (l.tasks || []).some(t => t.targetMonth && !t.done && t.targetMonth < m);
+    const now = new Date();
+    const m = now.getMonth() + 1;
+    const created = l.createdAt ? new Date(l.createdAt) : null;
+    const sameYear = created && created.getFullYear() === now.getFullYear();
+    const createdMonth = created ? created.getMonth() + 1 : 1;
+    return (l.tasks || []).some(t => {
+        if (!t.targetMonth || t.done || t.targetMonth >= m) return false;
+        if (sameYear && t.targetMonth < createdMonth) return false;   // før plænen blev oprettet
+        return true;
+    });
 }
 
 function zoneStatus(zid) {
@@ -1831,7 +1845,7 @@ function submitAddLawn() {
     const name = document.getElementById('lawn-name').value.trim();
     const areaKey = document.getElementById('lawn-area').value;
     if (!name) return;
-    const l = { id: uuid(), areaKey, name, createdBy: currentUser(), tasks: seedLawnTasks() };
+    const l = { id: uuid(), areaKey, name, createdBy: currentUser(), createdAt: today.toISOString().slice(0,10), tasks: seedLawnTasks() };
     db.lawns.push(l);
     saveDB(); closeSheet(); goToLawn(l.id);
 }
