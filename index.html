@@ -844,7 +844,7 @@ firebase.initializeApp({
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
 const fsAuth = firebase.auth();
-const VERSION = '1.26.0';
+const VERSION = '1.27.0';
 
 const DATA_REF     = fsDB.collection('voreshave').doc('data');
 const PINS_REF     = fsDB.collection('voreshave').doc('pins');
@@ -1458,9 +1458,8 @@ function plantReminderStatus(pid) {
 }
 
 function urgentReminders() {
-    const today = new Date();
     const limit = new Date(); limit.setDate(limit.getDate() + 7);
-    return db.reminders
+    return [...db.reminders, ...lawnTaskReminders()]
         .filter(r => { const d = new Date(r.date); return d <= limit; })
         .sort((a,b) => a.date.localeCompare(b.date));
 }
@@ -1513,6 +1512,31 @@ function lawnOverdue(lawnId) {
         if (sameYear && t.targetMonth < createdMonth) return false;   // før plænen blev oprettet
         return true;
     });
+}
+// Virtuelle påmindelses-events for udførte-mangler plæne-opgaver, så de kan vises i
+// kalenderen og påmindelses-banneret. Opgaver har targetMonth (ikke en dato) → vi
+// bruger den 1. i målmåneden i år. Samme dæmpning som lawnOverdue: spring opgaver fra
+// før plænen blev oprettet over.
+function lawnTaskReminders() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const out = [];
+    (db.lawns || []).forEach(l => {
+        const created = l.createdAt ? new Date(l.createdAt) : null;
+        const sameYear = created && created.getFullYear() === year;
+        const createdMonth = created ? created.getMonth() + 1 : 1;
+        (l.tasks || []).forEach(t => {
+            if (t.done || !t.targetMonth) return;
+            if (sameYear && t.targetMonth < createdMonth) return;
+            out.push({
+                date: `${year}-${String(t.targetMonth).padStart(2,'0')}-01`,
+                text: t.label || t.type || 'Plæneopgave',
+                entityType: 'lawn', entityId: l.id,
+                kind: 'upcoming', lawnTask: true, taskId: t.id,
+            });
+        });
+    });
+    return out;
 }
 
 function zoneStatus(zid) {
@@ -1596,10 +1620,12 @@ function renderHome() {
         .filter(h => h.entityType === 'plant' && h.needsAttention)
         .map(h => db.plants.find(p => p.id === h.entityId))
         .filter(Boolean);
-    const attentionHTML = attentionPlants.length === 0 ? '' : `
+    const attentionLawns = (db.lawns || []).filter(l => lawnAttention(l.id));
+    const attnCount = attentionPlants.length + attentionLawns.length;
+    const attentionHTML = attnCount === 0 ? '' : `
         <div class="attention-strip">
             <div class="strip-header" onclick="attentionOpen=!attentionOpen;render()">
-                <h2>Kræver opmærksomhed (${attentionPlants.length})</h2>
+                <h2>Kræver opmærksomhed (${attnCount})</h2>
                 <span class="strip-chevron${attentionOpen ? ' open' : ''}">▼</span>
             </div>
             ${attentionOpen ? `<div class="strip-body">${attentionPlants.map(p => {
@@ -1607,6 +1633,12 @@ function renderHome() {
                 return `<div class="urgent-item" onclick="goTo('plant','${p.zoneId}','${p.id}','history')">
                     <div class="urgent-dot hot"></div>
                     <div>${p.name}<span class="urgent-meta">${z ? z.name : ''}</span></div>
+                </div>`;
+            }).join('')}${attentionLawns.map(l => {
+                const area = AREAS[l.areaKey];
+                return `<div class="urgent-item" onclick="goToLawn('${l.id}')">
+                    <div class="urgent-dot hot"></div>
+                    <div>🌿 ${escapeHTML(l.name)}<span class="urgent-meta">${area ? area.label : ''}</span></div>
                 </div>`;
             }).join('')}</div>` : ''}
         </div>`;
@@ -1627,9 +1659,12 @@ function renderHome() {
                 const hot = new Date(r.date) <= new Date();
                 let who = '';
                 if (r.entityType === 'plant') { const p = plant(r.entityId); who = p ? p.name + ' · ' : ''; }
+                else if (r.entityType === 'lawn') { const l = lawn(r.entityId); who = l ? '🌿 ' + l.name + ' · ' : ''; }
                 else { const z = zone(r.entityId); who = z ? z.name + ' · ' : ''; }
                 const navTarget = r.entityType === 'plant'
                     ? `goTo('plant','${r.entityId ? plant(r.entityId)?.zoneId : ''}','${r.entityId}','reminders')`
+                    : r.entityType === 'lawn'
+                    ? `goToLawn('${r.entityId}')`
                     : `goTo('home')`;
                 return `<div class="urgent-item" onclick="${navTarget}">
                     <div class="urgent-dot${hot ? ' hot' : ''}"></div>
@@ -2609,12 +2644,13 @@ function calEventSource() {
     const hist = db.history.map(h => ({
         date: h.date, text: h.text, entityType: h.entityType, entityId: h.entityId, kind: 'history', hid: h.id
     }));
-    return [...upcoming, ...hist];
+    return [...upcoming, ...lawnTaskReminders(), ...hist];
 }
 
 function entityName(type, id) {
     if (type === 'zone') { const z = zone(id); return z ? z.name : ''; }
     if (type === 'plant') { const p = plant(id); return p ? p.name : ''; }
+    if (type === 'lawn') { const l = lawn(id); return l ? l.name : ''; }
     return '';
 }
 
@@ -3279,7 +3315,9 @@ function renderCalendar() {
             : isPast
                 ? `<span class="cal-event-tag overdue">Overskredet</span>`
                 : `<span class="cal-event-tag upcoming">Kommende</span>`;
-        const clickAttr = canEdit() && e.kind === 'upcoming' && e.rid
+        const clickAttr = e.lawnTask
+            ? `onclick="goToLawn('${e.entityId}')" style="cursor:pointer"`
+            : canEdit() && e.kind === 'upcoming' && e.rid
             ? `onclick="openEditReminder('${e.rid}')" style="cursor:pointer"`
             : canEdit() && e.kind === 'history' && e.hid
             ? `onclick="openEditHistoryItem('${e.hid}')" style="cursor:pointer"`
@@ -4211,14 +4249,52 @@ function submitAddReminder(entityType, entityId) {
     saveDB(); closeSheet(); render();
 }
 
+// Holder et valgt foto mens log-noten skrives (kun plæne-logbog). Uploades ved "Gem note".
+let pendingLogPhoto = null;
+
 function openAddHistory(entityType, entityId) {
+    pendingLogPhoto = null;
+    const photoField = entityType === 'lawn' ? `
+            <div class="field">
+                <label>Foto (valgfrit)</label>
+                <div id="log-photo-preview"></div>
+                <button type="button" class="lawn-log-photo-btn" onclick="pickPendingLogPhoto()">📷 Tilføj foto</button>
+            </div>` : '';
     openSheet('Tilføj log-note', `
         <div class="form-body">
             <div class="field"><label>Dato</label><input id="f-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
             <div class="field"><label>Hvad skete der?</label><textarea id="f-text" placeholder="F.eks. Beskåret — fjernede 3 grene" autofocus></textarea></div>
             <div class="field field-toggle"><label for="f-attention">⚑ Kræver opmærksomhed</label><input type="checkbox" id="f-attention"></div>
+            ${photoField}
         </div>
         <button class="btn-primary" onclick="submitAddHistory('${entityType}','${entityId}')">Gem note</button>`);
+}
+
+// Vælg foto i opret-dialogen (native iOS-picker giver kamera+arkiv uden capture-attribut).
+function pickPendingLogPhoto() {
+    if (!canLog()) return;
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    input.onchange = async e => {
+        const file = e.target.files[0];
+        input.remove();
+        if (!file) return;
+        const base64 = await compressImage(file, 1200, 0.78);
+        pendingLogPhoto = { file, base64 };
+        const prev = document.getElementById('log-photo-preview');
+        if (prev) prev.innerHTML = `<div class="lawn-log-photos"><div class="lawn-log-photo">
+            <img src="${base64}">
+            <button class="lawn-log-photo-del" onclick="clearPendingLogPhoto()">×</button>
+        </div></div>`;
+    };
+    document.body.appendChild(input);   // iOS: skal være i DOM før klik
+    input.click();
+}
+
+function clearPendingLogPhoto() {
+    pendingLogPhoto = null;
+    const prev = document.getElementById('log-photo-preview');
+    if (prev) prev.innerHTML = '';
 }
 
 function submitAddHistory(entityType, entityId) {
@@ -4227,8 +4303,27 @@ function submitAddHistory(entityType, entityId) {
     const attention = document.getElementById('f-attention')?.checked || false;
     db.history.filter(h => h.entityType === entityType && h.entityId === entityId)
         .forEach(h => { h.needsAttention = false; });
-    db.history.push({ id: uuid(), entityType, entityId, date: document.getElementById('f-date').value, text, needsAttention: attention, createdBy: currentUser() });
+    const entry = { id: uuid(), entityType, entityId, date: document.getElementById('f-date').value, text, needsAttention: attention, createdBy: currentUser() };
+    db.history.push(entry);
+    const photo = pendingLogPhoto; pendingLogPhoto = null;
     saveDB(); closeSheet(); render();
+    if (photo && entityType === 'lawn') attachPendingLogPhoto(entry.id, photo);
+}
+
+// Vedhæfter det valgte foto til den netop oprettede logpost (optimistisk base64 → upload → swap).
+async function attachPendingLogPhoto(hid, photo) {
+    const h = db.history.find(x => x.id === hid);
+    if (!h) return;
+    const photoId = uuid();
+    if (!h.photos) h.photos = [];
+    h.photos.push({ id: photoId, url: photo.base64 });
+    render();
+    try {
+        const { url, thumbUrl } = await uploadPhoto(photo.file);
+        const hFresh = db.history.find(x => x.id === hid);
+        const ph = hFresh && (hFresh.photos || []).find(x => x.id === photoId);
+        if (ph) { ph.url = url; ph.thumbUrl = thumbUrl; saveDB(); }
+    } catch (err) { logError('Foto-upload (ny plæne-logpost) fejlede: ' + err.message, 'attachPendingLogPhoto', ''); }
 }
 
 function openEditReminder(rid) {
