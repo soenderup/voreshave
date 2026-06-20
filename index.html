@@ -137,6 +137,11 @@
         .lawn-tips ul { margin: 0; padding-left: 1.1rem; }
         .lawn-tips li { font-size: 0.82rem; color: var(--text); margin: 0.4rem 0; line-height: 1.4; }
         .lawn-add-btn { width: 100%; margin-top: 0.3rem; background: var(--green-light); color: var(--green-dark); border: none; border-radius: 10px; padding: 0.7rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+        .lawn-log-photos { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+        .lawn-log-photo { position: relative; line-height: 0; }
+        .lawn-log-photo img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; cursor: pointer; }
+        .lawn-log-photo-del { position: absolute; top: -6px; right: -6px; background: var(--terra); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 0.8rem; cursor: pointer; line-height: 1; display: flex; align-items: center; justify-content: center; }
+        .lawn-log-photo-btn { margin-top: 0.5rem; background: none; border: 1px dashed var(--border); color: var(--green-mid); border-radius: 8px; padding: 0.35rem 0.6rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
         .zone-badge { font-size: 0.68rem; background: var(--terra-light); color: var(--terra); padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 600; white-space: nowrap; }
         .zone-badge.ok { background: var(--green-light); color: var(--green-mid); }
         .flag-attention, .flag-overdue { font-size: 0.95rem; line-height: 1; flex-shrink: 0; margin-left: 0.15rem; }
@@ -1936,10 +1941,93 @@ function deleteLawn(lawnId) {
     if (!canEdit()) return;
     const l = lawn(lawnId);
     if (!l) return;
-    if (!confirm(`Slet plænen "${l.name}"? Alle dens opgaver fjernes.`)) return;
+    if (!confirm(`Slet plænen "${l.name}"? Alle dens opgaver og logposter fjernes.`)) return;
+    // ryd fotos i plænens logposter fra Storage
+    (db.history || []).filter(h => h.entityType === 'lawn' && h.entityId === lawnId)
+        .forEach(h => (h.photos || []).forEach(ph => { deleteStoragePhoto(ph.url); deleteStoragePhoto(ph.thumbUrl); }));
     db.lawns = (db.lawns || []).filter(x => x.id !== lawnId);
     db.history = (db.history || []).filter(h => !(h.entityType === 'lawn' && h.entityId === lawnId));
     saveDB(); closeSheet(); goTo('home');
+}
+
+// ── PLÆNE: logpost-visning med fotos ──
+function renderLawnLogItem(h, lawnId) {
+    const photos = h.photos || [];
+    const photosHTML = photos.length
+        ? `<div class="lawn-log-photos">${photos.map(ph => `<div class="lawn-log-photo">
+                <img src="${ph.thumbUrl || ph.url}" loading="lazy" onclick="viewLawnLogPhoto('${h.id}','${ph.id}')">
+                ${canEdit() ? `<button class="lawn-log-photo-del" onclick="event.stopPropagation();removeLawnLogPhoto('${h.id}','${ph.id}')">×</button>` : ''}
+            </div>`).join('')}</div>`
+        : '';
+    return `<div class="history-item${h.needsAttention ? ' has-attention' : ''}" style="display:flex;align-items:flex-start;gap:0.5rem">
+        <div style="flex:1;min-width:0">
+            <div class="history-date">${formatDate(h.date)}</div>
+            <div class="history-text">${h.text}${h.needsAttention ? '<span class="history-tag attention">⚑ opmærksomhed</span>' : ''}</div>
+            ${photosHTML}
+            ${canLog() ? `<button class="lawn-log-photo-btn" onclick="pickLawnLogPhoto('${lawnId}','${h.id}')">📷 Tilføj foto</button>` : ''}
+        </div>
+        ${canEdit() ? `<button onclick="deleteLawnLog('${h.id}')" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0;flex-shrink:0;line-height:1" title="Slet">×</button>` : ''}
+    </div>`;
+}
+
+function viewLawnLogPhoto(hid, photoId) {
+    const h = db.history.find(x => x.id === hid);
+    const ph = h && (h.photos || []).find(x => x.id === photoId);
+    if (ph) viewPhoto(ph.url);
+}
+
+function pickLawnLogPhoto(lawnId, hid) {
+    if (!canLog()) return;
+    openPickPhotoSheet('Tilføj foto til logpost',
+        `doPickLawnLogPhoto('${lawnId}','${hid}','camera')`,
+        `doPickLawnLogPhoto('${lawnId}','${hid}','library')`);
+}
+
+async function doPickLawnLogPhoto(lawnId, hid, source) {
+    closeSheet();
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    if (source === 'camera') input.capture = 'environment';
+    input.onchange = async e => {
+        const file = e.target.files[0];
+        input.remove();
+        if (!file) return;
+        const h = db.history.find(x => x.id === hid);
+        if (!h) return;
+        const photoId = uuid();
+        const base64 = await compressImage(file, 1200, 0.78);
+        if (!h.photos) h.photos = [];
+        h.photos.push({ id: photoId, url: base64 });   // optimistisk visning
+        render();
+        try {
+            const { url, thumbUrl } = await uploadPhoto(file);
+            const hFresh = db.history.find(x => x.id === hid);
+            const ph = hFresh && (hFresh.photos || []).find(x => x.id === photoId);
+            if (ph) { ph.url = url; ph.thumbUrl = thumbUrl; saveDB(); }
+        } catch (err) { logError('Foto-upload (plæne-log) fejlede: ' + err.message, 'doPickLawnLogPhoto', ''); }
+    };
+    document.body.appendChild(input);   // iOS: skal være i DOM før klik
+    input.click();
+}
+
+async function removeLawnLogPhoto(hid, photoId) {
+    if (!canEdit()) return;
+    if (!confirm('Slet dette foto?')) return;
+    const h = db.history.find(x => x.id === hid);
+    if (!h) return;
+    const ph = (h.photos || []).find(x => x.id === photoId);
+    if (ph) { deleteStoragePhoto(ph.url); deleteStoragePhoto(ph.thumbUrl); }
+    h.photos = (h.photos || []).filter(x => x.id !== photoId);
+    saveDB(); render();
+}
+
+async function deleteLawnLog(hid) {
+    if (!canEdit()) return;
+    if (!confirm('Slet denne logpost?')) return;
+    const h = db.history.find(x => x.id === hid);
+    if (h && h.photos) h.photos.forEach(ph => { deleteStoragePhoto(ph.url); deleteStoragePhoto(ph.thumbUrl); });
+    db.history = db.history.filter(x => x.id !== hid);
+    saveDB(); render();
 }
 
 function goToLawn(id) {
@@ -1976,7 +2064,7 @@ function renderLawn(id) {
     const tipsHTML = `<ul>${LAWN_PRINCIPLES.map(p => `<li>${escapeHTML(p)}</li>`).join('')}</ul>`;
     const log = entityHistory('lawn', l.id);
     const logHTML = log.length
-        ? log.map(renderHistoryItem).join('')
+        ? log.map(h => renderLawnLogItem(h, l.id)).join('')
         : `<div style="color:var(--muted);font-size:0.85rem;padding:0.3rem 0">Ingen logposter endnu.</div>`;
     return `
         <div class="detail-hero" style="padding-bottom:0.8rem">
