@@ -1974,6 +1974,10 @@ function renderLawn(id) {
         }).join('')
         : `<div style="color:var(--muted);font-size:0.85rem;padding:0.3rem 0">Ingen opgaver endnu.</div>`;
     const tipsHTML = `<ul>${LAWN_PRINCIPLES.map(p => `<li>${escapeHTML(p)}</li>`).join('')}</ul>`;
+    const log = entityHistory('lawn', l.id);
+    const logHTML = log.length
+        ? log.map(renderHistoryItem).join('')
+        : `<div style="color:var(--muted);font-size:0.85rem;padding:0.3rem 0">Ingen logposter endnu.</div>`;
     return `
         <div class="detail-hero" style="padding-bottom:0.8rem">
             <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:0.15rem">
@@ -1989,6 +1993,9 @@ function renderLawn(id) {
             ${canEdit() ? `<button class="lawn-add-btn" onclick="openAddLawnTask('${l.id}')">➕ Tilføj opgave</button>` : ''}
             <h3>Plejeråd</h3>
             <div class="lawn-tips">${tipsHTML}</div>
+            <h3>Logbog</h3>
+            ${logHTML}
+            ${canLog() ? `<button class="section-add-btn" style="margin-top:0.4rem" onclick="openAddHistory('lawn','${l.id}')">+ Tilføj logpost</button>` : ''}
         </div>`;
 }
 
