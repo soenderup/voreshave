@@ -136,6 +136,7 @@
         .lawn-tips { background: var(--cream); border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 0.95rem; }
         .lawn-tips ul { margin: 0; padding-left: 1.1rem; }
         .lawn-tips li { font-size: 0.82rem; color: var(--text); margin: 0.4rem 0; line-height: 1.4; }
+        .lawn-add-btn { width: 100%; margin-top: 0.3rem; background: var(--green-light); color: var(--green-dark); border: none; border-radius: 10px; padding: 0.7rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
         .zone-badge { font-size: 0.68rem; background: var(--terra-light); color: var(--terra); padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 600; white-space: nowrap; }
         .zone-badge.ok { background: var(--green-light); color: var(--green-mid); }
         .flag-attention, .flag-overdue { font-size: 0.95rem; line-height: 1; flex-shrink: 0; margin-left: 0.15rem; }
@@ -1816,6 +1817,131 @@ function submitAddLawn() {
     saveDB(); closeSheet(); goToLawn(l.id);
 }
 
+// ── PLÆNE: afkrydsning af opgave ──
+function toggleLawnTask(lawnId, taskId) {
+    if (!canLog()) return;
+    const l = lawn(lawnId);
+    const t = l && (l.tasks || []).find(x => x.id === taskId);
+    if (!t) return;
+    t.done = !t.done;
+    t.doneDate = t.done ? today.toISOString().slice(0, 10) : null;
+    saveDB(); render();
+}
+
+// ── PLÆNE: tilføj opgave ──
+function openAddLawnTask(lawnId) {
+    if (!canEdit()) return;
+    const types = LAWN_TASK_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
+    openSheet('Ny opgave', `
+        <div class="form-body">
+            <div class="field"><label>Type</label><select id="lt-type">${types}</select></div>
+            <div class="field"><label>Tidspunkt / sæson</label><input id="lt-season" placeholder="F.eks. September eller Hver 7. dag"></div>
+            <div class="field"><label>Beskrivelse</label><input id="lt-label" placeholder="F.eks. Efterårsgødning 5-3-20 eller Klip plænen"></div>
+            <div class="field"><label>Mængde / dosis (valgfrit)</label><input id="lt-dose" placeholder="F.eks. Følg pose"></div>
+            <div class="field"><label>Formål (valgfrit)</label><input id="lt-purpose" placeholder="F.eks. Vinterhårdførhed"></div>
+        </div>
+        <button class="btn-primary" onclick="submitAddLawnTask('${lawnId}')">Tilføj opgave</button>`);
+}
+
+function submitAddLawnTask(lawnId) {
+    if (!canEdit()) return;
+    const l = lawn(lawnId);
+    if (!l) return;
+    const label = document.getElementById('lt-label').value.trim();
+    const season = document.getElementById('lt-season').value.trim();
+    if (!label && !season) return;   // mindst tidspunkt eller beskrivelse
+    l.tasks = l.tasks || [];
+    l.tasks.push({
+        id: uuid(),
+        type: document.getElementById('lt-type').value,
+        label, season,
+        dose: document.getElementById('lt-dose').value.trim(),
+        purpose: document.getElementById('lt-purpose').value.trim(),
+        done: false, doneDate: null,
+    });
+    saveDB(); closeSheet(); render();
+}
+
+// ── PLÆNE: rediger / slet opgave ──
+function openEditLawnTask(lawnId, taskId) {
+    if (!canEdit()) return;
+    const l = lawn(lawnId);
+    const t = l && (l.tasks || []).find(x => x.id === taskId);
+    if (!t) return;
+    const types = LAWN_TASK_TYPES.map(x => `<option value="${x}"${x === t.type ? ' selected' : ''}>${x}</option>`).join('');
+    openSheet('Rediger opgave', `
+        <div class="form-body">
+            <div class="field"><label>Type</label><select id="lt-type">${types}</select></div>
+            <div class="field"><label>Tidspunkt / sæson</label><input id="lt-season" value="${escapeHTML(t.season)}"></div>
+            <div class="field"><label>Beskrivelse</label><input id="lt-label" value="${escapeHTML(t.label)}"></div>
+            <div class="field"><label>Mængde / dosis (valgfrit)</label><input id="lt-dose" value="${escapeHTML(t.dose)}"></div>
+            <div class="field"><label>Formål (valgfrit)</label><input id="lt-purpose" value="${escapeHTML(t.purpose)}"></div>
+        </div>
+        <button class="btn-primary" onclick="submitEditLawnTask('${lawnId}','${taskId}')">Gem</button>
+        <button class="btn-danger" onclick="deleteLawnTask('${lawnId}','${taskId}')">Slet opgave</button>`);
+}
+
+function submitEditLawnTask(lawnId, taskId) {
+    if (!canEdit()) return;
+    const l = lawn(lawnId);
+    const t = l && (l.tasks || []).find(x => x.id === taskId);
+    if (!t) return;
+    const label = document.getElementById('lt-label').value.trim();
+    const season = document.getElementById('lt-season').value.trim();
+    if (!label && !season) return;
+    t.type = document.getElementById('lt-type').value;
+    t.label = label;
+    t.season = season;
+    t.dose = document.getElementById('lt-dose').value.trim();
+    t.purpose = document.getElementById('lt-purpose').value.trim();
+    saveDB(); closeSheet(); render();
+}
+
+function deleteLawnTask(lawnId, taskId) {
+    if (!canEdit()) return;
+    if (!confirm('Slet denne opgave?')) return;
+    const l = lawn(lawnId);
+    if (!l) return;
+    l.tasks = (l.tasks || []).filter(x => x.id !== taskId);
+    saveDB(); closeSheet(); render();
+}
+
+// ── PLÆNE: rediger / slet selve plænen ──
+function openEditLawn(lawnId) {
+    if (!canEdit()) return;
+    const l = lawn(lawnId);
+    if (!l) return;
+    const areas = Object.entries(AREAS).map(([k, v]) => `<option value="${k}"${k === l.areaKey ? ' selected' : ''}>${v.icon} ${v.label}</option>`).join('');
+    openSheet('Rediger plæne', `
+        <div class="form-body">
+            <div class="field"><label>Område</label><select id="lawn-area">${areas}</select></div>
+            <div class="field"><label>Navn</label><input id="lawn-name" value="${escapeHTML(l.name)}"></div>
+        </div>
+        <button class="btn-primary" onclick="submitEditLawn('${lawnId}')">Gem</button>
+        <button class="btn-danger" onclick="deleteLawn('${lawnId}')">Slet plæne</button>`);
+}
+
+function submitEditLawn(lawnId) {
+    if (!canEdit()) return;
+    const l = lawn(lawnId);
+    if (!l) return;
+    const name = document.getElementById('lawn-name').value.trim();
+    if (!name) return;
+    l.name = name;
+    l.areaKey = document.getElementById('lawn-area').value;
+    saveDB(); closeSheet(); render();
+}
+
+function deleteLawn(lawnId) {
+    if (!canEdit()) return;
+    const l = lawn(lawnId);
+    if (!l) return;
+    if (!confirm(`Slet plænen "${l.name}"? Alle dens opgaver fjernes.`)) return;
+    db.lawns = (db.lawns || []).filter(x => x.id !== lawnId);
+    db.history = (db.history || []).filter(h => !(h.entityType === 'lawn' && h.entityId === lawnId));
+    saveDB(); closeSheet(); goTo('home');
+}
+
 function goToLawn(id) {
     nav = { ...nav, view: 'lawn', lawnId: id, zoneId: null, plantId: null };
     render();
@@ -1833,8 +1959,8 @@ function renderLawn(id) {
             const done = !!t.done;
             const dose = (t.dose && t.dose !== '-') ? t.dose : '';
             const detail = [dose, t.purpose].filter(Boolean).join(' · ');
-            return `<div class="lawn-task${done ? ' done' : ''}">
-                <div class="lawn-check${done ? ' on' : ''}">${done ? '✓' : ''}</div>
+            return `<div class="lawn-task${done ? ' done' : ''}"${canEdit() ? ` onclick="openEditLawnTask('${l.id}','${t.id}')" style="cursor:pointer"` : ''}>
+                <div class="lawn-check${done ? ' on' : ''}"${canLog() ? ` onclick="event.stopPropagation();toggleLawnTask('${l.id}','${t.id}')" style="cursor:pointer"` : ''}>${done ? '✓' : ''}</div>
                 <div class="lawn-task-body">
                     <div class="lawn-task-top">
                         ${t.season ? `<span class="lawn-season">${escapeHTML(t.season)}</span>` : ''}
@@ -1852,13 +1978,15 @@ function renderLawn(id) {
         <div class="detail-hero" style="padding-bottom:0.8rem">
             <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:0.15rem">
                 <button onclick="goBack()" style="background:none;border:none;color:var(--green-dark);font-size:1.6rem;line-height:1;padding:0;cursor:pointer;flex-shrink:0;margin-left:-0.2rem">‹</button>
-                <div style="font-size:1.25rem;font-weight:700;color:var(--green-dark)">${escapeHTML(l.name)}</div>
+                <div style="flex:1;min-width:0;font-size:1.25rem;font-weight:700;color:var(--green-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(l.name)}</div>
+                ${canEdit() ? `<button onclick="openEditLawn('${l.id}')" title="Rediger plæne" style="background:none;border:none;color:var(--green-mid);font-size:1.2rem;line-height:1;padding:0.2rem;cursor:pointer;flex-shrink:0">⚙️</button>` : ''}
             </div>
             ${area ? `<div class="detail-hero-sub" style="padding-left:2.6rem">${area.icon} ${area.label}</div>` : ''}
         </div>
         <div class="lawn-section">
             <h3>Plejekalender</h3>
             ${tasksHTML}
+            ${canEdit() ? `<button class="lawn-add-btn" onclick="openAddLawnTask('${l.id}')">➕ Tilføj opgave</button>` : ''}
             <h3>Plejeråd</h3>
             <div class="lawn-tips">${tipsHTML}</div>
         </div>`;
