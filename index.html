@@ -844,7 +844,7 @@ firebase.initializeApp({
 const fsDB = firebase.firestore();
 const fsStorage = firebase.storage();
 const fsAuth = firebase.auth();
-const VERSION = '1.25';
+const VERSION = '1.26.0';
 
 const DATA_REF     = fsDB.collection('voreshave').doc('data');
 const PINS_REF     = fsDB.collection('voreshave').doc('pins');
@@ -1488,6 +1488,19 @@ function zoneAttention(zid) {
     return db.plants.some(p => p.zoneId === zid && plantAttentionFlag(p.id));
 }
 
+// ── PLÆNE-status: 🚩 opmærksomheds-logpost · ⚠️ forfalden opgave ──
+function lawnAttention(lawnId) {
+    return db.history.some(h => h.entityType === 'lawn' && h.entityId === lawnId && h.needsAttention);
+}
+// En opgave er forfalden hvis dens målmåned er passeret i år og den ikke er krydset af.
+// Opgaver uden targetMonth (egne tilføjelser) flages ikke - der er intet dato-grundlag.
+function lawnOverdue(lawnId) {
+    const l = lawn(lawnId);
+    if (!l) return false;
+    const m = new Date().getMonth() + 1;
+    return (l.tasks || []).some(t => t.targetMonth && !t.done && t.targetMonth < m);
+}
+
 function zoneStatus(zid) {
     const urgent = db.reminders.filter(r => {
         if (r.entityType === 'zone' && r.entityId === zid) return new Date(r.date) <= new Date();
@@ -1758,6 +1771,7 @@ function renderLawnsSection() {
             area ? `${area.icon} ${area.label}` : '',
             total ? `${done}/${total} opgaver gjort` : '',
         ].filter(Boolean).join(' · ');
+        const badge = `${lawnAttention(l.id) ? `<span class="flag-attention" title="Logpost kræver opmærksomhed">🚩</span>` : ''}${lawnOverdue(l.id) ? `<span class="flag-overdue" title="Forfalden opgave">⚠️</span>` : ''}`;
         return `<div class="zone-card" onclick="goToLawn('${l.id}')">
             <div class="zone-card-header">
                 <div class="zone-card-left">
@@ -1767,7 +1781,7 @@ function renderLawnsSection() {
                         ${meta ? `<div class="zone-meta">${meta}</div>` : ''}
                     </div>
                 </div>
-                <span class="zone-arrow">›</span>
+                <div style="display:flex;align-items:center;gap:0.4rem">${badge}<span class="zone-arrow">›</span></div>
             </div>
         </div>`;
     }).join('');
