@@ -119,6 +119,23 @@
         .zone-icon { font-size: 1.1rem; }
         .zone-name { font-size: 0.98rem; font-weight: 600; color: var(--green-dark); }
         .zone-meta { font-size: 0.74rem; color: var(--muted); margin-top: 0.05rem; }
+        /* ── PLÆNE ── */
+        .lawn-section { padding: 0.25rem 1rem 1.5rem; }
+        .lawn-section h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 1.1rem 0 0.55rem; }
+        .lawn-task { display: flex; gap: 0.7rem; align-items: flex-start; background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 0.85rem; margin-bottom: 0.5rem; }
+        .lawn-task.done { background: var(--green-light); border-color: transparent; }
+        .lawn-check { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: var(--white); margin-top: 0.1rem; }
+        .lawn-check.on { background: var(--green-mid); border-color: var(--green-mid); }
+        .lawn-task-body { flex: 1; min-width: 0; }
+        .lawn-task-top { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+        .lawn-season { font-size: 0.7rem; font-weight: 700; color: var(--green-dark); background: var(--green-light); padding: 0.1rem 0.45rem; border-radius: 5px; }
+        .lawn-type { font-size: 0.68rem; font-weight: 600; color: var(--muted); }
+        .lawn-label { font-size: 0.94rem; font-weight: 600; color: var(--text); margin-top: 0.28rem; }
+        .lawn-detail { font-size: 0.78rem; color: var(--muted); margin-top: 0.18rem; line-height: 1.35; }
+        .lawn-done-date { font-size: 0.72rem; color: var(--green-mid); font-weight: 600; margin-top: 0.25rem; }
+        .lawn-tips { background: var(--cream); border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 0.95rem; }
+        .lawn-tips ul { margin: 0; padding-left: 1.1rem; }
+        .lawn-tips li { font-size: 0.82rem; color: var(--text); margin: 0.4rem 0; line-height: 1.4; }
         .zone-badge { font-size: 0.68rem; background: var(--terra-light); color: var(--terra); padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 600; white-space: nowrap; }
         .zone-badge.ok { background: var(--green-light); color: var(--green-mid); }
         .flag-attention, .flag-overdue { font-size: 0.95rem; line-height: 1; flex-shrink: 0; margin-left: 0.15rem; }
@@ -867,7 +884,7 @@ window.onunhandledrejection = e => {
 
 // ── STATE ──
 const today = new Date();
-let nav = { view: 'home', zoneId: null, plantId: null, tab: 'main', calYear: today.getFullYear(), calMonth: today.getMonth(), calSelected: null };
+let nav = { view: 'home', zoneId: null, plantId: null, lawnId: null, tab: 'main', calYear: today.getFullYear(), calMonth: today.getMonth(), calSelected: null };
 let collapsedAreas = new Set(Object.keys({ forhave:1, baghave:1, terrasse:1, indgang:1, indendørs:1 }));
 let collapsedZones = new Set();
 let zonesInitialized = false;
@@ -881,7 +898,7 @@ let identifyState = { imageDataUrl: null, result: null, hint: '', correcting: fa
 let diagnoseState = { imageDataUrl: null, plantId: null };
 
 // ── DATA ──
-let db = { zones: [], plants: [], reminders: [], history: [] };
+let db = { zones: [], plants: [], reminders: [], history: [], lawns: [] };
 
 // ── PHOTO STORAGE (IndexedDB - mere robust end localStorage på iOS Safari) ──
 const PHOTO_DB_NAME = 'voreshave-photos';
@@ -966,6 +983,27 @@ const AREAS = {
 
 const REPEAT_LABELS = { none: 'Ingen', yearly: 'Hvert år', monthly: 'Hver måned' };
 
+// ── PLÆNE: opgavetyper, seed-kalender og plejeprincipper ──
+const LAWN_TASK_TYPES = ['Gødning', 'Vanding', 'Klipning', 'Vertikalskæring', 'Topdressing', 'Eftersåning'];
+
+// Anbefalet gødningskalender (200-500 m², pryd-plæne med opsamler/intet bioklip).
+// Seedes på nye plæner. preDone=true → markeres udført ved oprettelse.
+const LAWN_SEED_TASKS = [
+    { type: 'Gødning', label: 'NPK 18-5-11', season: 'Juni', targetMonth: 6, dose: '-', purpose: 'Forårs-/sommergødning (allerede givet)', preDone: true, doneDate: '2026-06-01' },
+    { type: 'Gødning', label: 'Langtidsvirkende NPK ca. 20-5-8', season: 'Slut juli / start aug.', targetMonth: 8, dose: '~2-3 kg/100 m² (følg pose)', purpose: 'Stærkt græs gennem sensommeren' },
+    { type: 'Gødning', label: 'Efterårsgødning, lav N / høj K (fx 5-3-20)', season: 'September', targetMonth: 9, dose: 'Følg pose', purpose: 'Kalium → rødder + vinterhårdførhed, vigtigst mod svampe' },
+    { type: 'Gødning', label: 'Langtidsvirkende forårsgødning', season: 'April', targetMonth: 4, dose: 'Følg pose', purpose: 'Tidlig start, lukker forårshullet' },
+    { type: 'Gødning', label: 'Evt. let supplering (halv dosis)', season: 'Maj-juni', targetMonth: 5, dose: 'Halv dosis', purpose: 'Kun hvis plænen ser sulten ud' },
+];
+
+// Faste plejeprincipper vist som råd i plæne-visningen
+const LAWN_PRINCIPLES = [
+    'September-gødningen (høj kalium) er den vigtigste mod svampe - må ikke springes over.',
+    'Vand om morgenen, aldrig om aftenen - vådt græs om natten øger svamperisikoen.',
+    'Forårsgødning så tidligt som muligt (april) - lukker næringshullet.',
+    'Fordi du bruger opsamler (intet bioklip): gød hellere lidt og regelmæssigt end én stor dosis.',
+];
+
 // Normalisér drainage-værdier — håndterer dansk, forkert casing og varianter
 function parseDrainage(val) {
     if (!val || typeof val !== 'string') return null;
@@ -977,6 +1015,7 @@ function parseDrainage(val) {
 }
 
 function mergeLocalPhotos() {
+    if (!Array.isArray(db.lawns)) db.lawns = [];   // plæne-migration: ældre db'er har ingen lawns
     (db.zones || []).forEach(z => {
         if (!z.photo && photoCache.has('zone-' + z.id)) z.photo = photoCache.get('zone-' + z.id);
         if (!zonesInitialized) collapsedZones.add(z.id);
@@ -1367,6 +1406,20 @@ function zone(id) { return db.zones.find(z => z.id === id); }
 function plant(id) { return db.plants.find(p => p.id === id); }
 function zonePlants(zid) { return db.plants.filter(p => p.zoneId === zid); }
 function subZones(zid) { return db.zones.filter(z => z.parentZoneId === zid); }
+
+// ── PLÆNE-hjælpere ──
+function lawn(id) { return (db.lawns || []).find(l => l.id === id); }
+function areaLawns(areaKey) { return (db.lawns || []).filter(l => l.areaKey === areaKey); }
+// Laver friske opgave-objekter ud fra seed-kalenderen (id + done-tilstand pr. plæne)
+function seedLawnTasks() {
+    return LAWN_SEED_TASKS.map(t => ({
+        id: uuid(),
+        type: t.type, label: t.label, season: t.season, targetMonth: t.targetMonth,
+        dose: t.dose, purpose: t.purpose,
+        done: !!t.preDone,
+        doneDate: t.preDone ? (t.doneDate || today.toISOString().slice(0,10)) : null,
+    }));
+}
 // En "direkte" zone er en ghost-zone der vises som element direkte under området
 function isDirectZone(zid) {
     const z = zone(zid);
@@ -1498,6 +1551,8 @@ function render() {
         if (inp) { inp.focus(); inp.addEventListener('input', updateSearch); }
     } else if (nav.view === 'bookmarks') {
         app.innerHTML = renderBookmarks();
+    } else if (nav.view === 'lawn') {
+        app.innerHTML = renderLawn(nav.lawnId);
     }
 
     bindEvents();
@@ -1680,7 +1735,133 @@ function renderHome() {
         ${renderWeatherWidget()}
         ${migrateBanner}
         ${areasHTML}
+        ${renderLawnsSection()}
 `;
+}
+
+// ── PLÆNE: forside-sektion under områderne ──
+function renderLawnsSection() {
+    const lawns = db.lawns || [];
+    const canAdd = canEdit();
+    if (lawns.length === 0 && !canAdd) return '';
+    const cards = lawns.map(l => {
+        const area = AREAS[l.areaKey];
+        const total = (l.tasks || []).length;
+        const done  = (l.tasks || []).filter(t => t.done).length;
+        const meta = [
+            area ? `${area.icon} ${area.label}` : '',
+            total ? `${done}/${total} opgaver gjort` : '',
+        ].filter(Boolean).join(' · ');
+        return `<div class="zone-card" onclick="goToLawn('${l.id}')">
+            <div class="zone-card-header">
+                <div class="zone-card-left">
+                    <span class="zone-icon">🌿</span>
+                    <div>
+                        <div class="zone-name">${escapeHTML(l.name)}</div>
+                        ${meta ? `<div class="zone-meta">${meta}</div>` : ''}
+                    </div>
+                </div>
+                <span class="zone-arrow">›</span>
+            </div>
+        </div>`;
+    }).join('');
+    const addBtn = canAdd
+        ? `<div class="zone-card" onclick="openAddLawn()">
+               <div class="zone-card-header">
+                   <div class="zone-card-left">
+                       <span class="zone-icon">➕</span>
+                       <div><div class="zone-name" style="color:var(--green-mid)">Ny plæne</div></div>
+                   </div>
+               </div>
+           </div>`
+        : '';
+    return `<div class="area-group">
+        <div class="area-header" style="cursor:default">
+            <span class="area-icon">🌿</span>
+            <span class="area-title">Plæner</span>
+        </div>
+        <div class="area-zones">${cards}${addBtn}</div>
+    </div>`;
+}
+
+// ── PLÆNE: opret ny ──
+function openAddLawn() {
+    if (!canEdit()) return;
+    const areas = Object.entries(AREAS).map(([k,v]) =>
+        `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
+    openSheet('Ny plæne', `
+        <div class="form-body">
+            <div class="field">
+                <label>Område</label>
+                <select id="lawn-area" onchange="suggestLawnName(this.value)">${areas}</select>
+            </div>
+            <div class="field"><label>Navn</label><input id="lawn-name" placeholder="F.eks. Forhave-plæne"></div>
+            <p style="margin:0.2rem 0 0;font-size:0.78rem;color:var(--muted)">Plænen oprettes med den anbefalede gødningskalender, som du kan tilpasse bagefter.</p>
+        </div>
+        <button class="btn-primary" onclick="submitAddLawn()">Opret plæne</button>`);
+    suggestLawnName(Object.keys(AREAS)[0]);
+}
+
+function suggestLawnName(areaKey) {
+    const inp = document.getElementById('lawn-name');
+    if (inp && !inp.value.trim()) inp.value = (AREAS[areaKey]?.label || '') + '-plæne';
+}
+
+function submitAddLawn() {
+    const name = document.getElementById('lawn-name').value.trim();
+    const areaKey = document.getElementById('lawn-area').value;
+    if (!name) return;
+    const l = { id: uuid(), areaKey, name, createdBy: currentUser(), tasks: seedLawnTasks() };
+    db.lawns.push(l);
+    saveDB(); closeSheet(); goToLawn(l.id);
+}
+
+function goToLawn(id) {
+    nav = { ...nav, view: 'lawn', lawnId: id, zoneId: null, plantId: null };
+    render();
+    const app = document.getElementById('app');
+    if (app) app.scrollTop = 0;
+}
+
+function renderLawn(id) {
+    const l = lawn(id);
+    if (!l) return `<div style="padding:2rem 1rem;text-align:center;color:var(--muted)">Plænen findes ikke.<br><br><button class="btn-primary" onclick="goTo('home')">Til forsiden</button></div>`;
+    const area = AREAS[l.areaKey];
+    const tasks = l.tasks || [];
+    const tasksHTML = tasks.length
+        ? tasks.map(t => {
+            const done = !!t.done;
+            const dose = (t.dose && t.dose !== '-') ? t.dose : '';
+            const detail = [dose, t.purpose].filter(Boolean).join(' · ');
+            return `<div class="lawn-task${done ? ' done' : ''}">
+                <div class="lawn-check${done ? ' on' : ''}">${done ? '✓' : ''}</div>
+                <div class="lawn-task-body">
+                    <div class="lawn-task-top">
+                        ${t.season ? `<span class="lawn-season">${escapeHTML(t.season)}</span>` : ''}
+                        ${t.type ? `<span class="lawn-type">${escapeHTML(t.type)}</span>` : ''}
+                    </div>
+                    ${t.label ? `<div class="lawn-label">${escapeHTML(t.label)}</div>` : ''}
+                    ${detail ? `<div class="lawn-detail">${escapeHTML(detail)}</div>` : ''}
+                    ${done && t.doneDate ? `<div class="lawn-done-date">✓ Udført ${formatDate(t.doneDate)}</div>` : ''}
+                </div>
+            </div>`;
+        }).join('')
+        : `<div style="color:var(--muted);font-size:0.85rem;padding:0.3rem 0">Ingen opgaver endnu.</div>`;
+    const tipsHTML = `<ul>${LAWN_PRINCIPLES.map(p => `<li>${escapeHTML(p)}</li>`).join('')}</ul>`;
+    return `
+        <div class="detail-hero" style="padding-bottom:0.8rem">
+            <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:0.15rem">
+                <button onclick="goBack()" style="background:none;border:none;color:var(--green-dark);font-size:1.6rem;line-height:1;padding:0;cursor:pointer;flex-shrink:0;margin-left:-0.2rem">‹</button>
+                <div style="font-size:1.25rem;font-weight:700;color:var(--green-dark)">${escapeHTML(l.name)}</div>
+            </div>
+            ${area ? `<div class="detail-hero-sub" style="padding-left:2.6rem">${area.icon} ${area.label}</div>` : ''}
+        </div>
+        <div class="lawn-section">
+            <h3>Plejekalender</h3>
+            ${tasksHTML}
+            <h3>Plejeråd</h3>
+            <div class="lawn-tips">${tipsHTML}</div>
+        </div>`;
 }
 
 
