@@ -891,7 +891,7 @@ window.onunhandledrejection = e => {
 // ── STATE ──
 const today = new Date();
 let nav = { view: 'home', zoneId: null, plantId: null, lawnId: null, tab: 'main', calYear: today.getFullYear(), calMonth: today.getMonth(), calSelected: null };
-let collapsedAreas = new Set(Object.keys({ forhave:1, baghave:1, terrasse:1, indgang:1, indendørs:1 }));
+let collapsedAreas = new Set([...Object.keys({ forhave:1, baghave:1, terrasse:1, indgang:1, indendørs:1 }), 'lawns']);
 let collapsedZones = new Set();
 let zonesInitialized = false;
 let urgentOpen = false;
@@ -1809,12 +1809,18 @@ function renderLawnsSection() {
                </div>
            </div>`
         : '';
+    const collapsed = collapsedAreas.has('lawns');
+    const attnInArea = lawns.some(l => lawnAttention(l.id));
+    const overdueInArea = lawns.some(l => lawnOverdue(l.id));
+    const countStr = `${attnInArea ? '🚩' : ''}${overdueInArea ? '⚠️' : ''}`;
     return `<div class="area-group">
-        <div class="area-header" style="cursor:default">
+        <div class="area-header" onclick="toggleArea('lawns')">
             <span class="area-icon">🌿</span>
             <span class="area-title">Plæner</span>
+            <span class="area-count">${countStr}</span>
+            <span class="area-chevron${collapsed ? ' closed' : ''}">▾</span>
         </div>
-        <div class="area-zones">${cards}${addBtn}</div>
+        ${collapsed ? '' : `<div class="area-zones">${cards}${addBtn}</div>`}
     </div>`;
 }
 
@@ -3356,7 +3362,7 @@ function calNext() {
 function toggleArea(areaKey) {
     if (collapsedAreas.has(areaKey)) {
         // Åbn denne, luk alle andre — og kollaps alle zoner i det nye område
-        collapsedAreas = new Set(Object.keys(AREAS));
+        collapsedAreas = new Set([...Object.keys(AREAS), 'lawns']);
         collapsedAreas.delete(areaKey);
         db.zones.filter(z => (z.area || 'baghave') === areaKey)
                 .forEach(z => collapsedZones.add(z.id));
