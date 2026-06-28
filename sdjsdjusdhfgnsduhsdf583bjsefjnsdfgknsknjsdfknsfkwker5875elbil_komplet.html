@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elbil - overblik</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f0; color: #1a1a18; font-size: 14px; }
+.tabs { display: flex; background: #fff; border-bottom: 0.5px solid #ddddd8; position: sticky; top: 0; z-index: 20; }
+.tab { flex: 1; padding: 10px 4px; font-size: 11px; font-weight: 500; text-align: center; color: #888780; cursor: pointer; border-bottom: 2px solid transparent; }
+.tab.on { color: #185FA5; border-bottom-color: #185FA5; }
+.pane { display: none; }
+.pane.on { display: block; }
+/* START */
+.guide-wrap { padding: 14px 14px 40px; }
+.g-intro { font-size: 13px; color: #5f5e5a; line-height: 1.6; margin-bottom: 16px; padding: 12px 14px; background: #f0f4fb; border-radius: 10px; border-left: 3px solid #185FA5; }
+.g-section { background: #fff; border: 0.5px solid #ddddd8; border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+.g-head { font-size: 14px; font-weight: 600; color: #1a1a18; padding: 11px 14px; background: #f9f9f6; border-bottom: 0.5px solid #ebebea; }
+.g-body { padding: 12px 14px; }
+.g-body p { font-size: 13px; color: #1a1a18; line-height: 1.65; margin-bottom: 8px; }
+.g-body p:last-child { margin-bottom: 0; }
+.g-tip { background: #E6F1FB; border-radius: 8px; padding: 9px 12px; font-size: 12px; color: #0C447C; line-height: 1.5; margin-top: 8px; }
+/* BILER */
+.filter-bar { background: #fff; border-bottom: 0.5px solid #ddddd8; padding: 10px 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.chip { font-size: 11px; padding: 4px 10px; border-radius: 16px; border: 0.5px solid #ddddd8; background: #f9f9f6; color: #5f5e5a; cursor: pointer; }
+.chip.on { background: #185FA5; color: #fff; border-color: #185FA5; }
+.sort-row { display: flex; align-items: center; gap: 6px; }
+.sort-row label { font-size: 11px; color: #888780; }
+select { font-size: 12px; padding: 3px 7px; border-radius: 6px; border: 0.5px solid #ddddd8; background: #fff; color: #1a1a18; }
+.count { font-size: 11px; color: #888780; padding: 6px 14px 2px; }
+.cards { padding: 8px 14px 32px; display: flex; flex-direction: column; gap: 10px; }
+.bil-card { background: #fff; border: 0.5px solid #ddddd8; border-radius: 12px; overflow: hidden; }
+.bil-head { display: flex; align-items: center; gap: 7px; padding: 9px 12px; background: #f0f4fb; border-bottom: 0.5px solid #ddddd8; }
+.bid { font-family: monospace; font-size: 10px; font-weight: 700; background: #185FA5; color: #fff; border-radius: 4px; padding: 2px 6px; flex-shrink: 0; }
+.btitel { font-size: 12px; font-weight: 500; flex: 1; line-height: 1.3; }
+.bstars { font-size: 12px; flex-shrink: 0; color: #F5A623; }
+.bil-body { padding: 10px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; }
+.f { } .fl { font-size: 10px; color: #888780; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 1px; }
+.fv { font-size: 12px; color: #1a1a18; line-height: 1.4; }
+.fv.g { color: #185FA5; font-weight: 500; } .fv.w { color: #C0392B; } .fv.m { color: #888780; font-style: italic; }
+.tags { grid-column: 1/-1; display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+.tag.y { background: #E6F1FB; color: #0C447C; } .tag.n { background: #FCEBEB; color: #A32D2D; } .tag.q { background: #FAEEDA; color: #633806; }
+.noter { grid-column: 1/-1; }
+.card-actions { display: grid; grid-template-columns: 1fr 1fr; border-top: 0.5px solid #ebebea; }
+.act-btn { padding: 9px 6px; font-size: 12px; color: #185FA5; text-align: center; text-decoration: none; background: none; border: none; cursor: pointer; border-right: 0.5px solid #ebebea; }
+.act-btn:last-child { border-right: none; }
+.empty { text-align: center; padding: 40px; color: #888780; font-size: 13px; }
+/* BUDGET */
+.budget-wrap { padding: 14px 14px 40px; }
+.budget-wrap h2 { font-size: 16px; font-weight: 600; margin-bottom: 3px; }
+.budget-sub { font-size: 12px; color: #888780; margin-bottom: 14px; }
+.bil-selector { background: #fff; border: 0.5px solid #ddddd8; border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+.sel-head { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #888780; padding: 7px 12px; background: #f9f9f6; border-bottom: 0.5px solid #ebebea; }
+.sel-grid { display: grid; grid-template-columns: 1fr 1fr; }
+.sbtn { padding: 9px 10px; font-size: 11px; border: none; background: #fff; color: #1a1a18; cursor: pointer; border-right: 0.5px solid #ebebea; border-bottom: 0.5px solid #ebebea; text-align: left; line-height: 1.3; }
+.sbtn:nth-child(even) { border-right: none; }
+.sbtn.on { background: #E6F1FB; color: #0C447C; font-weight: 500; }
+.sbtn .sid { font-size: 10px; font-family: monospace; font-weight: 700; display: block; margin-bottom: 1px; }
+.sbtn .spris { font-size: 10px; color: #888780; }
+.sbtn.on .spris { color: #185FA5; }
+.total-box { background: #185FA5; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+.tl { font-size: 11px; color: rgba(255,255,255,0.7); margin-bottom: 3px; }
+.tv { font-size: 26px; font-weight: 600; color: #fff; }
+.ts { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 3px; }
+.status-ok { background: #EAF3DE; border-radius: 10px; padding: 9px 12px; font-size: 12px; color: #3B6D11; margin-bottom: 12px; line-height: 1.5; }
+.status-warn { background: #FCEBEB; border-radius: 10px; padding: 9px 12px; font-size: 12px; color: #A32D2D; margin-bottom: 12px; line-height: 1.5; }
+.bcard { background: #fff; border: 0.5px solid #ddddd8; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+.bcard-head { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #888780; padding: 7px 12px; background: #f9f9f6; border-bottom: 0.5px solid #ebebea; }
+.bline { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 0.5px solid #ebebea; }
+.bline:last-child { border-bottom: none; }
+.bline-l { font-size: 12px; color: #1a1a18; } .bline-s { font-size: 10px; color: #888780; margin-top: 1px; }
+.bline-v { font-size: 12px; font-weight: 500; color: #1a1a18; text-align: right; flex-shrink: 0; margin-left: 8px; }
+.bar-wrap { background: #fff; border: 0.5px solid #ddddd8; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+.bar-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #888780; margin-bottom: 8px; }
+.brow { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+.brow:last-child { margin-bottom: 0; }
+.blbl { font-size: 11px; color: #5f5e5a; width: 80px; flex-shrink: 0; }
+.bbg { flex: 1; height: 7px; background: #f0f0ec; border-radius: 4px; overflow: hidden; }
+.bfill { height: 100%; border-radius: 4px; }
+.bamt { font-size: 11px; color: #1a1a18; font-weight: 500; width: 52px; text-align: right; flex-shrink: 0; }
+.note-amber { background: #FAEEDA; border-radius: 10px; padding: 9px 12px; font-size: 12px; color: #633806; line-height: 1.5; margin-bottom: 10px; }
+.note-amber strong { display: block; font-weight: 600; margin-bottom: 2px; }
+.ann-link { display: block; text-align: center; padding: 10px; background: #fff; border: 0.5px solid #185FA5; border-radius: 10px; font-size: 12px; color: #185FA5; text-decoration: none; margin-bottom: 10px; }
+/* FORHANDLER + BANK */
+.chk-sec { background: #fff; border: 0.5px solid #ddddd8; border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+.chk-head { font-size: 14px; font-weight: 600; color: #1a1a18; padding: 11px 14px; background: #f9f9f6; border-bottom: 0.5px solid #ebebea; }
+.chk-body { padding: 4px 14px 8px; }
+.check { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 0.5px solid #f0f0ec; cursor: pointer; }
+.check:last-child { border-bottom: none; }
+.check .box { width: 19px; height: 19px; border-radius: 5px; border: 1.5px solid #c2c2bb; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff; line-height: 1; }
+.check.done .box { background: #185FA5; border-color: #185FA5; }
+.check .ct { font-size: 13px; color: #1a1a18; line-height: 1.5; }
+.check .ct b { color: #0C447C; font-weight: 600; }
+.check.done .ct, .check.done .ct b { color: #9a9a93; }
+/* PINKODE-LÅS */
+.lock { position: fixed; inset: 0; z-index: 1000; background: #f5f5f0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+.lock.hidden { display: none; }
+.lock-icon { font-size: 38px; margin-bottom: 14px; }
+.lock h2 { font-size: 19px; font-weight: 600; margin-bottom: 6px; color: #1a1a18; }
+.lock p { font-size: 13px; color: #5f5e5a; margin-bottom: 22px; text-align: center; line-height: 1.5; }
+.lock input { font-size: 22px; letter-spacing: 8px; text-align: center; padding: 13px 14px; border-radius: 10px; border: 1px solid #ddddd8; background: #fff; color: #1a1a18; width: 210px; max-width: 80%; }
+.lock-btn { margin-top: 16px; padding: 12px 30px; font-size: 15px; font-weight: 500; color: #fff; background: #185FA5; border: none; border-radius: 10px; cursor: pointer; }
+.lock-err { color: #C0392B; font-size: 13px; margin-top: 14px; height: 18px; }
+</style>
+</head>
+<body>
+
+<div class="lock" id="lock">
+  <div class="lock-icon">🔒</div>
+  <h2>Din elbil-guide</h2>
+  <p>Indtast koden for at åbne</p>
+  <input id="pin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••" autocomplete="off" autofocus>
+  <button class="lock-btn" onclick="laasOp()">Lås op</button>
+  <div class="lock-err" id="lockerr"></div>
+</div>
+
+<div class="tabs">
+  <div class="tab on"  onclick="SF(0)">Start</div>
+  <div class="tab" onclick="SF(1)">Biler</div>
+  <div class="tab" onclick="SF(2)">Budget</div>
+  <div class="tab" onclick="SF(3)">Ladning</div>
+  <div class="tab" onclick="SF(4)">Guide</div>
+  <div class="tab" onclick="SF(5)">Forhandler</div>
+  <div class="tab" onclick="SF(6)">Bank</div>
+</div>
+
+<!-- PANE 0: START -->
+<div class="pane on" id="pane0">
+<div class="guide-wrap">
+<div style="text-align:center;padding:16px 0 14px;">
+  <div style="font-size:36px;margin-bottom:8px;">🚗</div>
+  <h2 style="font-size:20px;font-weight:600;color:#1a1a18;margin-bottom:6px;">Din elbil-guide</h2>
+  <p style="font-size:13px;color:#5f5e5a;line-height:1.6;">Lavet af din bror så du nemt<br>kan finde den rigtige bil.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+  <div onclick="SF(1)" style="display:flex;gap:12px;align-items:center;background:#fff;border:0.5px solid #ddddd8;border-radius:12px;padding:14px 16px;cursor:pointer;">
+    <div style="width:40px;height:40px;border-radius:10px;background:#E6F1FB;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">🚗</div>
+    <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:#1a1a18;margin-bottom:2px;">Biler</div><div style="font-size:12px;color:#5f5e5a;line-height:1.4;">Se og filtrer de 10 biler vi har fundet. Tryk "Se budget" for at se hvad den koster om måneden.</div></div>
+    <div style="font-size:18px;color:#ddddd8;">›</div>
+  </div>
+  <div onclick="SF(2)" style="display:flex;gap:12px;align-items:center;background:#fff;border:0.5px solid #ddddd8;border-radius:12px;padding:14px 16px;cursor:pointer;">
+    <div style="width:40px;height:40px;border-radius:10px;background:#EAF3DE;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">💰</div>
+    <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:#1a1a18;margin-bottom:2px;">Budget</div><div style="font-size:12px;color:#5f5e5a;line-height:1.4;">Hvad koster bilen om måneden? Lån, forsikring, ladning og service.</div></div>
+    <div style="font-size:18px;color:#ddddd8;">›</div>
+  </div>
+  <div onclick="SF(3)" style="display:flex;gap:12px;align-items:center;background:#fff;border:0.5px solid #ddddd8;border-radius:12px;padding:14px 16px;cursor:pointer;">
+    <div style="width:40px;height:40px;border-radius:10px;background:#FAEEDA;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">🔌</div>
+    <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:#1a1a18;margin-bottom:2px;">Ladning</div><div style="font-size:12px;color:#5f5e5a;line-height:1.4;">Slagelse Sygehus har ladestandere. Her er planen for at lade bilen.</div></div>
+    <div style="font-size:18px;color:#ddddd8;">›</div>
+  </div>
+  <div onclick="SF(4)" style="display:flex;gap:12px;align-items:center;background:#fff;border:0.5px solid #ddddd8;border-radius:12px;padding:14px 16px;cursor:pointer;">
+    <div style="width:40px;height:40px;border-radius:10px;background:#F1EFE8;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">📖</div>
+    <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:#1a1a18;margin-bottom:2px;">Guide</div><div style="font-size:12px;color:#5f5e5a;line-height:1.4;">Hvad betyder varmepumpe, SOH og bakkamera? Alt forklaret enkelt.</div></div>
+    <div style="font-size:18px;color:#ddddd8;">›</div>
+  </div>
+  <div onclick="SF(5)" style="display:flex;gap:12px;align-items:center;background:#fff;border:0.5px solid #ddddd8;border-radius:12px;padding:14px 16px;cursor:pointer;">
+    <div style="width:40px;height:40px;border-radius:10px;background:#E6F1FB;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">📋</div>
+    <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:#1a1a18;margin-bottom:2px;">Forhandler</div><div style="font-size:12px;color:#5f5e5a;line-height:1.4;">Huskeliste til besøget - hvad du skal tjekke og spørge om hos sælgeren.</div></div>
+    <div style="font-size:18px;color:#ddddd8;">›</div>
+  </div>
+  <div onclick="SF(6)" style="display:flex;gap:12px;align-items:center;background:#fff;border:0.5px solid #ddddd8;border-radius:12px;padding:14px 16px;cursor:pointer;">
+    <div style="width:40px;height:40px;border-radius:10px;background:#EAF3DE;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">🏦</div>
+    <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:#1a1a18;margin-bottom:2px;">Bank</div><div style="font-size:12px;color:#5f5e5a;line-height:1.4;">Forbered bankmødet - hvad du skal medbringe og spørge om for at få lånet.</div></div>
+    <div style="font-size:18px;color:#ddddd8;">›</div>
+  </div>
+</div>
+<div style="background:#E6F1FB;border-radius:12px;padding:14px 16px;">
+  <div style="font-size:12px;font-weight:600;color:#0C447C;margin-bottom:6px;">Start her 👇</div>
+  <div style="font-size:12px;color:#185FA5;line-height:1.6;">Gå til <strong>Biler</strong> og tryk på <strong>Bakkamera</strong> og <strong>Næstved/Slagelse</strong> filtrene øverst. Så er der kun BIL-07 og BIL-08 tilbage - de to bedste biler hos Lønquist i Næstved.</div>
+</div>
+</div>
+</div>
+
+<!-- PANE 1: BILER -->
+<div class="pane" id="pane1">
+  <div class="filter-bar">
+    <div class="chips">
+      <span class="chip" data-f="kamera" onclick="toggle(this)">Bakkamera</span>
+      <span class="chip" data-f="varmepumpe" onclick="toggle(this)">Varmepumpe</span>
+      <span class="chip" data-f="naestved" onclick="toggle(this)">Næstved/Slagelse</span>
+      <span class="chip" data-f="u200k" onclick="toggle(this)">Under 200.000 kr.</span>
+      <span class="chip" data-f="u30k" onclick="toggle(this)">Under 30.000 km</span>
+      <span class="chip" data-f="ar2023" onclick="toggle(this)">Årgang 2023</span>
+    </div>
+    <div class="sort-row">
+      <label>Sorter:</label>
+      <select onchange="sorter(this.value)">
+        <option value="stjerner">Stjerner (bedst først)</option>
+        <option value="pris-asc">Pris (lavest først)</option>
+        <option value="pris-desc">Pris (højest først)</option>
+        <option value="km-asc">Km (lavest først)</option>
+        <option value="id">Bil-ID</option>
+      </select>
+    </div>
+  </div>
+  <div class="count" id="count"></div>
+  <div class="cards" id="cards"></div>
+</div>
+
+<!-- PANE 2: BUDGET -->
+<div class="pane" id="pane2">
+  <div class="budget-wrap">
+    <h2>Månedligt budget</h2>
+    <p class="budget-sub">8 års løbetid · 6% rente · 35.000 kr. udbetaling</p>
+    <div class="bil-selector">
+      <div class="sel-head">Vælg bil</div>
+      <div class="sel-grid" id="selgrid"></div>
+    </div>
+    <div class="total-box">
+      <div class="tl">Samlet månedlig udgift</div>
+      <div class="tv" id="tv">—</div>
+      <div class="ts" id="ts"></div>
+    </div>
+    <div id="status"></div>
+    <a class="ann-link" id="ann-link" href="#" target="_blank">Åbn annonce på Bilbasen ↗</a>
+    <div class="bar-wrap">
+      <div class="bar-title">Fordeling</div>
+      <div id="bars"></div>
+    </div>
+    <div class="bcard">
+      <div class="bcard-head">Lån</div>
+      <div class="bline"><div><div class="bline-l">Lånebeløb</div><div class="bline-s">Pris minus 35.000 kr.</div></div><div class="bline-v" id="b-laan">—</div></div>
+      <div class="bline"><div><div class="bline-l">Månedlig ydelse</div><div class="bline-s">8 år · 6% p.a.</div></div><div class="bline-v" id="b-ydelse">—</div></div>
+      <div class="bline"><div><div class="bline-l">Samlet rente</div><div class="bline-s">Over hele løbetiden</div></div><div class="bline-v" id="b-rente">—</div></div>
+    </div>
+    <div class="bcard">
+      <div class="bcard-head">Forsikring</div>
+      <div class="bline"><div><div class="bline-l">Kasko m. batteridækning</div><div class="bline-s">Estimat - Bauta/GF (60 år, SSA)</div></div><div class="bline-v">ca. 700 kr./md.</div></div>
+      <div class="bline"><div><div class="bline-l">El-vejhjælp (tilvalg)</div><div class="bline-s">Bugsering ved tom batteri</div></div><div class="bline-v">ca. 50 kr./md.</div></div>
+      <div class="bline"><div><div class="bline-l">Forsikring i alt</div></div><div class="bline-v">ca. 750 kr./md.</div></div>
+    </div>
+    <div class="bcard">
+      <div class="bcard-head">Ladning</div>
+      <div class="bline"><div><div class="bline-l">Offentlig ladning</div><div class="bline-s">1-2 opladninger/uge á 50-80 kr.</div></div><div class="bline-v">ca. 500 kr./md.</div></div>
+      <div class="bline"><div><div class="bline-l">Klat-ladning på job</div><div class="bline-s">Slagelse Sygehus (typisk gratis)</div></div><div class="bline-v">0 kr./md.</div></div>
+    </div>
+    <div class="bcard">
+      <div class="bcard-head">Service og vedligehold</div>
+      <div class="bline"><div><div class="bline-l">Service hvert 2. år</div><div class="bline-s">VW ID.3 fabriksinterval, ca. 2.500 kr.</div></div><div class="bline-v">ca. 105 kr./md.</div></div>
+      <div class="bline"><div><div class="bline-l">Dæk (sæsonskift + slid)</div></div><div class="bline-v">ca. 100 kr./md.</div></div>
+      <div class="bline"><div><div class="bline-l">Uforudsete reparationer</div><div class="bline-s">Buffer til bremser, sliddele m.m.</div></div><div class="bline-v">ca. 100 kr./md.</div></div>
+    </div>
+    <div class="bcard">
+      <div class="bcard-head">Ejerafgift</div>
+      <div class="bline"><div><div class="bline-l">Grøn ejerafgift (elbil)</div><div class="bline-s">Ca. 920 kr./år for ID.3</div></div><div class="bline-v">ca. 77 kr./md.</div></div>
+    </div>
+    <div class="note-amber">
+      <strong>Forsikring er et estimat</strong>
+      Indhent tilbud fra Bauta (SSA-berettiget), GF (tidligere kunde) og Topdanmark (samlerabat). Kan variere 200-400 kr./md.
+    </div>
+  </div>
+</div>
+
+<!-- PANE 3: LADNING -->
+<div class="pane" id="pane3">
+<div class="guide-wrap">
+<div class="g-intro">Du kan ikke lade hjemme - men det er fuldt muligt at klare sig uden. Her er hvad vi ved om lademuligheder på Slagelse Sygehus og de bedste aftaler til dig.</div>
+<div class="g-section"><div class="g-head">✅ Clever-ladestandere på Slagelse Sygehus</div><div class="g-body"><p>Slagelse Sygehus har Clever-ladestandere på parkeringspladsen ved Ingemannsvej 44 (P5). Adressen er Ingemannsvej 30, 4200 Slagelse - og de er døgnåbne.</p><p>Det betyder at du kan lade under din arbejdsdag - sæt bilen til at lade om morgenen og tag den fra standeren inden du kører hjem.</p><div class="g-tip">Ring til sygehuset og bekræft at standerne på P5 er tilgængelige for ansatte inden du køber bil - og spørg om der er reserverede pladser til personale.</div></div></div>
+<div class="g-section"><div class="g-head">Clever Go - start her</div><div class="g-body"><p>Clever Go er Clevers betalingskort uden abonnement og uden binding. Du betaler kun for den strøm du bruger.</p><div style="background:#f9f9f6;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:12px;line-height:1.7;"><strong style="display:block;margin-bottom:2px;">Priser (juni 2026)</strong>Normalladning: <strong>3,49 kr./kWh</strong><br>Lynladning (100+ kW): <strong>4,99 kr./kWh</strong><br>Månedlig pris: <strong>0 kr.</strong> - ingen binding</div><p>En fuld opladning af ID.3 koster ca. 200 kr. med Clever Go. Det er 1-2 gange om ugen du har brug for det - resten klares på sygehuset.</p><div class="g-tip">Download Clever-appen og bestil et gratis Go-kort på clever.dk. Start med dette - ingen risiko.</div></div></div>
+<div class="g-section"><div class="g-head">Norlys Oplad Ude - overvej efter 3 måneder</div><div class="g-body"><p>Norlys har abonnementer til folk der ikke kan lade hjemme, med adgang til over 6.500 ladepunkter.</p><div style="background:#f9f9f6;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:12px;line-height:1.7;"><strong style="display:block;margin-bottom:4px;">Oplad Ude 15 - 499 kr./md.</strong>250 kWh/md. inkl. ≈ 15.000 km/år · Opsiges med 1 måneds varsel<br><br><strong style="display:block;margin-bottom:4px;">Oplad Ude 25 - 699 kr./md.</strong>400 kWh/md. inkl. ≈ 25.000 km/år · Opsiges med 1 måneds varsel</div><div class="g-tip">Clever One frarådes - prisen stiger til 999 kr./md. fra september 2026 og er kun rentabel ved over 30.000 km/år.</div></div></div>
+<div class="g-section"><div class="g-head">Anbefalet plan</div><div class="g-body"><p><strong>Måned 1-3:</strong> Start med Clever Go. Lad på sygehuset og brug Clever Go til supplement. Notér hvad det koster.</p><p><strong>Efter 3 måneder:</strong> Hvis du bruger over 250 kWh/md. på offentlig ladning, overvej Norlys Oplad Ude 15 til 499 kr./md.</p><p><strong>Aldrig:</strong> Clever One-abonnement - for dyrt til dit kørselsmønster.</p></div></div>
+</div>
+</div>
+
+<!-- PANE 4: GUIDE -->
+<div class="pane" id="pane4">
+<div class="guide-wrap">
+<div class="g-intro">Din bror har sat dette overblik sammen så du nemt kan finde og sammenligne biler. Her kan du læse hvad de forskellige ting betyder.</div>
+<div class="g-section"><div class="g-head">Batteristørrelse - 58 kWh</div><div class="g-body"><p>En elbils rækkevidde afhænger af batteriet. Vi har valgt biler med 58 kWh batteri, som giver ca. 300-330 km i vinterforhold og ca. 400 km om sommeren.</p><p>Du kører ca. 76 km om dagen til og fra Slagelse Sygehus. Det betyder at 58 kWh er mere end rigeligt.</p><div class="g-tip">BIL-09 har 77 kWh - endnu større, men du har ikke brug for den ekstra rækkevidde, og det gør bilen dyrere.</div></div></div>
+<div class="g-section"><div class="g-head">Varmepumpe</div><div class="g-body"><p>En varmepumpe bruger meget lidt strøm til at varme kabinen op om vinteren. Uden varmepumpe bruger bilen mere af batteriet på opvarmning og du får kortere rækkevidde på kolde dage - forskellen kan være op til 50-80 km.</p><div class="g-tip">BIL-07 og BIL-08 hos Lønquist i Næstved er de eneste biler hvor varmepumpe er bekræftet. På de øvrige skal du spørge forhandleren specifikt.</div></div></div>
+<div class="g-section"><div class="g-head">Bakkamera</div><div class="g-body"><p>Et bakkamera viser hvad der er bag bilen på en skærm, når du bakker. Det gør parkering meget nemmere - særligt i snævre parkeringspladser og ved sygehuset.</p><div class="g-tip">BIL-09 har et endnu bedre 360° kamera, som viser bilen set fra oven.</div></div></div>
+<div class="g-section"><div class="g-head">SOH - batteristatus</div><div class="g-body"><p>SOH står for "State of Health" og er et mål for hvor meget batteriet stadig kan holde sammenlignet med da bilen var ny. Et batteri på 85% SOH giver 15% kortere rækkevidde.</p><p>Volkswagen garanterer at batteriet bevarer mindst 70% kapacitet i 8 år eller 160.000 km. Inden køb bør du få en VW-forhandler til at tjekke SOH - det er gratis og tager 15-20 minutter.</p><div class="g-tip">VW i Næstved kan tjekke SOH på Lønquist-bilerne direkte.</div></div></div>
+<div class="g-section"><div class="g-head">Forsikring</div><div class="g-body"><p>Du skal have kasko-forsikring fordi du har billån. Som SSA er du berettiget til Bauta Forsikring, som er lavet til folk i sundhedssektoren og dækker elbil med batteridækning. Du har tidligere haft forsikring hos GF og har i dag ulykke og indbo hos Topdanmark.</p><div class="g-tip">Indhent tilbud fra alle tre - Bauta, GF og Topdanmark - og vælg det billigste samlede tilbud.</div></div></div>
+<div class="g-section"><div class="g-head">Finansiering og budget</div><div class="g-body"><p>Vi regner med 35.000 kr. i udbetaling og et banklån over 8 år med 6% rente. Hent et lånetilsagn hos Sparekassen Danmark eller Sydbank inden du besøger forhandlere.</p><p>Dit rådighedsbeløb er 11.000 kr./md. til alt - bil, mad, tøj, tænder, hår og gaver. De fleste biler giver ca. 3.500-4.000 kr./md. i samlet bilomkostning.</p></div></div>
+<div class="g-section"><div class="g-head">Stjernerne på bilerne</div><div class="g-body"><p>Stjernerne (1-5) er en samlet vurdering baseret på pris, km-stand, udstyr og lokation set i forhold til dine behov. BIL-07 og BIL-08 har 5 stjerner fordi de har bakkamera, bekræftet varmepumpe, lav km-stand og lokal forhandler.</p><div class="g-tip">Hestekræfter indgår ikke i vurderingen - det er ikke relevant for din daglige kørsel. Alle bilerne har nok kraft til landevej og by.</div></div></div>
+</div>
+</div>
+
+<!-- PANE 5: FORHANDLER -->
+<div class="pane" id="pane5">
+<div class="guide-wrap">
+<div class="g-intro">Tag denne liste med til forhandleren. Tryk på et punkt for at sætte flueben, når du har tjekket det. Gennemgå dem sammen med sælgeren.</div>
+
+<div class="chk-sec">
+  <div class="chk-head">1 · Tjek bilen først</div>
+  <div class="chk-body">
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Km-stand passer med annoncen</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Antal tidligere ejere - få det bekræftet</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Servicehistorik er fulgt - bed om at se den</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Skader, buler, stenslag og ridser i lakken</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Dæk: mønsterdybde og alder</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">2 nøgler og ladekabel (Type 2) medfølger</span></div>
+  </div>
+</div>
+
+<div class="chk-sec">
+  <div class="chk-head">2 · Det vigtigste: batteri og varme</div>
+  <div class="chk-body">
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct"><b>Bed om SOH-tjek hos VW</b> - gratis og tager 15-20 min. Viser batteriets sundhed</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct"><b>Bekræft varmepumpe</b> er monteret - kun BIL-07 og BIL-08 er bekræftet i forvejen</span></div>
+  </div>
+  <div class="g-tip" style="margin:0 14px 12px;">VW i Næstved kan tjekke SOH på Lønquist-bilerne direkte. Et godt batteri bør have mindst 85-90% SOH.</div>
+</div>
+
+<div class="chk-sec">
+  <div class="chk-head">3 · Prøvekørsel</div>
+  <div class="chk-body">
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Kør både i by og på landevej</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Test bakkamera, varme, aircon og skærm</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Lyt efter mislyde og mærk efter bremserne</span></div>
+  </div>
+</div>
+
+<div class="chk-sec">
+  <div class="chk-head">4 · Handel og garanti</div>
+  <div class="chk-body">
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Tjek reklamationsret i slutsedlen - 24 mdr. som udgangspunkt, men kan være nedsat på en brugt bil</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Forhandl prisen - især på biler med høj km-stand</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Få alle aftaler skrevet ind i slutsedlen</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Skriv ikke under, før lånet er på plads - se fanen Bank</span></div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<!-- PANE 6: BANK -->
+<div class="pane" id="pane6">
+<div class="guide-wrap">
+<div class="g-intro">Hent et lånetilsagn i banken <b>før</b> du besøger forhandleren. Så ved du præcis hvad du kan låne - og du står stærkere i forhandlingen.</div>
+
+<div class="chk-sec">
+  <div class="chk-head">1 · Tag med til mødet</div>
+  <div class="chk-body">
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">De seneste 3 lønsedler</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Seneste årsopgørelse fra SKAT</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Kontoudtog for de seneste 3 måneder</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Oversigt over indtægt og faste udgifter</span></div>
+  </div>
+</div>
+
+<div class="g-section">
+  <div class="g-head">2 · Det du vil låne</div>
+  <div class="g-body">
+    <p>Bilpris (BIL-07/08): <strong>ca. 215.000 kr.</strong></p>
+    <p>Minus udbetaling: <strong>- 35.000 kr.</strong></p>
+    <p>Lånebeløb: <strong>ca. 180.000 kr.</strong> over 8 år.</p>
+    <div class="g-tip">Den månedlige ydelse kan du se under fanen <strong>Budget</strong> - ca. 2.360 kr./md. ved 6% rente.</div>
+  </div>
+</div>
+
+<div class="chk-sec">
+  <div class="chk-head">3 · Spørg banken om</div>
+  <div class="chk-body">
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct"><b>ÅOP</b> - de samlede årlige omkostninger i procent. Det er det reelle tal at sammenligne på</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Er renten fast eller variabel?</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Etableringsgebyr og stiftelsesomkostninger</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Skal bilen stilles som sikkerhed (pant)?</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Kan lånet indfris før tid uden gebyr?</span></div>
+  </div>
+</div>
+
+<div class="chk-sec">
+  <div class="chk-head">4 · Banker at kontakte</div>
+  <div class="chk-body">
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Sparekassen Danmark - bed om tilbud</span></div>
+    <div class="check" onclick="chk(this)"><span class="box">✓</span><span class="ct">Sydbank - bed om tilbud</span></div>
+  </div>
+  <div class="g-tip" style="margin:0 14px 12px;">Bed begge banker om et tilbud og sammenlign på ÅOP - ikke kun på renten.</div>
+</div>
+
+<div class="g-section">
+  <div class="g-head">Husk</div>
+  <div class="g-body">
+    <p>Få lånetilsagnet <strong>skriftligt</strong>.</p>
+    <p>Et tilsagn binder dig ikke - du kan stadig frit vælge bil eller lade være.</p>
+    <p>Underskriv intet hos forhandleren, før lånet er endeligt godkendt.</p>
+  </div>
+</div>
+
+</div>
+</div>
+
+<script>
+const biler = [
+  { id:"BIL-01", navn:"Pro Perf. 2023 - Køge", pris:209900, km:23275, aar:2023, stjerner:3, kamera:false, vp:"ukendt", naestved:false, link:"https://www.bilbasen.dk/brugt/bil/vw/id3/58-pro-performance-5d/6926047", noter:"Dyreste pro perf. 2023. Forhandl pris ned." },
+  { id:"BIL-02", navn:"Pro Perf. 2022 - Køge", pris:174900, km:28000, aar:2022, stjerner:4, kamera:false, vp:"ukendt", naestved:false, link:"https://www.bilbasen.dk/brugt/bil/vw/id3/58-pro-performance-5d/6888245", noter:"Bedste pris/km-forhold. Afklar varmepumpe." },
+  { id:"BIL-03", navn:"Pro Perf. 2022 - Køge", pris:179900, km:28000, aar:2022, stjerner:3, kamera:false, vp:"ukendt", naestved:false, link:"https://www.bilbasen.dk/brugt/bil/vw/id3/58-pro-performance-5d/6904379", noter:"Mangler sædevarme ift. BIL-02. Backup." },
+  { id:"BIL-04", navn:"Pro Perf. 2022 - Greve", pris:184900, km:43000, aar:2022, stjerner:3, kamera:true, vp:"ukendt", naestved:false, link:"https://www.bilbasen.dk/brugt/bil/vw/id3/58-pro-performance-5d/6887649", noter:"Har kamera, men 43.000 km." },
+  { id:"BIL-05", navn:"Pro 58 kWh 2022 - København", pris:164900, km:39600, aar:2022, stjerner:4, kamera:false, vp:"ukendt", naestved:false, link:"https://www.bilbasen.dk/brugt/bil/vw/id3/58-pro-5d/6878799", noter:"Billigste. Mangler kamera. Afklar varmepumpe." },
+  { id:"BIL-06", navn:"Pro 58 kWh 2022 - Hillerød", pris:174900, km:49000, aar:2022, stjerner:3, kamera:true, vp:"ukendt", naestved:false, link:"https://www.bilbasen.dk/brugt/bil/vw/id3/58-pro-5d/6921219", noter:"Kamera, men 49.000 km. Kræver prisforhandling." },
+  { id:"BIL-07", navn:"Pro Perf. 2023 - Næstved", pris:214900, km:17000, aar:2023, stjerner:5, kamera:true, vp:true, naestved:true, link:"https://www.bilbasen.dk/brugt/bil/vw/id3/58-pro-performance-5d/6924143", noter:"Lokal, varmepumpe, kamera, 17.000 km. Top kandidat." },
+  { id:"BIL-08", navn:"Pro Perf. 2023 - Næstved", pris:214900, km:11000, aar:2023, stjerner:5, kamera:true, vp:true, naestved:true, link:"https://www.bilbasen.dk/brugt/bil/vw/id3/58-pro-performance-5d/6919251", noter:"Stærkeste kandidat. Kun 11.000 km. Lokal." },
+  { id:"BIL-09", navn:"Pro S 77 kWh 2023 - Slagelse", pris:249900, km:13000, aar:2023, stjerner:3, kamera:true, vp:"ukendt", naestved:true, link:"https://www.bilbasen.dk/brugt/bil/vw/id3/77-pro-s-5d/6926651", noter:"Over budget. Topudstyr men Pro S er overkill." },
+  { id:"BIL-10", navn:"Pro Perf. Bus. 2023 - Sakskøbing", pris:219900, km:19000, aar:2023, stjerner:3, kamera:true, vp:"ukendt", naestved:false, link:"https://www.bilbasen.dk/brugt/bil/vw/id3/58-pro-performance-business-5d/6750985", noter:"Dyrere end BIL-07/08, længere væk." },
+];
+
+const UDBETALING=35000, R=0.06/12, N=96;
+const LADNING=500, SERVICE=305, FORSIKRING=750, EJERAFGIFT=77;
+
+function ydelse(l){return l*(R*Math.pow(1+R,N))/(Math.pow(1+R,N)-1);}
+function fmt(n){return Math.round(n).toLocaleString('da-DK')+' kr.';}
+function fmtmd(n){return Math.round(n).toLocaleString('da-DK')+' kr./md.';}
+
+let aktive=new Set(), sortVal="stjerner", valgtBudget=7;
+
+function SF(n){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',i===n));
+  document.querySelectorAll('.pane').forEach((p,i)=>p.classList.toggle('on',i===n));
+}
+
+function chk(el){el.classList.toggle('done');}
+
+const KODE = "310371";
+function laasOp(){
+  const v = document.getElementById('pin').value.trim();
+  if(v === KODE){
+    document.getElementById('lock').classList.add('hidden');
+  } else {
+    document.getElementById('lockerr').textContent = 'Forkert kode - prøv igen';
+    document.getElementById('pin').value = '';
+  }
+}
+document.getElementById('pin').addEventListener('keydown', function(e){
+  document.getElementById('lockerr').textContent = '';
+  if(e.key === 'Enter') laasOp();
+});
+
+function toggle(el){
+  const f=el.dataset.f;
+  aktive.has(f)?aktive.delete(f):aktive.add(f);
+  el.classList.toggle('on');
+  renderBiler();
+}
+
+function sorter(v){sortVal=v;renderBiler();}
+
+function matcher(b){
+  for(const f of aktive){
+    if(f==="kamera"&&!b.kamera)return false;
+    if(f==="varmepumpe"&&b.vp!==true)return false;
+    if(f==="naestved"&&!b.naestved)return false;
+    if(f==="u200k"&&b.pris>=200000)return false;
+    if(f==="u30k"&&b.km>=30000)return false;
+    if(f==="ar2023"&&b.aar!==2023)return false;
+  }
+  return true;
+}
+
+function vpTag(v){
+  if(v===true)return '<span class="tag y">Varmepumpe ✓</span>';
+  if(v===false)return '<span class="tag n">Ingen varmepumpe</span>';
+  return '<span class="tag q">Varmepumpe - spørg</span>';
+}
+
+function renderBiler(){
+  let vis=biler.filter(matcher);
+  vis.sort((a,b)=>{
+    if(sortVal==="stjerner")return b.stjerner-a.stjerner;
+    if(sortVal==="pris-asc")return a.pris-b.pris;
+    if(sortVal==="pris-desc")return b.pris-a.pris;
+    if(sortVal==="km-asc")return a.km-b.km;
+    return a.id.localeCompare(b.id);
+  });
+  document.getElementById('count').textContent=vis.length+' bil'+(vis.length!==1?'er':'')+' vises';
+  if(!vis.length){document.getElementById('cards').innerHTML='<div class="empty">Ingen biler matcher filtrene.</div>';return;}
+  document.getElementById('cards').innerHTML=vis.map(b=>{
+    const idx=biler.indexOf(b);
+    return `<div class="bil-card">
+      <div class="bil-head"><span class="bid">${b.id}</span><span class="btitel">${b.navn}</span><span class="bstars">${'★'.repeat(b.stjerner)}${'☆'.repeat(5-b.stjerner)}</span></div>
+      <div class="bil-body">
+        <div class="f"><div class="fl">Pris</div><div class="fv ${b.pris<200000?'g':b.pris>220000?'w':''}">${b.pris.toLocaleString('da-DK')} kr.</div></div>
+        <div class="f"><div class="fl">Kilometerstand</div><div class="fv ${b.km<25000?'g':b.km>40000?'w':''}">${b.km.toLocaleString('da-DK')} km</div></div>
+        <div class="f"><div class="fl">Lokation</div><div class="fv">${b.navn.split(' - ').pop()}</div></div>
+        <div class="f"><div class="fl">Bakkamera</div><div class="fv ${b.kamera?'g':'w'}">${b.kamera?'Ja ✓':'Ikke nævnt'}</div></div>
+        <div class="tags">${vpTag(b.vp)}<span class="tag ${b.naestved?'y':'q'}">${b.naestved?'Lokal ✓':'Ikke lokal'}</span></div>
+        <div class="noter f"><div class="fl">Noter</div><div class="fv m">${b.noter}</div></div>
+      </div>
+      <div class="card-actions">
+        <a class="act-btn" href="${b.link}" target="_blank">Åbn annonce ↗</a>
+        <button class="act-btn" onclick="gaaTilBudget(${idx})">Se budget →</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function gaaTilBudget(idx){
+  SF(2);
+  vaelgBudget(idx);
+  document.querySelectorAll('.sbtn').forEach((b,i)=>b.classList.toggle('on',i===idx));
+}
+
+function vaelgBudget(idx){
+  valgtBudget=idx;
+  document.querySelectorAll('.sbtn').forEach((b,i)=>b.classList.toggle('on',i===idx));
+  const b=biler[idx];
+  const laan=b.pris-UDBETALING;
+  const y=ydelse(laan);
+  const rente=(y*N)-laan;
+  const total=y+FORSIKRING+LADNING+SERVICE+EJERAFGIFT;
+  const rest=11000-total;
+  document.getElementById('b-laan').textContent=fmt(laan);
+  document.getElementById('b-ydelse').textContent=fmtmd(y);
+  document.getElementById('b-rente').textContent=fmt(rente);
+  document.getElementById('tv').textContent='ca. '+Math.round(total).toLocaleString('da-DK')+' kr./md.';
+  document.getElementById('ts').textContent=b.id+' · '+fmt(b.pris)+' · Lån: '+fmt(laan);
+  document.getElementById('ann-link').href=b.link;
+  document.getElementById('ann-link').textContent='Åbn annonce for '+b.id+' på Bilbasen ↗';
+  const st=document.getElementById('status');
+  st.innerHTML=rest<0
+    ?`<div class="status-warn">⚠️ Ca. ${Math.abs(Math.round(rest)).toLocaleString('da-DK')} kr./md. over rådighedsbeløbet - før mad og øvrige udgifter.</div>`
+    :`<div class="status-ok">✅ Ca. ${Math.round(rest).toLocaleString('da-DK')} kr./md. til overs til mad og øvrige udgifter.</div>`;
+  const poster=[
+    {lbl:'Lånerate',val:y,farve:'#185FA5'},
+    {lbl:'Forsikring',val:FORSIKRING,farve:'#1D9E75'},
+    {lbl:'Ladning',val:LADNING,farve:'#EF9F27'},
+    {lbl:'Service/dæk',val:SERVICE,farve:'#D85A30'},
+    {lbl:'Ejerafgift',val:EJERAFGIFT,farve:'#7F77DD'},
+  ];
+  const maks=Math.max(...poster.map(p=>p.val));
+  document.getElementById('bars').innerHTML=poster.map(p=>`
+    <div class="brow"><div class="blbl">${p.lbl}</div><div class="bbg"><div class="bfill" style="width:${Math.round(p.val/maks*100)}%;background:${p.farve}"></div></div><div class="bamt">${Math.round(p.val).toLocaleString('da-DK')} kr.</div></div>`).join('');
+}
+
+const sg=document.getElementById('selgrid');
+biler.forEach((b,i)=>{
+  const btn=document.createElement('button');
+  btn.className='sbtn'+(i===valgtBudget?' on':'');
+  btn.innerHTML=`<span class="sid">${b.id}</span>${b.navn.replace(' - ','<br>')}<br><span class="spris">${b.pris.toLocaleString('da-DK')} kr.</span>`;
+  btn.onclick=()=>vaelgBudget(i);
+  sg.appendChild(btn);
+});
+
+renderBiler();
+vaelgBudget(valgtBudget);
+</script>
+</body>
+</html>
